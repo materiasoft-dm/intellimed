@@ -3,10 +3,10 @@
 
 <Router AppAssembly="@typeof(AppRoot).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="typeof(MainLayout)" />
+        <RouteView RouteData="@routeData" DefaultLayout="typeof(IntelliMed.UI.Layout.MainLayout)" />
     </Found>
     <NotFound>
-        <LayoutView Layout="typeof(MainLayout)">
+        <LayoutView Layout="typeof(IntelliMed.UI.Layout.MainLayout)">
             <h1>Not found</h1>
         </LayoutView>
     </NotFound>

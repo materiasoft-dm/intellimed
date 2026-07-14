@@ -3,18 +3,12 @@ using Microsoft.JSInterop;
 
 namespace IntelliMed.UI.Services
 {
-    public interface IThemeService
-    {
-        string CurrentTheme { get; }
-        Task InitializeAsync();
-        Task ToggleThemeAsync();
-    }
-
     public class ThemeService : IThemeService
     {
+        private const string Key = "theme";
         private readonly IClientStorage _storage;
         private readonly IJSRuntime _js;
-        public string CurrentTheme { get; private set; } = "light";
+        private string _current = "light";
 
         public ThemeService(IClientStorage storage, IJSRuntime js)
         {
@@ -24,16 +18,24 @@ namespace IntelliMed.UI.Services
 
         public async Task InitializeAsync()
         {
-            var t = await _storage.GetItemAsync("theme");
-            if (!string.IsNullOrEmpty(t)) CurrentTheme = t!;
-            await _js.InvokeVoidAsync("BlazorTheme.setTheme", CurrentTheme);
+            var theme = await _storage.GetItemAsync(Key) ?? "light";
+            _current = theme;
+            await _js.InvokeVoidAsync("BlazorTheme.setTheme", theme);
         }
 
         public async Task ToggleThemeAsync()
         {
-            CurrentTheme = CurrentTheme == "dark" ? "light" : "dark";
-            await _storage.SetItemAsync("theme", CurrentTheme);
-            await _js.InvokeVoidAsync("BlazorTheme.setTheme", CurrentTheme);
+            var theme = _current == "dark" ? "light" : "dark";
+            await SetThemeAsync(theme);
         }
+
+        public async Task SetThemeAsync(string theme)
+        {
+            _current = theme;
+            await _storage.SetItemAsync(Key, theme);
+            await _js.InvokeVoidAsync("BlazorTheme.setTheme", theme);
+        }
+
+        public Task<string> GetThemeAsync() => Task.FromResult(_current);
     }
 }
