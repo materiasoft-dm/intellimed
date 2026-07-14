@@ -81,14 +81,15 @@ public class AuthControllerTests
         _userManagerMock.Setup(x => x.GetRolesAsync(user))
             .ReturnsAsync(new List<string> { "Patient" });
 
-        _signInManagerMock.Setup(x => x.CheckPasswordSignInAsync(user, request.Password, false))
+        _signInManagerMock.Setup(x => x.CheckPasswordSignInAsync(user, request.Password, true))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
 
         // Act
         var result = await _controller.Login(request);
 
         // Assert
-        var okResult = result.Result.Should().BeAssignableTo<OkObjectResult>().Subject;
+        var okResult = result.Result.Should().BeAssignableTo<ObjectResult>().Subject;
+        okResult.StatusCode.Should().Be(200);
         var response = okResult.Value.Should().BeOfType<LoginResponse>().Subject;
         response.Success.Should().BeTrue();
         response.Token.Should().NotBeNullOrEmpty();
@@ -160,7 +161,7 @@ public class AuthControllerTests
 
         _userManagerMock.Setup(x => x.FindByEmailAsync(request.Email))
             .ReturnsAsync(user);
-        _signInManagerMock.Setup(x => x.CheckPasswordSignInAsync(user, request.Password, false))
+        _signInManagerMock.Setup(x => x.CheckPasswordSignInAsync(user, request.Password, true))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.LockedOut);
 
         // Act
@@ -190,14 +191,15 @@ public class AuthControllerTests
 
         _userManagerMock.Setup(x => x.FindByEmailAsync(request.Email))
             .ReturnsAsync(user);
-        _signInManagerMock.Setup(x => x.CheckPasswordSignInAsync(user, request.Password, false))
+        _signInManagerMock.Setup(x => x.CheckPasswordSignInAsync(user, request.Password, true))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Failed);
 
         // Act
         var result = await _controller.Login(request);
 
         // Assert
-        var unauthorizedResult = result.Result.Should().BeAssignableTo<UnauthorizedObjectResult>().Subject;
+        var unauthorizedResult = result.Result.Should().BeAssignableTo<ObjectResult>().Subject;
+        unauthorizedResult.StatusCode.Should().Be(401);
         var response = unauthorizedResult.Value.Should().BeOfType<LoginResponse>().Subject;
         response.Success.Should().BeFalse();
         response.ErrorMessage.Should().Be("Invalid email or password");
@@ -316,22 +318,23 @@ public class AuthControllerTests
         _userManagerMock.Setup(x => x.GetRolesAsync(user))
             .ReturnsAsync(new List<string> { "Patient" });
 
-        _signInManagerMock.Setup(x => x.CheckPasswordSignInAsync(user, request.Password, false))
+        _signInManagerMock.Setup(x => x.CheckPasswordSignInAsync(user, request.Password, true))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
 
         // Act
         var result = await _controller.Login(request);
 
         // Assert
-        var okResult = result.Result.Should().BeAssignableTo<OkObjectResult>().Subject;
+        var okResult = result.Result.Should().BeAssignableTo<ObjectResult>().Subject;
+        okResult.StatusCode.Should().Be(200);
         var response = okResult.Value.Should().BeOfType<LoginResponse>().Subject;
-        
+
         response.Token.Should().NotBeNullOrEmpty();
-        
+
         // Verify the token is valid JWT
         var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(response.Token);
-        
+
         jwtToken.Issuer.Should().Be("IntelliMed");
         jwtToken.Audiences.Should().Contain("IntelliMed.Client");
         jwtToken.Claims.Should().Contain(c => c.Type == ClaimTypes.Email && c.Value == "test@example.com");
