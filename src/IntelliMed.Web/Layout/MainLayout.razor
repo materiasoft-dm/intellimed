@@ -78,9 +78,14 @@
     <MudSpacer />
     
     @* User Info *@
-    <MudChip Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-2">
-        @GetCurrentUser()
-    </MudChip>
+    <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Label="@GetCurrentUser()">
+        <MudMenuItem OnClick="NavigateToHome">
+            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" />Profile
+        </MudMenuItem>
+        <MudMenuItem OnClick="SignOut">
+            <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mr-2" />Sign Out
+        </MudMenuItem>
+    </MudMenu>
     <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" />
     </MudAppBar>
 
@@ -118,13 +123,6 @@
             @Body
         </MudContainer>
     </MudMainContent>
-
-    @* Status Bar *@
-    <MudAppBar Bottom="true" Dense="true" Elevation="0" Class="mdi-status-bar">
-        <MudText Typo="Typo.caption">Ready</MudText>
-        <MudSpacer />
-        <MudText Typo="Typo.caption" Class="mr-4">@DateTime.Now.ToString("dddd, MMMM dd, yyyy HH:mm")</MudText>
-    </MudAppBar>
 </MudLayout>
 
 @code {
