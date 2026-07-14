@@ -6,7 +6,7 @@ public partial class App : Application
 {
     public App()
     {
-        InitializeComponent();
+        // Code-only App: set main page directly without XAML initialization
         MainPage = new MainPage();
     }
 }

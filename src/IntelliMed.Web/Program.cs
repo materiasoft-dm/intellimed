@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using IntelliMed.Web;
 using IntelliMed.UI.Services;
 using IntelliMed.Web.Services;
+using MudBlazor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -13,6 +14,8 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 // Platform storage and theme service
 builder.Services.AddScoped<IClientStorage, BrowserClientStorage>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
+// MudBlazor services
+builder.Services.AddMudServices();
 
 var host = builder.Build();
 

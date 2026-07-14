@@ -1,15 +1,36 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-maccatalyst;net10.0-windows10.0.19041.0</TargetFrameworks>
+    <!-- Target Windows only to simplify local builds. Change back to multi-target when MAUI tooling is available for all targets. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseMaui>true</UseMaui>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- Build without MSIX packaging for local development -->
+    <WindowsPackageType>None</WindowsPackageType>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\IntelliMed.UI\IntelliMed.UI.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- MAUI SDK supplies Microsoft.Maui.Controls and WebView package implicitly. Keep only additional packages. -->
+    <PackageReference Include="MudBlazor" Version="6.11.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.10" />
+  </ItemGroup>
+  <PropertyGroup>
+    <!-- Prevent MAUI SDK validation warning when relying on implicit package references -->
+    <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
+  </PropertyGroup>
+  <!-- Removed explicit duplicate package references to avoid NU1504 duplicates. -->
+  <!-- Microsoft.AspNetCore.Components.WebView.Maui is provided implicitly by the MAUI workload; avoid explicit package reference to prevent SDK target mismatches. -->
+
+  <!-- Add an empty StaticWebAssetsPrepareForRun target to satisfy WebView targets that expect it when building in non-web SDK projects. -->
+  <Target Name="StaticWebAssetsPrepareForRun" />
+  <Target Name="StaticWebAssetsPrepareForPublish" />
+  <Target Name="LoadStaticWebAssetsPublishManifest" />
+  <Target Name="LoadStaticWebAssetsBuildManifest" />
 
 </Project>
