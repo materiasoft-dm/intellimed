@@ -155,6 +155,9 @@ using (var scope = app.Services.CreateScope())
 
         // Seed default admin user
         await SeedDefaultUserAsync(userManager);
+
+        // Seed default role permissions
+        await SeedRolePermissionsAsync(context);
     }
     catch (Exception ex)
     {
@@ -192,7 +195,7 @@ app.Run();
 // ============================================================================
 static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager)
 {
-    string[] roles = ["Admin", "Doctor", "Nurse", "Receptionist"];
+    string[] roles = ["SuperAdmin", "Admin", "Doctor", "Nurse", "Receptionist"];
 
     foreach (var role in roles)
     {
@@ -208,9 +211,11 @@ static async Task SeedDefaultUserAsync(UserManager<ApplicationUser> userManager)
     const string adminEmail = "admin@clinic.com";
     const string adminPassword = "IntelliMed2024!";
 
-    if (await userManager.FindByEmailAsync(adminEmail) == null)
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+    if (adminUser == null)
     {
-        var user = new ApplicationUser
+        adminUser = new ApplicationUser
         {
             UserName = adminEmail,
             Email = adminEmail,
@@ -221,11 +226,129 @@ static async Task SeedDefaultUserAsync(UserManager<ApplicationUser> userManager)
             CreatedAt = DateTime.UtcNow
         };
 
-        var result = await userManager.CreateAsync(user, adminPassword);
+        var result = await userManager.CreateAsync(adminUser, adminPassword);
 
         if (result.Succeeded)
         {
-            await userManager.AddToRoleAsync(user, "Admin");
+            await userManager.AddToRoleAsync(adminUser, "SuperAdmin");
+            await userManager.AddToRoleAsync(adminUser, "Admin");
         }
     }
+    else
+    {
+        // Ensure existing admin has SuperAdmin role
+        if (!await userManager.IsInRoleAsync(adminUser, "SuperAdmin"))
+        {
+            await userManager.AddToRoleAsync(adminUser, "SuperAdmin");
+        }
+    }
+}
+
+static async Task SeedRolePermissionsAsync(AppDbContext context)
+{
+    // Only seed if the table is empty
+    if (await context.RolePermissions.AnyAsync())
+        return;
+
+    var permissions = new List<RolePermission>
+    {
+        // =====================================================================
+        // SuperAdmin — ALL pages
+        // =====================================================================
+        // Clinical
+        new() { RoleName = "SuperAdmin", PageKey = "patients", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "patients/create", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "patients/edit", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "patients/delete", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "appointments", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "appointments/create", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "appointments/edit", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "appointments/delete", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "practitioners", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "practitioners/create", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "practitioners/edit", Category = "Clinical" },
+        // Financial
+        new() { RoleName = "SuperAdmin", PageKey = "invoices", Category = "Financial" },
+        new() { RoleName = "SuperAdmin", PageKey = "invoices/create", Category = "Financial" },
+        new() { RoleName = "SuperAdmin", PageKey = "invoices/edit", Category = "Financial" },
+        new() { RoleName = "SuperAdmin", PageKey = "invoices/delete", Category = "Financial" },
+        new() { RoleName = "SuperAdmin", PageKey = "payments", Category = "Financial" },
+        // Admin
+        new() { RoleName = "SuperAdmin", PageKey = "admin/users", Category = "Admin" },
+        new() { RoleName = "SuperAdmin", PageKey = "admin/roles", Category = "Admin" },
+        new() { RoleName = "SuperAdmin", PageKey = "admin/audit", Category = "Admin" },
+        new() { RoleName = "SuperAdmin", PageKey = "admin/settings", Category = "Admin" },
+        // Reports
+        new() { RoleName = "SuperAdmin", PageKey = "reports", Category = "Reports" },
+        new() { RoleName = "SuperAdmin", PageKey = "reports/financial", Category = "Reports" },
+        new() { RoleName = "SuperAdmin", PageKey = "reports/clinical", Category = "Reports" },
+
+        // =====================================================================
+        // Admin — most pages except some SuperAdmin-only
+        // =====================================================================
+        new() { RoleName = "Admin", PageKey = "patients", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "patients/create", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "patients/edit", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "patients/delete", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "appointments", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "appointments/create", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "appointments/edit", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "appointments/delete", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "practitioners", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "practitioners/create", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "practitioners/edit", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "invoices", Category = "Financial" },
+        new() { RoleName = "Admin", PageKey = "invoices/create", Category = "Financial" },
+        new() { RoleName = "Admin", PageKey = "invoices/edit", Category = "Financial" },
+        new() { RoleName = "Admin", PageKey = "invoices/delete", Category = "Financial" },
+        new() { RoleName = "Admin", PageKey = "payments", Category = "Financial" },
+        new() { RoleName = "Admin", PageKey = "admin/users", Category = "Admin" },
+        new() { RoleName = "Admin", PageKey = "admin/roles", Category = "Admin" },
+        new() { RoleName = "Admin", PageKey = "admin/audit", Category = "Admin" },
+        new() { RoleName = "Admin", PageKey = "admin/settings", Category = "Admin" },
+        new() { RoleName = "Admin", PageKey = "reports", Category = "Reports" },
+        new() { RoleName = "Admin", PageKey = "reports/financial", Category = "Reports" },
+        new() { RoleName = "Admin", PageKey = "reports/clinical", Category = "Reports" },
+
+        // =====================================================================
+        // Doctor — clinical + read-only financial
+        // =====================================================================
+        new() { RoleName = "Doctor", PageKey = "patients", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "patients/create", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "patients/edit", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "appointments", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "appointments/create", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "appointments/edit", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "practitioners", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "invoices", Category = "Financial" },
+        new() { RoleName = "Doctor", PageKey = "reports", Category = "Reports" },
+        new() { RoleName = "Doctor", PageKey = "reports/clinical", Category = "Reports" },
+
+        // =====================================================================
+        // Nurse — patients + appointments (no delete)
+        // =====================================================================
+        new() { RoleName = "Nurse", PageKey = "patients", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "patients/create", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "patients/edit", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "appointments", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "appointments/create", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "appointments/edit", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "practitioners", Category = "Clinical" },
+
+        // =====================================================================
+        // Receptionist — patients, appointments, invoices
+        // =====================================================================
+        new() { RoleName = "Receptionist", PageKey = "patients", Category = "Clinical" },
+        new() { RoleName = "Receptionist", PageKey = "patients/create", Category = "Clinical" },
+        new() { RoleName = "Receptionist", PageKey = "patients/edit", Category = "Clinical" },
+        new() { RoleName = "Receptionist", PageKey = "appointments", Category = "Clinical" },
+        new() { RoleName = "Receptionist", PageKey = "appointments/create", Category = "Clinical" },
+        new() { RoleName = "Receptionist", PageKey = "appointments/edit", Category = "Clinical" },
+        new() { RoleName = "Receptionist", PageKey = "invoices", Category = "Financial" },
+        new() { RoleName = "Receptionist", PageKey = "invoices/create", Category = "Financial" },
+        new() { RoleName = "Receptionist", PageKey = "payments", Category = "Financial" },
+    };
+
+    await context.RolePermissions.AddRangeAsync(permissions);
+    await context.SaveChangesAsync();
 }

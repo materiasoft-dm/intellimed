@@ -23,6 +23,8 @@ builder.Services.AddScoped<IClientStorage, BrowserClientStorage>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
 // Authentication service
 builder.Services.AddScoped<IAuthService, AuthService>();
+// Admin service for user/role management
+builder.Services.AddScoped<IAdminService, AdminService>();
 // MudBlazor services
 builder.Services.AddMudServices();
 

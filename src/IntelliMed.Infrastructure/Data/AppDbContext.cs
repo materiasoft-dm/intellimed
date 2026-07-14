@@ -19,6 +19,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -110,6 +111,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(i => i.Payments)
                 .HasForeignKey(e => e.InvoiceId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RolePermission configuration
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RoleName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.PageKey).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.HasIndex(e => new { e.RoleName, e.PageKey }).IsUnique();
         });
     }
 }

@@ -3,6 +3,7 @@
 @using MudBlazor
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
+@inject IAdminService AdminService
 
 <MudLayout>
     @* Menu Bar *@
@@ -68,6 +69,38 @@
         <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />New Invoice</MudMenuItem>
         <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Payment" Class="mr-2" />Payments</MudMenuItem>
     </MudMenu>
+
+    @* Admin Menu — visible only to users with admin page access *@
+    @if (_accessiblePages.Contains("admin/users") || _accessiblePages.Contains("admin/roles"))
+    {
+        <MudMenu Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Error" Label="Admin">
+            @if (_accessiblePages.Contains("admin/users"))
+            {
+                <MudMenuItem OnClick="NavigateToUserManagement">
+                    <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Class="mr-2" />User Management
+                </MudMenuItem>
+            }
+            @if (_accessiblePages.Contains("admin/roles"))
+            {
+                <MudMenuItem OnClick="NavigateToRoleConfiguration">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-2" />Role Configuration
+                </MudMenuItem>
+            }
+            @if (_accessiblePages.Contains("admin/audit"))
+            {
+                <MudDivider />
+                <MudMenuItem>
+                    <MudIcon Icon="@Icons.Material.Filled.Analytics" Class="mr-2" />Audit Log
+                </MudMenuItem>
+            }
+            @if (_accessiblePages.Contains("admin/settings"))
+            {
+                <MudMenuItem>
+                    <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" />System Settings
+                </MudMenuItem>
+            }
+        </MudMenu>
+    }
 
     @* Help Menu *@
     <MudMenu Icon="@Icons.Material.Filled.Help" Color="Color.Inherit" Label="Help">
@@ -147,6 +180,53 @@
 @code {
     private bool _drawerOpen = true;
     private bool IsUserMenuOpen = false;
+    private IList<string> _currentUserRoles = new List<string>();
+    private HashSet<string> _accessiblePages = new(StringComparer.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUserRoles();
+        await LoadAccessiblePages();
+    }
+
+    private async Task LoadCurrentUserRoles()
+    {
+        try
+        {
+            var user = await AuthService.GetCurrentUserAsync();
+            if (user?.IsAuthenticated == true && user.Roles != null)
+            {
+                _currentUserRoles = user.Roles;
+            }
+        }
+        catch
+        {
+            _currentUserRoles = new List<string>();
+        }
+    }
+
+    private async Task LoadAccessiblePages()
+    {
+        try
+        {
+            var pages = await AdminService.GetMyAccessiblePagesAsync();
+            if (pages != null)
+            {
+                _accessiblePages = new HashSet<string>(pages, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+        catch
+        {
+            // Fallback: SuperAdmin/Admin get admin pages
+            if (_currentUserRoles.Any(r => r == "SuperAdmin" || r == "Admin"))
+            {
+                _accessiblePages = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "admin/users", "admin/roles", "admin/audit", "admin/settings"
+                };
+            }
+        }
+    }
 
     void ToggleDrawer()
     {
@@ -179,6 +259,8 @@
     void NavigateToPatients() { CloseUserMenu(); Navigation.NavigateTo("/patients"); }
     void NavigateToAppointments() { CloseUserMenu(); Navigation.NavigateTo("/appointments"); }
     void NavigateToInvoices() { CloseUserMenu(); Navigation.NavigateTo("/invoices"); }
+    void NavigateToUserManagement() { CloseUserMenu(); Navigation.NavigateTo("/admin/users"); }
+    void NavigateToRoleConfiguration() { CloseUserMenu(); Navigation.NavigateTo("/admin/roles"); }
 
     async Task SignOut()
     {

@@ -1,0 +1,329 @@
+@page "/admin/roles"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@using MudBlazor
+@inject IAdminService AdminService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Role Configuration - IntelliMed</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Role Configuration</MudText>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <div class="d-flex align-center justify-space-between">
+        <MudText Typo="Typo.body1">
+            <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="mr-2" />
+            Configure which pages each role can access
+        </MudText>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="NavigateBackToUsers">
+            Back to Users
+        </MudButton>
+    </div>
+</MudPaper>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-center pa-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else if (_error != null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+else
+{
+    @* Role selector *@
+    <MudPaper Class="pa-3 mb-4" Elevation="1">
+        <div class="d-flex align-center flex-wrap gap-4">
+            <MudSelect T="string"
+                       Label="Select Role"
+                       Value="@_selectedRole"
+                       ValueChanged="OnRoleChanged"
+                       AnchorOrigin="Origin.BottomCenter"
+                       Class="flex-grow-1"
+                       Style="max-width: 400px;">
+                @foreach (var role in _roles)
+                {
+                    <MudSelectItem Value="@role">@role</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudTextField T="string"
+                          Label="Search pages..."
+                          Value="@_searchText"
+                          ValueChanged="OnSearchChanged"
+                          Immediate="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Class="flex-grow-1"
+                          Style="max-width: 400px;" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="SavePermissionsAsync"
+                       Disabled="@(_selectedRole == null)">
+                Save Permissions
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    @if (_selectedRole == null)
+    {
+        <MudPaper Class="pa-8 text-center" Elevation="1">
+            <MudIcon Icon="@Icons.Material.Filled.TouchApp" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6" Class="mt-2">Select a role above to configure its page access</MudText>
+        </MudPaper>
+    }
+    else
+    {
+        @* Page checkboxes grouped by category *@
+        @foreach (var category in _categories)
+        {
+            var categoryPages = _filteredPages.Where(p => p.Category == category).ToList();
+            if (categoryPages.Count == 0) continue;
+
+            <MudPaper Class="pa-3 mb-3" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-2 d-flex align-center">
+                    <MudIcon Icon="@GetCategoryIcon(category)" Class="mr-2" Color="Color.Primary" />
+                    @category
+                    <MudChip Size="Size.Small" Class="ml-2" Color="Color.Default">
+                        @categoryPages.Count pages
+                    </MudChip>
+                </MudText>
+
+                <MudDivider Class="mb-3" />
+
+                <div class="d-flex flex-wrap" style="gap: 8px;">
+                    @foreach (var page in categoryPages)
+                    {
+                        var pageName = page.PageName;
+                        var pageDesc = page.Description;
+                        var pageKey = page.PageKey;
+                        <MudPaper Class="pa-2" Elevation="0" Style="min-width: 220px; flex: 1 1 220px;">
+                            <MudCheckBox T="bool"
+                                         Label="@pageName"
+                                         Checked="@_selectedPageKeys.Contains(pageKey)"
+                                         CheckedChanged="@_pageCallbacks[pageKey]"
+                                         Color="Color.Primary"
+                                         Dense="true">
+                                <ChildContent>
+                                    <MudTooltip Text="@pageDesc">
+                                        <MudIcon Icon="@Icons.Material.Filled.Info"
+                                                 Size="Size.Small"
+                                                 Color="Color.Default"
+                                                 Class="ml-1" />
+                                    </MudTooltip>
+                                </ChildContent>
+                            </MudCheckBox>
+                        </MudPaper>
+                    }
+                </div>
+            </MudPaper>
+        }
+
+        @* Summary footer *@
+        <MudPaper Class="pa-3" Elevation="1">
+            <div class="d-flex align-center justify-space-between">
+                <MudText Typo="Typo.body1">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-2" Color="Color.Success" />
+                    @_selectedPageKeys.Count of @_allPages.Count pages selected for <strong>@_selectedRole</strong>
+                </MudText>
+                <div>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               OnClick="SelectAllPages">
+                        Select All
+                    </MudButton>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Error"
+                               OnClick="DeselectAllPages">
+                        Clear All
+                    </MudButton>
+                </div>
+            </div>
+        </MudPaper>
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private string? _error;
+
+    // Available roles (from Identity)
+    private List<string> _roles = new();
+
+    // All page definitions from the API
+    private List<PageDefinitionDto> _allPages = new();
+
+    // Filtered pages (after search)
+    private List<PageDefinitionDto> _filteredPages = new();
+
+    // Distinct categories from all pages
+    private List<string> _categories = new();
+
+    // Currently selected role
+    private string? _selectedRole;
+
+    // Currently selected page keys for the selected role
+    private HashSet<string> _selectedPageKeys = new(StringComparer.OrdinalIgnoreCase);
+
+    // Search text
+    private string _searchText = string.Empty;
+
+    // Pre-built callbacks for each page (avoids lambda in attributes)
+    private Dictionary<string, EventCallback<bool>> _pageCallbacks = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Load roles
+            var roleDtos = await AdminService.GetRolesAsync();
+            if (roleDtos != null)
+            {
+                _roles = roleDtos.Select(r => r.Name).OrderBy(n => n).ToList();
+            }
+
+            // Load page definitions
+            _allPages = await AdminService.GetPageDefinitionsAsync() ?? new();
+            _categories = _allPages.Select(p => p.Category).Distinct().OrderBy(c => c).ToList();
+            BuildPageCallbacks();
+            ApplySearch();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load data: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void BuildPageCallbacks()
+    {
+        _pageCallbacks.Clear();
+        foreach (var page in _allPages)
+        {
+            var pageKey = page.PageKey;
+            _pageCallbacks[pageKey] = EventCallback.Factory.Create<bool>(this, v => TogglePage(pageKey, v));
+        }
+    }
+
+    private async Task OnRoleChanged(string roleName)
+    {
+        _selectedRole = roleName;
+        _selectedPageKeys.Clear();
+
+        if (!string.IsNullOrEmpty(roleName))
+        {
+            try
+            {
+                var perms = await AdminService.GetRolePermissionsAsync(roleName);
+                if (perms?.PageKeys != null)
+                {
+                    foreach (var pk in perms.PageKeys)
+                    {
+                        _selectedPageKeys.Add(pk);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to load permissions for {roleName}: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private void OnSearchChanged(string text)
+    {
+        _searchText = text ?? string.Empty;
+        ApplySearch();
+    }
+
+    private void ApplySearch()
+    {
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            _filteredPages = _allPages.ToList();
+        }
+        else
+        {
+            var term = _searchText.Trim();
+            _filteredPages = _allPages
+                .Where(p => p.PageName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                         || p.PageKey.Contains(term, StringComparison.OrdinalIgnoreCase)
+                         || p.Category.Contains(term, StringComparison.OrdinalIgnoreCase)
+                         || (p.Description?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToList();
+        }
+    }
+
+    private void TogglePage(string pageKey, bool isChecked)
+    {
+        if (isChecked)
+            _selectedPageKeys.Add(pageKey);
+        else
+            _selectedPageKeys.Remove(pageKey);
+    }
+
+    private void SelectAllPages()
+    {
+        foreach (var page in _allPages)
+            _selectedPageKeys.Add(page.PageKey);
+    }
+
+    private void DeselectAllPages()
+    {
+        _selectedPageKeys.Clear();
+    }
+
+    private async Task SavePermissionsAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedRole)) return;
+
+        try
+        {
+            var request = new SaveRolePermissionsRequest
+            {
+                PageKeys = _selectedPageKeys.ToList()
+            };
+
+            var result = await AdminService.SaveRolePermissionsAsync(_selectedRole, request);
+            if (result?.Success == true)
+            {
+                Snackbar.Add($"Permissions saved for '{_selectedRole}' ({_selectedPageKeys.Count} pages).",
+                    Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result?.Message ?? "Failed to save permissions.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving permissions: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string GetCategoryIcon(string category) => category switch
+    {
+        "Clinical" => Icons.Material.Filled.LocalHospital,
+        "Financial" => Icons.Material.Filled.AttachMoney,
+        "Admin" => Icons.Material.Filled.AdminPanelSettings,
+        "Reports" => Icons.Material.Filled.BarChart,
+        _ => Icons.Material.Filled.Web
+    };
+
+    private void NavigateBackToUsers()
+    {
+        Navigation.NavigateTo("/admin/users");
+    }
+}

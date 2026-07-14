@@ -291,23 +291,93 @@ IntelliMed-Setup.exe  # Choose "Server" installation
   3. API returns JWT token with user roles
   4. Client stores token and includes in subsequent requests
 
-### 3.1 User Roles (RBAC)
-| Role | Access Level |
-|------|--------------|
-| **Admin** | Full system access, user management, settings |
-| **Doctor** | Patient records, appointments, clinical notes |
-| **Nurse** | Patient records, vitals, basic appointments |
-| **Receptionist** | Appointments, billing, patient check-in/out |
+### 3.1 Role-Based Access Control (RBAC)
+
+IntelliMed uses ASP.NET Identity roles for authorization. Each role grants access to specific screens and API endpoints.
+
+#### Role Definitions
+
+| Role | Description | Access Level |
+|------|-------------|--------------|
+| **SuperAdmin** | System owner / clinic director. Full access to everything including user management. | All screens + User Management + Role assignment |
+| **Admin** | Clinic administrator. Manages users and system settings. | All screens + User Management |
+| **Doctor** | Medical practitioner. Clinical records, appointments, prescriptions. | Patients, Appointments, Invoices (view) |
+| **Nurse** | Nursing staff. Patient vitals, basic appointments, clinical notes. | Patients, Appointments |
+| **Receptionist** | Front desk. Patient check-in/out, scheduling, billing. | Patients, Appointments, Invoices |
+
+#### SuperAdmin Concept
+
+The **SuperAdmin** is the highest-privilege role. Key characteristics:
+
+- **Current user as SuperAdmin**: The initial admin user (`admin@clinic.com`) is seeded with both **SuperAdmin** and **Admin** roles.
+- **Cannot be deleted**: SuperAdmin users are protected from deletion/deactivation via the Admin API.
+- **Full access**: SuperAdmin can access ALL pages including the User Management screen.
+- **Role assignment**: Only SuperAdmin and Admin can assign roles to other users.
+
+#### Screen Access Matrix
+
+| Screen / Feature | SuperAdmin | Admin | Doctor | Nurse | Receptionist |
+|------------------|:----------:|:-----:|:------:|:-----:|:------------:|
+| Dashboard (Home) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Patients | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Appointments | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Invoices | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **User Management** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Role Configuration | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Audit Log | ✅ | ✅ | ❌ | ❌ | ❌ |
+| System Settings | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+#### API Authorization
 
 ```csharp
-// Example: Role-based authorization
-[Authorize(Roles = "Admin")]
-[HttpDelete("api/users/{id}")]
-public async Task<IActionResult> DeleteUser(string id) { ... }
+// SuperAdmin + Admin only
+[Authorize(Roles = "SuperAdmin,Admin")]
+[HttpGet("api/admin/users")]
+public async Task<IActionResult> GetUsers() { ... }
 
-[Authorize(Roles = "Doctor,Nurse")]
+// All clinical staff
+[Authorize(Roles = "SuperAdmin,Admin,Doctor,Nurse")]
 [HttpGet("api/patients")]
 public async Task<IActionResult> GetPatients() { ... }
+
+// Receptionist can access billing
+[Authorize(Roles = "SuperAdmin,Admin,Receptionist")]
+[HttpGet("api/invoices")]
+public async Task<IActionResult> GetInvoices() { ... }
+```
+
+#### User Management API Endpoints
+
+| Method | Endpoint | Roles | Description |
+|--------|----------|-------|-------------|
+| `GET` | `/api/admin/users` | SuperAdmin, Admin | List all users with roles |
+| `GET` | `/api/admin/users/{id}` | SuperAdmin, Admin | Get single user details |
+| `POST` | `/api/admin/users` | SuperAdmin, Admin | Create new user with role assignment |
+| `PUT` | `/api/admin/users/{id}` | SuperAdmin, Admin | Update user profile, status, roles |
+| `DELETE` | `/api/admin/users/{id}` | SuperAdmin, Admin | Soft-delete (deactivate + lockout) |
+| `POST` | `/api/admin/users/{id}/reset-password` | SuperAdmin, Admin | Admin password reset |
+| `GET` | `/api/admin/roles` | SuperAdmin, Admin | List all roles with descriptions |
+| `PUT` | `/api/admin/users/{id}/roles` | SuperAdmin, Admin | Assign roles (replaces all) |
+
+#### Seeded Default Users
+
+| Email | Password | Roles |
+|-------|----------|-------|
+| `admin@clinic.com` | `IntelliMed2024!` | SuperAdmin, Admin |
+
+#### Client-Side Role Checking
+
+The `MainLayout.razor` loads the current user's roles via `IAuthService.GetCurrentUserAsync()` and conditionally renders the **Admin** menu (visible only to SuperAdmin/Admin roles). The User Management page is at `/admin/users` and is protected both at the UI level (menu visibility) and API level (controller authorization).
+
+```csharp
+// MainLayout.razor — role-based menu visibility
+@if (_currentUserRoles.Any(r => r == "SuperAdmin" || r == "Admin"))
+{
+    <MudMenu Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Error" Label="Admin">
+        <MudMenuItem OnClick="NavigateToUserManagement">User Management</MudMenuItem>
+        ...
+    </MudMenu>
+}
 ```
 
 ### 3.2 ASP.NET Identity + TopShelf Compatibility ✅
