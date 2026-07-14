@@ -428,16 +428,17 @@
         if (_form != null)
         {
             await _form.Validate();
-            
+
             if (_isValid)
             {
                 _isLoading = true;
                 _loginError = null;
-                
+                StateHasChanged();
+
                 try
                 {
                     var response = await AuthService.LoginAsync(_model.Email, _model.Password);
-                    
+
                     if (response?.Success == true)
                     {
                         Navigation.NavigateTo("/");
@@ -455,6 +456,7 @@
                 finally
                 {
                     _isLoading = false;
+                    StateHasChanged();
                 }
             }
         }

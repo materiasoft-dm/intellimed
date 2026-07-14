@@ -27,7 +27,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorClient", policy =>
     {
-        policy.WithOrigins("http://localhost:5034", "https://localhost:7034")
+        policy.WithOrigins(
+                "http://localhost:5159",      // Blazor Web development HTTP
+                "https://localhost:7042",     // Blazor Web development HTTPS
+                "http://localhost:5034",      // Legacy development HTTP
+                "https://localhost:7034"      // Legacy development HTTPS
+            )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -165,11 +170,14 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    // Don't redirect to HTTPS in development
+}
+else
+{
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
-
-// Enable CORS
+// Enable CORS - MUST be before authentication and authorization
 app.UseCors("AllowBlazorClient");
 
 app.UseAuthentication();
