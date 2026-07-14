@@ -78,14 +78,33 @@
     <MudSpacer />
     
     @* User Info *@
-    <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Label="@GetCurrentUser()">
-        <MudMenuItem OnClick="NavigateToHome">
-            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" />Profile
-        </MudMenuItem>
-        <MudMenuItem OnClick="SignOut">
-            <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mr-2" />Sign Out
-        </MudMenuItem>
-    </MudMenu>
+    <div class="dropdown user-dropdown">
+        <button class="btn btn-link text-white text-decoration-none dropdown-toggle d-flex align-items-center"
+                type="button"
+                id="userDropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                @onclick="ToggleUserMenu"
+                @onclick:stopPropagation="true">
+            <i class="material-icons me-2">person</i>
+            <span>@GetCurrentUser()</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end @(IsUserMenuOpen ? "show" : "")"
+            aria-labelledby="userDropdown"
+            style="@(IsUserMenuOpen ? "" : "display:none;")">
+            <li>
+                <button class="dropdown-item" type="button" @onclick="NavigateToHome">
+                    <i class="material-icons me-2">person</i>Profile
+                </button>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <button class="dropdown-item" type="button" @onclick="SignOut">
+                    <i class="material-icons me-2">logout</i>Sign Out
+                </button>
+            </li>
+        </ul>
+    </div>
     <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" />
     </MudAppBar>
 
@@ -127,10 +146,21 @@
 
 @code {
     private bool _drawerOpen = true;
+    private bool IsUserMenuOpen = false;
 
     void ToggleDrawer()
     {
         _drawerOpen = !_drawerOpen;
+    }
+
+    void ToggleUserMenu()
+    {
+        IsUserMenuOpen = !IsUserMenuOpen;
+    }
+
+    void CloseUserMenu()
+    {
+        IsUserMenuOpen = false;
     }
 
     string GetCurrentUser()
@@ -145,13 +175,14 @@
         }
     }
 
-    void NavigateToHome() => Navigation.NavigateTo("/");
-    void NavigateToPatients() => Navigation.NavigateTo("/patients");
-    void NavigateToAppointments() => Navigation.NavigateTo("/appointments");
-    void NavigateToInvoices() => Navigation.NavigateTo("/invoices");
+    void NavigateToHome() { CloseUserMenu(); Navigation.NavigateTo("/"); }
+    void NavigateToPatients() { CloseUserMenu(); Navigation.NavigateTo("/patients"); }
+    void NavigateToAppointments() { CloseUserMenu(); Navigation.NavigateTo("/appointments"); }
+    void NavigateToInvoices() { CloseUserMenu(); Navigation.NavigateTo("/invoices"); }
 
     async Task SignOut()
     {
+        CloseUserMenu();
         await AuthService.LogoutAsync();
         Navigation.NavigateTo("/login");
     }
