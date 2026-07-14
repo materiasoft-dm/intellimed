@@ -1,0 +1,9 @@
+[    1946ms] [INFO] Debugging hotkey: Shift+Alt+D (when application has focus) @ http://localhost:5125/_framework/blazor.webassembly.zxhwjtv6sc.js:0
+[    3694ms] [ERROR] crit: Microsoft.AspNetCore.Components.WebAssembly.Rendering.WebAssemblyRenderer[100]
+      Unhandled exception rendering component: Object of type 'Microsoft.AspNetCore.Components.RouteView' does not have a property matching the name 'Layout'.
+System.InvalidOperationException: Object of type 'Microsoft.AspNetCore.Components.RouteView' does not have a property matching the name 'Layout'.
+   at Microsoft.AspNetCore.Components.Reflection.ComponentProperties.ThrowForUnknownIncomingParameterName(Type targetType, String parameterName)
+   at Microsoft.AspNetCore.Components.Reflection.ComponentProperties.SetProperties(ParameterView& parameters, Object target)
+   at Microsoft.AspNetCore.Components.ParameterView.SetParameterProperties(Object target)
+   at Microsoft.AspNetCore.Components.RouteView.SetParametersAsync(ParameterView parameters)
+   at Microsoft.AspNetCore.Components.Rendering.ComponentState.SupplyCombinedParameters(ParameterView directAndCascadingParameters) @ http://localhost:5125/_framework/blazor.webassembly.zxhwjtv6sc.js:0
