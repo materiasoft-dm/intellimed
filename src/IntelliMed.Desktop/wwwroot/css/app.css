@@ -1,0 +1,5 @@
+/* Local desktop CSS - basic layout */
+body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+.page { display:flex; }
+.sidebar { width:220px; }
+.content { flex:1; }

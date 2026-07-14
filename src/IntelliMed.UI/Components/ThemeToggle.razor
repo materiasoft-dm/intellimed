@@ -1,0 +1,20 @@
+@inject IntelliMed.UI.Services.IThemeService ThemeService
+
+<button class="btn btn-sm btn-outline-secondary" @onclick="Toggle">@Label</button>
+
+@code {
+    private string Label = "Theme";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var t = await ThemeService.GetThemeAsync();
+        Label = t == "dark" ? "Switch to light" : "Switch to dark";
+    }
+
+    private async Task Toggle()
+    {
+        await ThemeService.ToggleThemeAsync();
+        var t = await ThemeService.GetThemeAsync();
+        Label = t == "dark" ? "Switch to light" : "Switch to dark";
+    }
+}

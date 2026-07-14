@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\IntelliMed.Core\IntelliMed.Core.csproj" />
+    <ProjectReference Include="..\IntelliMed.UI\IntelliMed.UI.csproj" />
   </ItemGroup>
 
 </Project>

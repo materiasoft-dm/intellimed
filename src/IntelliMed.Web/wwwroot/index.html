@@ -9,6 +9,8 @@
     <link rel="preload" id="webassembly" />
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
+    <!-- Shared UI styles from IntelliMed.UI Razor Class Library -->
+    <link rel="stylesheet" href="_content/IntelliMed.UI/css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="IntelliMed.Web.styles.css" rel="stylesheet" />
     <script type="importmap"></script>
@@ -28,6 +30,8 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+    <!-- Theme interop from shared UI library -->
+    <script src="_content/IntelliMed.UI/js/themeInterop.js"></script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>
 
