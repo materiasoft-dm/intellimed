@@ -60,4 +60,4 @@ Thumbs.db
 # Build results
 [Dd]ebugPublic/
 [Rr]eleasePublic/
-*.log
+*.log.playwright-mcp/

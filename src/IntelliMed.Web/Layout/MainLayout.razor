@@ -1,16 +1,175 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@using IntelliMed.Web.Services
+@using MudBlazor
+@inject NavigationManager Navigation
+@inject IAuthService AuthService
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+@code {
+    private bool _isLoginPage;
 
-        <article class="content px-4">
+    protected override void OnInitialized()
+    {
+        _isLoginPage = Navigation.Uri.Contains("/login", StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+<MudLayout>
+    @if (!_isLoginPage)
+    {
+        @* Menu Bar *@
+        <MudAppBar Dense="true" Elevation="1" Class="mdi-menu-bar">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+        
+        @* File Menu *@
+        <MudMenu Icon="@Icons.Material.Filled.Folder" Color="Color.Inherit" Label="File">
+            <MudMenuItem OnClick="NavigateToHome">
+                <MudIcon Icon="@Icons.Material.Filled.Home" Class="mr-2" />Home
+            </MudMenuItem>
+            <MudDivider />
+            <MudMenuItem OnClick="NavigateToPatients">
+                <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />Patients
+            </MudMenuItem>
+            <MudMenuItem OnClick="NavigateToAppointments">
+                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-2" />Appointments
+            </MudMenuItem>
+            <MudMenuItem OnClick="NavigateToInvoices">
+                <MudIcon Icon="@Icons.Material.Filled.Receipt" Class="mr-2" />Invoices
+            </MudMenuItem>
+            <MudDivider />
+            <MudMenuItem OnClick="SignOut">
+                <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mr-2" />Sign Out
+            </MudMenuItem>
+        </MudMenu>
+
+        @* Edit Menu *@
+        <MudMenu Icon="@Icons.Material.Filled.Edit" Color="Color.Inherit" Label="Edit">
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Undo" Class="mr-2" />Undo</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Redo" Class="mr-2" />Redo</MudMenuItem>
+            <MudDivider />
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.ContentCut" Class="mr-2" />Cut</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.ContentCopy" Class="mr-2" />Copy</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.ContentPaste" Class="mr-2" />Paste</MudMenuItem>
+        </MudMenu>
+
+        @* View Menu *@
+        <MudMenu Icon="@Icons.Material.Filled.Visibility" Color="Color.Inherit" Label="View">
+            <MudMenuItem OnClick="NavigateToHome"><MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="mr-2" />Dashboard</MudMenuItem>
+            <MudMenuItem OnClick="NavigateToPatients"><MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />Patients</MudMenuItem>
+            <MudMenuItem OnClick="NavigateToAppointments"><MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-2" />Appointments</MudMenuItem>
+            <MudMenuItem OnClick="NavigateToInvoices"><MudIcon Icon="@Icons.Material.Filled.Receipt" Class="mr-2" />Invoices</MudMenuItem>
+        </MudMenu>
+
+        @* Patients Menu *@
+        <MudMenu Icon="@Icons.Material.Filled.People" Color="Color.Inherit" Label="Patients">
+            <MudMenuItem OnClick="NavigateToPatients"><MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" />Patient List</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="mr-2" />Add Patient</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Search" Class="mr-2" />Find Patient</MudMenuItem>
+        </MudMenu>
+
+        @* Appointments Menu *@
+        <MudMenu Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Inherit" Label="Appointments">
+            <MudMenuItem OnClick="NavigateToAppointments"><MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" />Appointment List</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />New Appointment</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.DateRange" Class="mr-2" />Calendar View</MudMenuItem>
+        </MudMenu>
+
+        @* Invoices Menu *@
+        <MudMenu Icon="@Icons.Material.Filled.Receipt" Color="Color.Inherit" Label="Invoices">
+            <MudMenuItem OnClick="NavigateToInvoices"><MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" />Invoice List</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />New Invoice</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Payment" Class="mr-2" />Payments</MudMenuItem>
+        </MudMenu>
+
+        @* Help Menu *@
+        <MudMenu Icon="@Icons.Material.Filled.Help" Color="Color.Inherit" Label="Help">
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />About IntelliMed</MudMenuItem>
+            <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Help" Class="mr-2" />User Guide</MudMenuItem>
+        </MudMenu>
+
+        <MudSpacer />
+        
+        @* User Info *@
+        <MudChip Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-2">
+            @GetCurrentUser()
+        </MudChip>
+        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" />
+        </MudAppBar>
+
+        @* Toolbar *@
+        <MudAppBar Bottom="true" Dense="true" Elevation="2" Class="mdi-toolbar">
+            <MudTooltip Text="Home">
+                <MudIconButton Icon="@Icons.Material.Filled.Home" Color="Color.Inherit" OnClick="NavigateToHome" />
+            </MudTooltip>
+            <MudTooltip Text="Patients">
+                <MudIconButton Icon="@Icons.Material.Filled.People" Color="Color.Inherit" OnClick="NavigateToPatients" />
+            </MudTooltip>
+            <MudTooltip Text="Appointments">
+                <MudIconButton Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Inherit" OnClick="NavigateToAppointments" />
+            </MudTooltip>
+            <MudTooltip Text="Invoices">
+                <MudIconButton Icon="@Icons.Material.Filled.Receipt" Color="Color.Inherit" OnClick="NavigateToInvoices" />
+            </MudTooltip>
+            <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
+            <MudTooltip Text="Add Patient">
+                <MudIconButton Icon="@Icons.Material.Filled.PersonAdd" Color="Color.Inherit" />
+            </MudTooltip>
+            <MudTooltip Text="New Appointment">
+                <MudIconButton Icon="@Icons.Material.Filled.Event" Color="Color.Inherit" />
+            </MudTooltip>
+            <MudTooltip Text="New Invoice">
+                <MudIconButton Icon="@Icons.Material.Filled.AddCard" Color="Color.Inherit" />
+            </MudTooltip>
+            <MudSpacer />
+            <MudText Typo="Typo.caption" Class="mr-4">IntelliMed v1.0</MudText>
+        </MudAppBar>
+    }
+
+    @* Main Content *@
+    <MudMainContent Class="mdi-main-content">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+    </MudMainContent>
+
+    @if (!_isLoginPage)
+    {
+        @* Status Bar *@
+        <MudAppBar Bottom="true" Dense="true" Elevation="0" Class="mdi-status-bar">
+            <MudText Typo="Typo.caption">Ready</MudText>
+            <MudSpacer />
+            <MudText Typo="Typo.caption" Class="mr-4">@DateTime.Now.ToString("dddd, MMMM dd, yyyy HH:mm")</MudText>
+        </MudAppBar>
+    }
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    string GetCurrentUser()
+    {
+        try
+        {
+            return AuthService.GetCurrentUserEmail() ?? "User";
+        }
+        catch
+        {
+            return "User";
+        }
+    }
+
+    void NavigateToHome() => Navigation.NavigateTo("/");
+    void NavigateToPatients() => Navigation.NavigateTo("/patients");
+    void NavigateToAppointments() => Navigation.NavigateTo("/appointments");
+    void NavigateToInvoices() => Navigation.NavigateTo("/invoices");
+
+    async Task SignOut()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

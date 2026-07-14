@@ -14,6 +14,8 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 // Platform storage and theme service
 builder.Services.AddScoped<IClientStorage, BrowserClientStorage>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
+// Authentication service
+builder.Services.AddScoped<IAuthService, AuthService>();
 // MudBlazor services
 builder.Services.AddMudServices();
 
