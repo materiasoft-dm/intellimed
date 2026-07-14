@@ -436,20 +436,21 @@
                 
                 try
                 {
-                    var success = await AuthService.LoginAsync(_model.Email, _model.Password);
+                    var response = await AuthService.LoginAsync(_model.Email, _model.Password);
                     
-                    if (success)
+                    if (response?.Success == true)
                     {
                         Navigation.NavigateTo("/");
                     }
                     else
                     {
-                        _loginError = "Invalid email or password. Please try again.";
+                        _loginError = response?.ErrorMessage ?? "Invalid email or password. Please try again.";
                     }
                 }
                 catch (Exception ex)
                 {
                     _loginError = "An error occurred. Please try again.";
+                    Console.Error.WriteLine($"Login error: {ex.Message}");
                 }
                 finally
                 {

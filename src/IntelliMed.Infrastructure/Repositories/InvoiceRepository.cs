@@ -100,8 +100,8 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
 
     public async Task<int> CreateAsync(CreateInvoiceDto dto)
     {
-        var invoice = EntityMapper.ToEntity(dto);
-        invoice.InvoiceNumber = await GenerateInvoiceNumberAsync();
+        var invoiceNumber = await GenerateInvoiceNumberAsync();
+        var invoice = EntityMapper.ToEntity(dto, invoiceNumber);
         
         await _dbSet.AddAsync(invoice);
         await _context.SaveChangesAsync();

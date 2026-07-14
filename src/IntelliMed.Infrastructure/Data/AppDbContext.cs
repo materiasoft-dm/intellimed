@@ -1,9 +1,13 @@
 using IntelliMed.Core.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace IntelliMed.Infrastructure.Data;
 
-public class AppDbContext : DbContext
+/// <summary>
+/// Application database context extending IdentityDbContext for ASP.NET Identity support.
+/// </summary>
+public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
@@ -19,6 +23,14 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // ApplicationUser configuration
+        modelBuilder.Entity<ApplicationUser>(entity =>
+        {
+            entity.Property(e => e.FirstName).HasMaxLength(100);
+            entity.Property(e => e.LastName).HasMaxLength(100);
+            entity.HasIndex(e => e.Email).IsUnique();
+        });
 
         // Patient configuration
         modelBuilder.Entity<Patient>(entity =>

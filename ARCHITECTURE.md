@@ -1,30 +1,83 @@
 # IntelliMed Architecture
 
-## Why ASP.NET Identity? ✅
+## Phase 1: Web Development
 
-**Decision:** Use ASP.NET Identity for authentication (not simple JWT or OAuth2)
+**Focus:** Build the web application first, then add native clients later.
 
-**Rationale:**
-| Requirement | ASP.NET Identity | Simple JWT | OAuth2 |
-|-------------|-------------------|------------|--------|
-| User registration | ✅ Built-in | ❌ Manual | ✅ Built-in |
-| Password hashing | ✅ Built-in | ❌ Manual | ✅ Built-in |
-| Password reset | ✅ Built-in | ❌ Manual | ✅ Built-in |
-| Account lockout | ✅ Built-in | ❌ Manual | ✅ Built-in |
-| Role-based access (RBAC) | ✅ Built-in | ❌ Manual | ⚠️ Partial |
-| User management UI | ✅ Built-in | ❌ Manual | ⚠️ Partial |
-| Web scalability (100s users) | ✅ Built-in | ⚠️ Manual | ✅ Built-in |
-| TopShelf Windows Service | ✅ Works | ✅ Works | ✅ Works |
-| Complexity | Medium | Low | High |
+### Deployment Modes (All Supported)
 
-**User Requirements Met:**
-- ✅ Web app deployment (future)
-- ✅ Hundreds of concurrent users
-- ✅ Role-based access (Admin, Doctor, Nurse, Receptionist)
-- ✅ Windows Service hosting (TopShelf)
-- ✅ JWT for API authentication
+| Mode | Description | Use Case | Database | Auth |
+|------|-------------|----------|----------|------|
+| **1. All Web** | Standard web app | Cloud-hosted, multi-clinic | SQL Server/Azure | ASP.NET Identity |
+| **2. Web + Native** | Web app + MAUI clients | Clinic with tablets/window | SQL Server (local) | ASP.NET Identity |
+| **3. Fully Offline** | Self-contained on-premise | Single clinic, no internet | SQLite | ASP.NET Identity |
 
-**Stack:** ASP.NET Identity + JWT tokens + TopShelf Windows Service = ✅ Fully Compatible
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         PHASE 1: WEB DEVELOPMENT                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   MODE 1: All Web                    MODE 2: Web + Native               │
+│   ┌─────────────┐                    ┌─────────────┐ ┌─────────────┐    │
+│   │   Browser   │                    │   Browser   │ │  MAUI App   │    │
+│   │  (Blazor)   │                    │  (Blazor)   │ │  (Blazor)   │    │
+│   └──────┬──────┘                    └──────┬──────┘ └──────┬──────┘    │
+│          │                                  │               │           │
+│          └──────────────┬───────────────────┘───────────────┘           │
+│                         │                                                │
+│                         ▼                                                │
+│                  ┌─────────────┐                                        │
+│                  │  IntelliMed  │                                        │
+│                  │    API       │                                        │
+│                  │ (ASP.NET)    │                                        │
+│                  └──────┬──────┘                                        │
+│                         │                                                │
+│                         ▼                                                │
+│                  ┌─────────────┐                                        │
+│                  │  SQL Server  │                                        │
+│                  │  (Azure/    │                                        │
+│                  │   Local)     │                                        │
+│                  └─────────────┘                                        │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   MODE 3: Fully Offline (On-Premise)                                    │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    Single Server/PC                             │   │
+│   │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐                  │   │
+│   │  │   Browser   │ │  MAUI App  │ │  Windows   │                  │   │
+│   │  │  (Blazor)   │ │  (Blazor)  │ │  Service   │                  │   │
+│   │  └──────┬──────┘ └──────┬──────┘ └─────┬─────┘                  │   │
+│   │         │               │              │                         │   │
+│   │         └───────────────┼──────────────┘                         │   │
+│   │                         │                                        │   │
+│   │                         ▼                                        │   │
+│   │                  ┌─────────────┐                                 │   │
+│   │                  │  IntelliMed  │                                │   │
+│   │                  │    API       │                                │   │
+│   │                  │ (ASP.NET)    │                                │   │
+│   │                  └──────┬──────┘                                 │   │
+│   │                         │                                        │   │
+│   │                         ▼                                        │   │
+│   │                  ┌─────────────┐                                 │   │
+│   │                  │   SQLite    │                                 │   │
+│   │                  │  (Local)    │                                 │   │
+│   │                  └─────────────┘                                 │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Phase 1 Priorities
+1. **Web App** - Blazor Server or Blazor WebAssembly with API
+2. **Authentication** - ASP.NET Identity with JWT
+3. **Database** - SQL Server (production-ready)
+4. **API** - REST endpoints for future native clients
+
+### Future (Phase 2+)
+- MAUI desktop apps connecting to same API
+- Windows Service for on-premise deployments
+- Offline sync capabilities
 
 ### Model 1: Client-Server (REST API) - RECOMMENDED
 ```
@@ -343,7 +396,9 @@ IntelliMed.Api (ASP.NET Core Web API)
 
 ## Implementation Status
 
-### Completed
+### Phase 1: Web Development (Current Focus)
+
+#### Completed
 - [x] Project structure with Clean Architecture
 - [x] Entity Framework Core setup with SQLite
 - [x] Repository pattern implementation
@@ -352,27 +407,37 @@ IntelliMed.Api (ASP.NET Core Web API)
 - [x] API project structure (IntelliMed.Api)
 - [x] `PasswordHash` field added to Practitioner entity
 
-### In Progress
+#### In Progress (Web Auth)
 - [ ] Add ASP.NET Identity NuGet packages
 - [ ] Create `ApplicationUser` class (inherits from `IdentityUser`)
 - [ ] Update `AppDbContext` to `IdentityDbContext<ApplicationUser>`
 - [ ] Add Email index and seed data to AppDbContext
 - [ ] Add role definitions (Admin, Doctor, Nurse, Receptionist)
-- [ ] Add `GetByEmailAsync` to IPractitionerRepository
-- [ ] Implement `GetByEmailAsync` in PractitionerRepository
 - [ ] Create AuthController with login/logout endpoints
 - [ ] Add JWT authentication to API
 - [ ] Update AuthService to call API instead of local storage
 - [ ] Remove hardcoded credentials from Login.razor
 
-### Planned
+#### Phase 1 Complete (Web App)
+- [ ] Patient management pages
+- [ ] Appointment scheduling
+- [ ] Practitioner management
+- [ ] Invoice/billing pages
+- [ ] User management (Admin)
+
+### Phase 2: Native Clients (Future)
+- [ ] MAUI desktop app project
+- [ ] Connect MAUI to existing API
+- [ ] Blazor UI reuse from web
+
+### Phase 3: On-Premise Deployment (Future)
 - [ ] IntelliMed.WindowsService project (TopShelf wrapper)
   - TopShelf NuGet: `TopShelf` package
   - Simple `RunAsService()` configuration
   - Console mode for debugging
   - Commands: `install`, `uninstall`, `start`, `stop`
 - [ ] Installer project with Inno Setup
-  - Single installer with Client/Server options
+  - Single installer with deployment mode selection
   - Server: Install Windows Service + create database
   - Client: Install app + prompt for API URL
   - Auto-start service on boot
@@ -392,8 +457,10 @@ IntelliMed.Api (ASP.NET Core Web API)
 
 ## Next Steps
 
-### 1. Complete Auth Wiring (API Side)
-- Add ASP.NET Identity NuGet packages:
+### Phase 1: Complete Auth Wiring (Web)
+
+#### 1. API Side - Add ASP.NET Identity
+- Add NuGet packages:
   ```
   Microsoft.AspNetCore.Identity.EntityFrameworkCore
   Microsoft.IdentityModel.Tokens
@@ -414,16 +481,25 @@ IntelliMed.Api (ASP.NET Core Web API)
 - Implement JWT token generation with roles
 - Add seed data for initial admin user
 
-### 2. Update AuthService (Client Side)
+#### 2. Client Side - Update AuthService
 - Replace `IClientStorage` calls with `HttpClient` calls
 - Send login request to `/api/auth/login`
 - Store JWT token in secure storage
 - Include token in all subsequent API requests
 
-### 3. Create Windows Service Project (TopShelf)
-- Create `IntelliMed.WindowsService` project
-- Add TopShelf NuGet: `TopShelf`
-- Configure `Program.cs` with TopShelf host:
+#### 3. UI Side - Remove Hardcoded Credentials
+- Update `Login.razor` to call `AuthService.LoginAsync()`
+- Remove hardcoded username/password checks
+- Add proper error handling for failed login
+
+### Phase 2: Native Clients (Future)
+- Create `IntelliMed.Desktop` MAUI project
+- Connect MAUI to existing API endpoints
+- Reuse Blazor UI components from web
+
+### Phase 3: On-Premise Deployment (Future)
+- Create `IntelliMed.WindowsService` project with TopShelf
+- Configure TopShelf host:
   ```csharp
   Host.CreateDefaultBuilder()
       .ConfigureWebHostDefaults(web => web.UseStartup<Startup>())
