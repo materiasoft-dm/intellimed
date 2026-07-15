@@ -4,22 +4,18 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IntelliMed.Web</title>
+    <title>IntelliMed</title>
     <base href="/" />
-    <link rel="preload" id="webassembly" />
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
-    <!-- Shared UI styles from IntelliMed.UI Razor Class Library -->
     <link rel="stylesheet" href="_content/IntelliMed.UI/css/app.css" />
-    <!-- MudBlazor styles -->
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <link href="IntelliMed.Web.styles.css" rel="stylesheet" />
-    <script type="importmap"></script>
 </head>
 
 <body style="overflow: hidden; margin: 0; padding: 0;">
     <div id="app">
+        <svg class="loading-progress">
             <circle r="40%" cx="50%" cy="50%" />
             <circle r="40%" cx="50%" cy="50%" />
         </svg>
@@ -31,9 +27,9 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
-    <!-- Theme interop from shared UI library -->
+
     <script src="_content/IntelliMed.UI/js/themeInterop.js"></script>
-    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
 </body>
 
 </html>

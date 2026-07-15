@@ -209,6 +209,10 @@
     {
         try
         {
+            // Only call if user is authenticated
+            var isAuth = await AuthService.IsAuthenticatedAsync();
+            if (!isAuth) return;
+
             var pages = await AdminService.GetMyAccessiblePagesAsync();
             if (pages != null)
             {

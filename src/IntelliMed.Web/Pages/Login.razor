@@ -7,6 +7,7 @@
 @using IntelliMed.Web.Services
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
+@inject ISnackbar Snackbar
 
 <MudLayout>
     <MudContainer MaxWidth="MaxWidth.False" Class="login-container pa-0">
@@ -88,14 +89,18 @@
                                 <span>Sign In</span>
                             }
                         </MudButton>
-
-                        @if (!string.IsNullOrEmpty(_loginError))
-                        {
-                            <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">
-                                @_loginError
-                            </MudAlert>
-                        }
                     </MudForm>
+
+                    @if (!string.IsNullOrEmpty(_loginError))
+                    {
+                        <MudAlert Severity="Severity.Error"
+                                  Variant="Variant.Filled"
+                                  Square="true"
+                                  Class="login-error-alert animate-shake"
+                                  Icon="@Icons.Material.Filled.Warning">
+                            <MudText Typo="Typo.body1" Class="font-weight-bold">@_loginError</MudText>
+                        </MudAlert>
+                    }
 
                     <MudDivider Class="my-6" />
 
@@ -372,6 +377,29 @@
         border-color: #e2e8f0;
     }
 
+    /* Error alert styling */
+    .login-error-alert {
+        margin-top: 1.25rem !important;
+        border-radius: 8px !important;
+        font-weight: 500;
+    }
+
+    .login-error-alert .mud-alert-message {
+        font-size: 0.95rem;
+        padding: 0.75rem 0;
+    }
+
+    /* Shake animation for error alert */
+    .animate-shake {
+        animation: shake 0.5s ease-in-out;
+    }
+
+    @@keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 50%, 90% { transform: translateX(-6px); }
+        30%, 70% { transform: translateX(6px); }
+    }
+
     /* Responsive adjustments */
     @@media (max-width: 600px) {
         .login-form-section {
@@ -446,11 +474,22 @@
                     else
                     {
                         _loginError = response?.ErrorMessage ?? "Invalid email or password. Please try again.";
+                        Snackbar.Add(_loginError, Severity.Error, config =>
+                        {
+                            config.VisibleStateDuration = 6000;
+                            config.ShowCloseIcon = true;
+                            config.Action = "Dismiss";
+                        });
                     }
                 }
                 catch (Exception ex)
                 {
                     _loginError = "An error occurred. Please try again.";
+                    Snackbar.Add(_loginError, Severity.Error, config =>
+                    {
+                        config.VisibleStateDuration = 6000;
+                        config.ShowCloseIcon = true;
+                    });
                     Console.Error.WriteLine($"Login error: {ex.Message}");
                 }
                 finally

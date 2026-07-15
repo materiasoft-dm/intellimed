@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.6" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.6" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.6" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.3.1" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.1" />
@@ -17,6 +18,22 @@
   <ItemGroup>
     <ProjectReference Include="..\IntelliMed.Core\IntelliMed.Core.csproj" />
     <ProjectReference Include="..\IntelliMed.Infrastructure\IntelliMed.Infrastructure.csproj" />
+    <ProjectReference Include="..\IntelliMed.Web\IntelliMed.Web.csproj" />
   </ItemGroup>
+
+  <!-- Copy Blazor WASM output (_framework etc.) and source static files to API wwwroot for hosting -->
+  <Target Name="CopyBlazorWasmOutput" AfterTargets="Build">
+    <ItemGroup>
+      <!-- Framework files from Web build output -->
+      <BlazorWasmFiles Include="..\IntelliMed.Web\bin\$(Configuration)\net10.0\wwwroot\**\*" />
+      <!-- Source static files from Web project wwwroot (css, lib, favicon, etc.) -->
+      <BlazorStaticFiles Include="..\IntelliMed.Web\wwwroot\**\*" Exclude="..\IntelliMed.Web\wwwroot\index.html" />
+      <!-- API's own wwwroot files (index.html) -->
+      <ApiWwwRootFiles Include="wwwroot\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BlazorWasmFiles)" DestinationFolder="$(OutputPath)wwwroot\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(BlazorStaticFiles)" DestinationFolder="$(OutputPath)wwwroot\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ApiWwwRootFiles)" DestinationFolder="$(OutputPath)wwwroot\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

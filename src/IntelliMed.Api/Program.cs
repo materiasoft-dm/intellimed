@@ -2,7 +2,6 @@ using System.Text;
 using IntelliMed.Core.Entities;
 using IntelliMed.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -19,25 +18,6 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
-
-// ============================================================================
-// CORS CONFIGURATION
-// ============================================================================
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowBlazorClient", policy =>
-    {
-        policy.WithOrigins(
-                "http://localhost:5159",      // Blazor Web development HTTP
-                "https://localhost:7042",     // Blazor Web development HTTPS
-                "http://localhost:5034",      // Legacy development HTTP
-                "https://localhost:7034"      // Legacy development HTTPS
-            )
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
 
 // ============================================================================
 // ASP.NET IDENTITY CONFIGURATION
@@ -173,20 +153,24 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    // Don't redirect to HTTPS in development
+    app.UseWebAssemblyDebugging();
 }
 else
 {
     app.UseHttpsRedirection();
 }
 
-// Enable CORS - MUST be before authentication and authorization
-app.UseCors("AllowBlazorClient");
+// Serve Blazor WASM static files from the IntelliMed.Web project
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Fallback to index.html for client-side routing
+app.MapFallbackToFile("index.html");
 
 app.Run();
 
