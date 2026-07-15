@@ -13,7 +13,6 @@ namespace IntelliMed.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/role-permissions")]
-[Authorize(Roles = "SuperAdmin,Admin")]
 public class RolePermissionsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -33,44 +32,11 @@ public class RolePermissionsController : ControllerBase
     /// Get all available page definitions (the catalog of pages that can be assigned to roles).
     /// </summary>
     [HttpGet("page-definitions")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
     [ProducesResponseType(typeof(IEnumerable<PageDefinitionDto>), StatusCodes.Status200OK)]
     public ActionResult<IEnumerable<PageDefinitionDto>> GetPageDefinitions()
     {
-        var pages = new List<PageDefinitionDto>
-        {
-            // Clinical
-            new() { PageKey = "patients", PageName = "Patient Records", Category = "Clinical", Description = "View and manage patient records" },
-            new() { PageKey = "patients/create", PageName = "Add Patient", Category = "Clinical", Description = "Create new patient records" },
-            new() { PageKey = "patients/edit", PageName = "Edit Patient", Category = "Clinical", Description = "Edit existing patient records" },
-            new() { PageKey = "patients/delete", PageName = "Delete Patient", Category = "Clinical", Description = "Remove patient records" },
-            new() { PageKey = "appointments", PageName = "Appointments", Category = "Clinical", Description = "View appointment schedule" },
-            new() { PageKey = "appointments/create", PageName = "New Appointment", Category = "Clinical", Description = "Schedule new appointments" },
-            new() { PageKey = "appointments/edit", PageName = "Edit Appointment", Category = "Clinical", Description = "Modify existing appointments" },
-            new() { PageKey = "appointments/delete", PageName = "Delete Appointment", Category = "Clinical", Description = "Cancel appointments" },
-            new() { PageKey = "practitioners", PageName = "Practitioners", Category = "Clinical", Description = "View practitioner directory" },
-            new() { PageKey = "practitioners/create", PageName = "Add Practitioner", Category = "Clinical", Description = "Register new practitioners" },
-            new() { PageKey = "practitioners/edit", PageName = "Edit Practitioner", Category = "Clinical", Description = "Update practitioner details" },
-
-            // Financial
-            new() { PageKey = "invoices", PageName = "Invoices", Category = "Financial", Description = "View invoices" },
-            new() { PageKey = "invoices/create", PageName = "New Invoice", Category = "Financial", Description = "Create new invoices" },
-            new() { PageKey = "invoices/edit", PageName = "Edit Invoice", Category = "Financial", Description = "Modify existing invoices" },
-            new() { PageKey = "invoices/delete", PageName = "Delete Invoice", Category = "Financial", Description = "Remove invoices" },
-            new() { PageKey = "payments", PageName = "Payments", Category = "Financial", Description = "View and process payments" },
-
-            // Admin
-            new() { PageKey = "admin/users", PageName = "User Management", Category = "Admin", Description = "Manage system users" },
-            new() { PageKey = "admin/roles", PageName = "Role Configuration", Category = "Admin", Description = "Configure role permissions" },
-            new() { PageKey = "admin/audit", PageName = "Audit Log", Category = "Admin", Description = "View system audit trail" },
-            new() { PageKey = "admin/settings", PageName = "System Settings", Category = "Admin", Description = "Configure system parameters" },
-
-            // Reports
-            new() { PageKey = "reports", PageName = "Reports Dashboard", Category = "Reports", Description = "View practice reports" },
-            new() { PageKey = "reports/financial", PageName = "Financial Reports", Category = "Reports", Description = "Revenue and billing reports" },
-            new() { PageKey = "reports/clinical", PageName = "Clinical Reports", Category = "Reports", Description = "Patient and appointment analytics" },
-        };
-
-        return Ok(pages);
+        return Ok(GetPageDefinitionsList());
     }
 
     // =========================================================================
@@ -81,6 +47,7 @@ public class RolePermissionsController : ControllerBase
     /// Get all role permissions (all role→page mappings).
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "SuperAdmin,Admin")]
     [ProducesResponseType(typeof(IEnumerable<RolePermissionsDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<RolePermissionsDto>>> GetAllRolePermissions()
     {
@@ -101,6 +68,7 @@ public class RolePermissionsController : ControllerBase
     /// Get permissions for a specific role.
     /// </summary>
     [HttpGet("{roleName}")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
     [ProducesResponseType(typeof(RolePermissionsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RolePermissionsDto>> GetRolePermissions(string roleName)
@@ -121,6 +89,7 @@ public class RolePermissionsController : ControllerBase
     /// Save (replace) all page permissions for a role.
     /// </summary>
     [HttpPut("{roleName}")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
     [ProducesResponseType(typeof(UserManagementResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(UserManagementResponse), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserManagementResponse>> SaveRolePermissions(
@@ -159,6 +128,7 @@ public class RolePermissionsController : ControllerBase
     /// Used by the frontend to determine which nav items to show.
     /// </summary>
     [HttpGet("my-pages")]
+    [Authorize]
     [ProducesResponseType(typeof(IEnumerable<string>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<string>>> GetMyAccessiblePages()
     {
@@ -170,7 +140,7 @@ public class RolePermissionsController : ControllerBase
         // SuperAdmin always gets all pages
         if (roles.Contains("SuperAdmin"))
         {
-            var allPages = GetPageDefinitions().Value!;
+            var allPages = GetPageDefinitionsList();
             return Ok(allPages.Select(p => p.PageKey).ToList());
         }
 
@@ -196,6 +166,47 @@ public class RolePermissionsController : ControllerBase
             string p when p.StartsWith("admin") => "Admin",
             string p when p.StartsWith("reports") => "Reports",
             _ => "Other"
+        };
+    }
+
+    /// <summary>
+    /// Returns the page definitions list directly (not wrapped in ActionResult).
+    /// Used internally by GetMyAccessiblePages to avoid ActionResult.Value null issue.
+    /// </summary>
+    private static List<PageDefinitionDto> GetPageDefinitionsList()
+    {
+        return new List<PageDefinitionDto>
+        {
+            // Clinical
+            new() { PageKey = "patients", PageName = "Patient Records", Category = "Clinical", Description = "View and manage patient records" },
+            new() { PageKey = "patients/create", PageName = "Add Patient", Category = "Clinical", Description = "Create new patient records" },
+            new() { PageKey = "patients/edit", PageName = "Edit Patient", Category = "Clinical", Description = "Edit existing patient records" },
+            new() { PageKey = "patients/delete", PageName = "Delete Patient", Category = "Clinical", Description = "Remove patient records" },
+            new() { PageKey = "appointments", PageName = "Appointments", Category = "Clinical", Description = "View appointment schedule" },
+            new() { PageKey = "appointments/create", PageName = "New Appointment", Category = "Clinical", Description = "Schedule new appointments" },
+            new() { PageKey = "appointments/edit", PageName = "Edit Appointment", Category = "Clinical", Description = "Modify existing appointments" },
+            new() { PageKey = "appointments/delete", PageName = "Delete Appointment", Category = "Clinical", Description = "Cancel appointments" },
+            new() { PageKey = "practitioners", PageName = "Practitioners", Category = "Clinical", Description = "View practitioner directory" },
+            new() { PageKey = "practitioners/create", PageName = "Add Practitioner", Category = "Clinical", Description = "Register new practitioners" },
+            new() { PageKey = "practitioners/edit", PageName = "Edit Practitioner", Category = "Clinical", Description = "Update practitioner details" },
+
+            // Financial
+            new() { PageKey = "invoices", PageName = "Invoices", Category = "Financial", Description = "View invoices" },
+            new() { PageKey = "invoices/create", PageName = "New Invoice", Category = "Financial", Description = "Create new invoices" },
+            new() { PageKey = "invoices/edit", PageName = "Edit Invoice", Category = "Financial", Description = "Modify existing invoices" },
+            new() { PageKey = "invoices/delete", PageName = "Delete Invoice", Category = "Financial", Description = "Remove invoices" },
+            new() { PageKey = "payments", PageName = "Payments", Category = "Financial", Description = "View and process payments" },
+
+            // Admin
+            new() { PageKey = "admin/users", PageName = "User Management", Category = "Admin", Description = "Manage system users" },
+            new() { PageKey = "admin/roles", PageName = "Role Configuration", Category = "Admin", Description = "Configure role permissions" },
+            new() { PageKey = "admin/audit", PageName = "Audit Log", Category = "Admin", Description = "View system audit trail" },
+            new() { PageKey = "admin/settings", PageName = "System Settings", Category = "Admin", Description = "Configure system parameters" },
+
+            // Reports
+            new() { PageKey = "reports", PageName = "Reports Dashboard", Category = "Reports", Description = "View practice reports" },
+            new() { PageKey = "reports/financial", PageName = "Financial Reports", Category = "Reports", Description = "Revenue and billing reports" },
+            new() { PageKey = "reports/clinical", PageName = "Clinical Reports", Category = "Reports", Description = "Patient and appointment analytics" },
         };
     }
 }

@@ -11,6 +11,7 @@ public interface IAuthService
     Task LogoutAsync();
     Task<bool> IsAuthenticatedAsync();
     string? GetCurrentUserEmail();
+    string? GetCurrentUserName();
     string? GetToken();
     Task<CurrentUserResponse?> GetCurrentUserAsync();
 }
@@ -104,6 +105,11 @@ public class AuthService : IAuthService
     public string? GetCurrentUserEmail()
     {
         return _storage.GetItemAsync(UserEmailKey).GetAwaiter().GetResult();
+    }
+
+    public string? GetCurrentUserName()
+    {
+        return _storage.GetItemAsync(UserNameKey).GetAwaiter().GetResult();
     }
 
     public string? GetToken()

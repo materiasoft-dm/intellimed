@@ -7,167 +7,87 @@
 @inject ILoggerService Logger
 
 <MudLayout>
-    @* Menu Bar *@
-    <MudAppBar Dense="true" Elevation="1" Class="mdi-menu-bar">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
-    
-    @* File Menu *@
-    <MudMenu Icon="@Icons.Material.Filled.Folder" Color="Color.Inherit" Label="File">
-        <MudMenuItem OnClick="NavigateToHome">
-            <MudIcon Icon="@Icons.Material.Filled.Home" Class="mr-2" />Home
-        </MudMenuItem>
-        <MudDivider />
-        <MudMenuItem OnClick="NavigateToPatients">
-            <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />Patients
-        </MudMenuItem>
-        <MudMenuItem OnClick="NavigateToAppointments">
-            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-2" />Appointments
-        </MudMenuItem>
-        <MudMenuItem OnClick="NavigateToInvoices">
-            <MudIcon Icon="@Icons.Material.Filled.Receipt" Class="mr-2" />Invoices
-        </MudMenuItem>
-        <MudDivider />
-        <MudMenuItem OnClick="SignOut">
-            <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mr-2" />Sign Out
-        </MudMenuItem>
-    </MudMenu>
-
-    @* Edit Menu *@
-    <MudMenu Icon="@Icons.Material.Filled.Edit" Color="Color.Inherit" Label="Edit">
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Undo" Class="mr-2" />Undo</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Redo" Class="mr-2" />Redo</MudMenuItem>
-        <MudDivider />
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.ContentCut" Class="mr-2" />Cut</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.ContentCopy" Class="mr-2" />Copy</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.ContentPaste" Class="mr-2" />Paste</MudMenuItem>
-    </MudMenu>
-
-    @* View Menu *@
-    <MudMenu Icon="@Icons.Material.Filled.Visibility" Color="Color.Inherit" Label="View">
-        <MudMenuItem OnClick="NavigateToHome"><MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="mr-2" />Dashboard</MudMenuItem>
-        <MudMenuItem OnClick="NavigateToPatients"><MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />Patients</MudMenuItem>
-        <MudMenuItem OnClick="NavigateToAppointments"><MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-2" />Appointments</MudMenuItem>
-        <MudMenuItem OnClick="NavigateToInvoices"><MudIcon Icon="@Icons.Material.Filled.Receipt" Class="mr-2" />Invoices</MudMenuItem>
-    </MudMenu>
-
-    @* Patients Menu *@
-    <MudMenu Icon="@Icons.Material.Filled.People" Color="Color.Inherit" Label="Patients">
-        <MudMenuItem OnClick="NavigateToPatients"><MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" />Patient List</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="mr-2" />Add Patient</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Search" Class="mr-2" />Find Patient</MudMenuItem>
-    </MudMenu>
-
-    @* Appointments Menu *@
-    <MudMenu Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Inherit" Label="Appointments">
-        <MudMenuItem OnClick="NavigateToAppointments"><MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" />Appointment List</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />New Appointment</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.DateRange" Class="mr-2" />Calendar View</MudMenuItem>
-    </MudMenu>
-
-    @* Invoices Menu *@
-    <MudMenu Icon="@Icons.Material.Filled.Receipt" Color="Color.Inherit" Label="Invoices">
-        <MudMenuItem OnClick="NavigateToInvoices"><MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" />Invoice List</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />New Invoice</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Payment" Class="mr-2" />Payments</MudMenuItem>
-    </MudMenu>
-
-    @* Admin Menu — visible only to users with admin page access *@
-    @if (_accessiblePages.Contains("admin/users") || _accessiblePages.Contains("admin/roles"))
+    @* Pure HTML/CSS slide-over nav panel — avoids MudDrawer JS interop issues in WASM *@
+    @if (_drawerOpen)
     {
-        <MudMenu Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Error" Label="Admin">
-            @if (_accessiblePages.Contains("admin/users"))
-            {
-                <MudMenuItem OnClick="NavigateToUserManagement">
-                    <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Class="mr-2" />User Management
-                </MudMenuItem>
-            }
-            @if (_accessiblePages.Contains("admin/roles"))
-            {
-                <MudMenuItem OnClick="NavigateToRoleConfiguration">
-                    <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-2" />Role Configuration
-                </MudMenuItem>
-            }
-            @if (_accessiblePages.Contains("admin/audit"))
-            {
-                <MudDivider />
-                <MudMenuItem>
-                    <MudIcon Icon="@Icons.Material.Filled.Analytics" Class="mr-2" />Audit Log
-                </MudMenuItem>
-            }
-            @if (_accessiblePages.Contains("admin/settings"))
-            {
-                <MudMenuItem>
-                    <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" />System Settings
-                </MudMenuItem>
-            }
-        </MudMenu>
+        @* Backdrop *@
+        <div class="mdi-overlay-backdrop" @onclick="CloseDrawer" @onclick:preventDefault></div>
+
+        @* Slide-over panel *@
+        <div class="mdi-slide-panel">
+            <div class="mdi-slide-header">
+                <MudText Typo="Typo.h6" Class="mx-auto">IntelliMed</MudText>
+            </div>
+            <MudDivider />
+
+            <MudNavMenu>
+                @* Dashboard *@
+                <MudNavLink Href="/" Icon="@Icons.Material.Filled.Dashboard" Match="NavLinkMatch.All">Dashboard</MudNavLink>
+
+                <MudDivider Class="my-2" />
+
+                @* Patients Section *@
+                <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Patients</MudText>
+                <MudNavLink Href="/patients" Icon="@Icons.Material.Filled.List">Patient List</MudNavLink>
+                <MudNavLink Href="/patients/add" Icon="@Icons.Material.Filled.PersonAdd">Add Patient</MudNavLink>
+                <MudNavLink Href="/patients/search" Icon="@Icons.Material.Filled.Search">Find Patient</MudNavLink>
+
+                <MudDivider Class="my-2" />
+
+                @* Appointments Section *@
+                <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Appointments</MudText>
+                <MudNavLink Href="/appointments" Icon="@Icons.Material.Filled.List">Appointment List</MudNavLink>
+                <MudNavLink Href="/appointments/new" Icon="@Icons.Material.Filled.Add">New Appointment</MudNavLink>
+                <MudNavLink Href="/appointments/calendar" Icon="@Icons.Material.Filled.DateRange">Calendar View</MudNavLink>
+
+                <MudDivider Class="my-2" />
+
+                @* Invoices Section *@
+                <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Invoices</MudText>
+                <MudNavLink Href="/invoices" Icon="@Icons.Material.Filled.List">Invoice List</MudNavLink>
+                <MudNavLink Href="/invoices/new" Icon="@Icons.Material.Filled.Add">New Invoice</MudNavLink>
+                <MudNavLink Href="/invoices/payments" Icon="@Icons.Material.Filled.Payment">Payments</MudNavLink>
+
+                @* Admin Section — conditional *@
+                @if (_accessiblePages.Contains("admin/users") || _accessiblePages.Contains("admin/roles"))
+                {
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Administration</MudText>
+                    @if (_accessiblePages.Contains("admin/users"))
+                    {
+                        <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.ManageAccounts">User Management</MudNavLink>
+                    }
+                    @if (_accessiblePages.Contains("admin/roles"))
+                    {
+                        <MudNavLink Href="/admin/roles" Icon="@Icons.Material.Filled.Security">Role Configuration</MudNavLink>
+                    }
+                    @if (_accessiblePages.Contains("admin/audit"))
+                    {
+                        <MudNavLink Href="/admin/audit" Icon="@Icons.Material.Filled.Analytics">Audit Log</MudNavLink>
+                    }
+                    @if (_accessiblePages.Contains("admin/settings"))
+                    {
+                        <MudNavLink Href="/admin/settings" Icon="@Icons.Material.Filled.Settings">System Settings</MudNavLink>
+                    }
+                }
+
+                <MudDivider Class="my-2" />
+
+                @* Help Section *@
+                <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Help</MudText>
+                <MudNavLink Href="/about" Icon="@Icons.Material.Filled.Info">About IntelliMed</MudNavLink>
+                <MudNavLink Href="/help" Icon="@Icons.Material.Filled.Help">User Guide</MudNavLink>
+            </MudNavMenu>
+        </div>
     }
 
-    @* Help Menu *@
-    <MudMenu Icon="@Icons.Material.Filled.Help" Color="Color.Inherit" Label="Help">
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />About IntelliMed</MudMenuItem>
-        <MudMenuItem><MudIcon Icon="@Icons.Material.Filled.Help" Class="mr-2" />User Guide</MudMenuItem>
-    </MudMenu>
-
-    <MudSpacer />
-    
-    @* User Info *@
-    <div class="dropdown user-dropdown">
-        <button class="btn btn-link text-white text-decoration-none dropdown-toggle d-flex align-items-center"
-                type="button"
-                id="userDropdown"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-                @onclick="ToggleUserMenu"
-                @onclick:stopPropagation="true">
-            <i class="material-icons me-2">person</i>
-            <span>@GetCurrentUser()</span>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end @(IsUserMenuOpen ? "show" : "")"
-            aria-labelledby="userDropdown"
-            style="@(IsUserMenuOpen ? "" : "display:none;")">
-            <li>
-                <button class="dropdown-item" type="button" @onclick="NavigateToHome">
-                    <i class="material-icons me-2">person</i>Profile
-                </button>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-                <button class="dropdown-item" type="button" @onclick="SignOut">
-                    <i class="material-icons me-2">logout</i>Sign Out
-                </button>
-            </li>
-        </ul>
-    </div>
-    <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" />
-    </MudAppBar>
-
-    @* Toolbar *@
-    <MudAppBar Bottom="true" Dense="true" Elevation="2" Class="mdi-toolbar">
-        <MudTooltip Text="Home">
-            <MudIconButton Icon="@Icons.Material.Filled.Home" Color="Color.Inherit" OnClick="NavigateToHome" />
-        </MudTooltip>
-        <MudTooltip Text="Patients">
-            <MudIconButton Icon="@Icons.Material.Filled.People" Color="Color.Inherit" OnClick="NavigateToPatients" />
-        </MudTooltip>
-        <MudTooltip Text="Appointments">
-            <MudIconButton Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Inherit" OnClick="NavigateToAppointments" />
-        </MudTooltip>
-        <MudTooltip Text="Invoices">
-            <MudIconButton Icon="@Icons.Material.Filled.Receipt" Color="Color.Inherit" OnClick="NavigateToInvoices" />
-        </MudTooltip>
-        <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
-        <MudTooltip Text="Add Patient">
-            <MudIconButton Icon="@Icons.Material.Filled.PersonAdd" Color="Color.Inherit" />
-        </MudTooltip>
-        <MudTooltip Text="New Appointment">
-            <MudIconButton Icon="@Icons.Material.Filled.Event" Color="Color.Inherit" />
-        </MudTooltip>
-        <MudTooltip Text="New Invoice">
-            <MudIconButton Icon="@Icons.Material.Filled.AddCard" Color="Color.Inherit" />
-        </MudTooltip>
+    @* Menu Bar — simplified: hamburger, brand, spacer, user + logout *@
+    <MudAppBar Dense="true" Elevation="1" Class="mdi-menu-bar">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-2 d-none d-sm-flex">IntelliMed</MudText>
         <MudSpacer />
-        <MudText Typo="Typo.caption" Class="mr-4">IntelliMed v1.0</MudText>
+        <MudText Typo="Typo.body2" Class="d-none d-sm-flex mr-2 mud-text-secondary align-self-center">@GetCurrentUser()</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Edge="Edge.End" OnClick="SignOut" Title="Sign Out" />
     </MudAppBar>
 
     @* Main Content *@
@@ -179,15 +99,34 @@
 </MudLayout>
 
 @code {
-    private bool _drawerOpen = true;
-    private bool IsUserMenuOpen = false;
+    private bool _drawerOpen = false;
+    private string _currentUserName = "User";
+    private string _currentUserEmail = "";
     private IList<string> _currentUserRoles = new List<string>();
     private HashSet<string> _accessiblePages = new(StringComparer.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadCurrentUserInfo();
         await LoadCurrentUserRoles();
         await LoadAccessiblePages();
+    }
+
+    private async Task LoadCurrentUserInfo()
+    {
+        try
+        {
+            var user = await AuthService.GetCurrentUserAsync();
+            if (user?.IsAuthenticated == true)
+            {
+                _currentUserName = user.FullName ?? user.Email ?? "User";
+                _currentUserEmail = user.Email ?? "";
+            }
+        }
+        catch
+        {
+            // Keep defaults
+        }
     }
 
     private async Task LoadCurrentUserRoles()
@@ -240,38 +179,25 @@
         _drawerOpen = !_drawerOpen;
     }
 
-    void ToggleUserMenu()
+    void CloseDrawer()
     {
-        IsUserMenuOpen = !IsUserMenuOpen;
-    }
-
-    void CloseUserMenu()
-    {
-        IsUserMenuOpen = false;
+        _drawerOpen = false;
     }
 
     string GetCurrentUser()
     {
-        try
-        {
-            return AuthService.GetCurrentUserEmail() ?? "User";
-        }
-        catch
-        {
-            return "User";
-        }
+        return _currentUserName;
     }
 
-    void NavigateToHome() { CloseUserMenu(); Navigation.NavigateTo("/"); }
-    void NavigateToPatients() { CloseUserMenu(); Navigation.NavigateTo("/patients"); }
-    void NavigateToAppointments() { CloseUserMenu(); Navigation.NavigateTo("/appointments"); }
-    void NavigateToInvoices() { CloseUserMenu(); Navigation.NavigateTo("/invoices"); }
-    void NavigateToUserManagement() { CloseUserMenu(); Navigation.NavigateTo("/admin/users"); }
-    void NavigateToRoleConfiguration() { CloseUserMenu(); Navigation.NavigateTo("/admin/roles"); }
+    void NavigateToHome() { Navigation.NavigateTo("/"); }
+    void NavigateToPatients() { Navigation.NavigateTo("/patients"); }
+    void NavigateToAppointments() { Navigation.NavigateTo("/appointments"); }
+    void NavigateToInvoices() { Navigation.NavigateTo("/invoices"); }
+    void NavigateToUserManagement() { Navigation.NavigateTo("/admin/users"); }
+    void NavigateToRoleConfiguration() { Navigation.NavigateTo("/admin/roles"); }
 
     async Task SignOut()
     {
-        CloseUserMenu();
         await AuthService.LogoutAsync();
         Navigation.NavigateTo("/login");
     }

@@ -23,6 +23,8 @@
 
   <!-- Copy Blazor WASM output (_framework etc.) and source static files to API wwwroot for hosting -->
   <Target Name="CopyBlazorWasmOutput" AfterTargets="Build">
+    <!-- Clean stale _framework files from previous builds to prevent SRI integrity mismatches -->
+    <RemoveDir Directories="$(OutputPath)wwwroot\_framework" Condition="Exists('$(OutputPath)wwwroot\_framework')" />
     <ItemGroup>
       <!-- Framework files from Web build output -->
       <BlazorWasmFiles Include="..\IntelliMed.Web\bin\$(Configuration)\net10.0\wwwroot\**\*" />

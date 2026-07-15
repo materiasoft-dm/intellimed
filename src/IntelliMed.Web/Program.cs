@@ -11,7 +11,14 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // Configure HttpClient — hosted model: API is on the same origin
 // The Blazor WASM app is served by the API project, so BaseAddress is the same origin
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+// AuthHeaderHandler attaches the JWT token from storage to every request
+builder.Services.AddScoped<AuthHeaderHandler>();
+builder.Services.AddScoped(sp =>
+{
+    var handler = sp.GetRequiredService<AuthHeaderHandler>();
+    handler.InnerHandler = new HttpClientHandler();
+    return new HttpClient(handler) { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
+});
 
 // Platform storage and theme service
 builder.Services.AddScoped<IClientStorage, BrowserClientStorage>();
