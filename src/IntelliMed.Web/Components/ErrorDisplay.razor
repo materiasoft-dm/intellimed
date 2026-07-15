@@ -1,0 +1,87 @@
+@using IntelliMed.Web.Services
+@using MudBlazor
+@inject ILoggerService Logger
+@inject NavigationManager NavigationManager
+
+<div class="error-boundary-overlay visible">
+    <div class="error-boundary-card mud-paper mud-paper-outlined pa-6">
+        <div class="d-flex align-center mb-4">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Class="mr-3" Style="font-size: 2rem;" />
+            <MudText Typo="Typo.h5" Color="Color.Error">Something went wrong</MudText>
+        </div>
+
+        <MudText Typo="Typo.body1" Class="mb-2 font-weight-bold">@Exception.Message</MudText>
+
+        @if (!string.IsNullOrEmpty(Exception.StackTrace))
+        {
+            <MudPaper Class="error-stacktrace pa-3 mb-4" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.caption" Class="error-stacktrace-text" Style="white-space: pre-wrap; font-family: monospace; max-height: 200px; overflow-y: auto;">
+                    @Exception.StackTrace
+                </MudText>
+            </MudPaper>
+        }
+
+        @if (Exception.InnerException is not null)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Warning" Class="mb-2">
+                Inner: @Exception.InnerException.Message
+            </MudText>
+        }
+
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Reload" StartIcon="@Icons.Material.Filled.Refresh">
+                Reload Page
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Dismiss" StartIcon="@Icons.Material.Filled.Close">
+                Dismiss
+            </MudButton>
+        </div>
+    </div>
+</div>
+
+<style>
+    .error-boundary-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .error-boundary-card {
+        background: var(--mud-palette-surface, #fff);
+        max-width: 700px;
+        width: 90%;
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .error-stacktrace {
+        background: var(--mud-palette-background-grey, #f5f5f5);
+        border-color: var(--mud-palette-error, #f44336);
+    }
+    .error-stacktrace-text {
+        color: var(--mud-palette-text-secondary, #616161);
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public Exception Exception { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Log to browser console and backend API
+        await Logger.LogErrorAsync(Exception, "AppErrorBoundary");
+    }
+
+    private void Reload()
+    {
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+    }
+
+    private void Dismiss()
+    {
+        // Navigate to home as a safe fallback
+        NavigationManager.NavigateTo("/");
+    }
+}

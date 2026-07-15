@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
 @inject IAdminService AdminService
+@inject ILoggerService Logger
 
 <MudLayout>
     @* Menu Bar *@
@@ -199,8 +200,9 @@
                 _currentUserRoles = user.Roles;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            await Logger.LogErrorAsync(ex, "MainLayout.LoadCurrentUserRoles");
             _currentUserRoles = new List<string>();
         }
     }
@@ -219,8 +221,9 @@
                 _accessiblePages = new HashSet<string>(pages, StringComparer.OrdinalIgnoreCase);
             }
         }
-        catch
+        catch (Exception ex)
         {
+            await Logger.LogErrorAsync(ex, "MainLayout.LoadAccessiblePages");
             // Fallback: SuperAdmin/Admin get admin pages
             if (_currentUserRoles.Any(r => r == "SuperAdmin" || r == "Admin"))
             {

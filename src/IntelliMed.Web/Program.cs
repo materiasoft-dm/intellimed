@@ -20,6 +20,8 @@ builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 // Admin service for user/role management
 builder.Services.AddScoped<IAdminService, AdminService>();
+// Front-end error logging service
+builder.Services.AddScoped<ILoggerService, LoggerService>();
 // MudBlazor services
 builder.Services.AddMudServices();
 
