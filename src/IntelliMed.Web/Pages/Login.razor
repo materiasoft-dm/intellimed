@@ -3,131 +3,121 @@
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
-@using MudBlazor
 @using IntelliMed.Web.Services
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
-@inject ISnackbar Snackbar
 
-<MudLayout>
-    <MudContainer MaxWidth="MaxWidth.False" Class="login-container pa-0">
-        <div class="login-split">
-            <!-- Left side - Clinic Image -->
-            <div class="login-image-section">
-                <div class="login-image-overlay"></div>
-                <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=1200&q=80" 
-                     alt="Modern medical clinic" 
-                     class="login-image" />
-                <div class="login-brand-overlay">
-                    <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Size="Size.Large" Class="brand-icon" />
-                    <h1 class="brand-title">IntelliMed</h1>
-                    <p class="brand-subtitle">Practice Management System</p>
-                </div>
-                <div class="login-quote">
-                    <p>"Streamline your practice with intelligent, integrated healthcare management."</p>
-                </div>
+<div class="login-container">
+    <div class="login-split">
+        <!-- Left side - Clinic Image -->
+        <div class="login-image-section">
+            <div class="login-image-overlay"></div>
+            <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=1200&q=80" 
+                 alt="Modern medical clinic" 
+                 class="login-image" />
+            <div class="login-brand-overlay">
+                <span class="brand-icon">🏥</span>
+                <h1 class="brand-title">IntelliMed</h1>
+                <p class="brand-subtitle">Practice Management System</p>
             </div>
+            <div class="login-quote">
+                <p>"Streamline your practice with intelligent, integrated healthcare management."</p>
+            </div>
+        </div>
 
-            <!-- Right side - Login Form -->
-            <div class="login-form-section">
-                <div class="login-form-wrapper">
-                    <div class="login-form-header">
-                        <MudText Typo="Typo.h4" Class="welcome-text">Welcome Back</MudText>
-                        <MudText Typo="Typo.body1" Class="subtitle-text">
-                            Sign in to access your practice dashboard
-                        </MudText>
+        <!-- Right side - Login Form -->
+        <div class="login-form-section">
+            <div class="login-form-wrapper">
+                <div class="login-form-header">
+                    <h4 class="welcome-text">Welcome Back</h4>
+                    <p class="subtitle-text">
+                        Sign in to access your practice dashboard
+                    </p>
+                </div>
+
+                <EditForm Model="@_model" OnValidSubmit="HandleLogin" FormName="loginForm" class="login-form">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <InputText @bind-Value="_model.Email" 
+                                   id="email"
+                                   class="form-control login-field" 
+                                   placeholder="name@clinic.com" />
+                        <ValidationMessage For="@(() => _model.Email)" />
                     </div>
 
-                    <MudForm @ref="_form" @bind-IsValid="@_isValid" Class="login-form">
-                        <MudTextField @bind-Value="_model.Email"
-                                      Label="Email Address"
-                                      Placeholder="name@clinic.com"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Normal"
-                                      Required="true"
-                                      RequiredError="Email is required"
-                                      Class="login-field"
-                                      Immediate="true" />
-
-                        <MudTextField @bind-Value="_model.Password"
-                                      Label="Password"
-                                      Placeholder="Enter your password"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Normal"
-                                      Required="true"
-                                      RequiredError="Password is required"
-                                      InputType="@(_showPassword ? InputType.Text : InputType.Password)"
-                                      Class="login-field"
-                                      Immediate="true" />
-
-                        <div class="form-options">
-                            <MudCheckBox @bind-Checked="_model.RememberMe" 
-                                         Label="Remember me" 
-                                         Color="Color.Primary"
-                                         Dense="true" />
-                            <MudLink Href="/forgot-password" 
-                                     Class="forgot-link"
-                                     Underline="Underline.Hover">
-                                Forgot password?
-                            </MudLink>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <InputText @bind-Value="_model.Password" 
+                                       id="password"
+                                       type="@(_showPassword ? "text" : "password")"
+                                       class="form-control login-field" 
+                                       placeholder="Enter your password" />
+                            <button type="button" class="btn btn-outline-secondary" 
+                                    @onclick="TogglePasswordVisibility" tabindex="-1">
+                                @(_showPassword ? "🙈" : "👁️")
+                            </button>
                         </div>
+                        <ValidationMessage For="@(() => _model.Password)" />
+                    </div>
 
-                        <MudButton Variant="Variant.Filled" 
-                                   Color="Color.Primary"
-                                   Size="Size.Large"
-                                   FullWidth="true"
-                                   Class="login-button"
-                                   Disabled="@_isLoading"
-                                   OnClick="HandleLogin">
-                            @if (_isLoading)
-                            {
-                                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
-                                <span>Signing in...</span>
-                            }
-                            else
-                            {
-                                <span>Sign In</span>
-                            }
-                        </MudButton>
-                    </MudForm>
-
-                    @if (!string.IsNullOrEmpty(_loginError))
-                    {
-                        <MudAlert Severity="Severity.Error"
-                                  Variant="Variant.Filled"
-                                  Square="true"
-                                  Class="login-error-alert animate-shake"
-                                  Icon="@Icons.Material.Filled.Warning">
-                            <MudText Typo="Typo.body1" Class="font-weight-bold">@_loginError</MudText>
-                        </MudAlert>
-                    }
-
-                    <MudDivider Class="my-6" />
-
-                    <div class="login-footer">
-                        <MudText Typo="Typo.body2" Class="footer-text">
-                            Protected by enterprise-grade security
-                        </MudText>
-                        <div class="security-badges">
-                            <MudChip Icon="@Icons.Material.Filled.Lock" 
-                                     Size="Size.Small" 
-                                     Variant="Variant.Outlined"
-                                     Class="security-chip">
-                                HIPAA Compliant
-                            </MudChip>
-                            <MudChip Icon="@Icons.Material.Filled.VerifiedUser" 
-                                     Size="Size.Small" 
-                                     Variant="Variant.Outlined"
-                                     Class="security-chip">
-                                256-bit SSL
-                            </MudChip>
+                    <div class="form-options">
+                        <div class="form-check">
+                            <InputCheckbox @bind-Value="_model.RememberMe" 
+                                           id="rememberMe"
+                                           class="form-check-input" />
+                            <label class="form-check-label" for="rememberMe">Remember me</label>
                         </div>
+                        <a href="/forgot-password" class="forgot-link">
+                            Forgot password?
+                        </a>
+                    </div>
+
+                    <button type="submit" 
+                            class="btn btn-primary btn-lg w-100 login-button" 
+                            disabled="@_isLoading">
+                        @if (_isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Signing in...</span>
+                        }
+                        else
+                        {
+                            <span>Sign In</span>
+                        }
+                    </button>
+                </EditForm>
+
+                @if (!string.IsNullOrEmpty(_loginError))
+                {
+                    <div class="alert alert-danger login-error-alert animate-shake mt-3 d-flex align-items-center" role="alert">
+                        <span class="me-2">⚠️</span>
+                        <div>@_loginError</div>
+                    </div>
+                }
+
+                <hr class="my-4" />
+
+                <div class="login-footer">
+                    <p class="footer-text">
+                        Protected by enterprise-grade security
+                    </p>
+                    <div class="security-badges">
+                        <span class="badge bg-outline-secondary security-chip">
+                            🔒 HIPAA Compliant
+                        </span>
+                        <span class="badge bg-outline-secondary security-chip">
+                            ✅ 256-bit SSL
+                        </span>
                     </div>
                 </div>
             </div>
         </div>
-    </MudContainer>
-</MudLayout>
+    </div>
+</div>
 
 <style>
     .login-container {
@@ -150,12 +140,6 @@
         width: 100%;
         margin: 0;
         padding: 0;
-    }
-
-    /* Ensure MudLayout doesn't add extra space */
-    .mud-layout {
-        height: 100%;
-        overflow: hidden;
     }
 
     .login-split {
@@ -212,9 +196,8 @@
     }
 
     .brand-icon {
-        font-size: 4rem !important;
-        width: 4rem !important;
-        height: 4rem !important;
+        font-size: 4rem;
+        display: block;
         margin-bottom: 1rem;
         filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
     }
@@ -294,39 +277,6 @@
         margin-bottom: 0;
     }
 
-    /* Fix MudBlazor label positioning for outlined variant */
-    .login-field.mud-input-control {
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-    }
-
-    .login-field .mud-input-label {
-        position: absolute !important;
-        top: -8px !important;
-        left: 12px !important;
-        transform: none !important;
-        background: white !important;
-        padding: 0 4px !important;
-        font-size: 0.75rem !important;
-    }
-
-    .login-field .mud-input-label.mud-input-label-inputcontrol {
-        top: -8px !important;
-        transform: none !important;
-    }
-
-    .login-field .mud-input-control-input-control {
-        margin-top: 0 !important;
-    }
-
-    .login-field .mud-input {
-        padding-top: 16px !important;
-    }
-
-    .login-field .mud-input-slot {
-        padding-top: 8px !important;
-    }
-
     .form-options {
         display: flex;
         justify-content: space-between;
@@ -374,7 +324,10 @@
     .security-chip {
         font-size: 0.75rem;
         color: #64748b;
-        border-color: #e2e8f0;
+        border: 1px solid #e2e8f0;
+        background: transparent;
+        padding: 0.35em 0.65em;
+        border-radius: 16px;
     }
 
     /* Error alert styling */
@@ -382,11 +335,6 @@
         margin-top: 1.25rem !important;
         border-radius: 8px !important;
         font-weight: 500;
-    }
-
-    .login-error-alert .mud-alert-message {
-        font-size: 0.95rem;
-        padding: 0.75rem 0;
     }
 
     /* Shake animation for error alert */
@@ -423,8 +371,6 @@
 </style>
 
 @code {
-    private MudForm? _form;
-    private bool _isValid;
     private bool _isLoading;
     private bool _showPassword;
     private string? _loginError;
@@ -453,51 +399,32 @@
 
     private async Task HandleLogin()
     {
-        if (_form != null)
+        _isLoading = true;
+        _loginError = null;
+        StateHasChanged();
+
+        try
         {
-            await _form.Validate();
+            var response = await AuthService.LoginAsync(_model.Email, _model.Password);
 
-            if (_isValid)
+            if (response?.Success == true)
             {
-                _isLoading = true;
-                _loginError = null;
-                StateHasChanged();
-
-                try
-                {
-                    var response = await AuthService.LoginAsync(_model.Email, _model.Password);
-
-                    if (response?.Success == true)
-                    {
-                        Navigation.NavigateTo("/");
-                    }
-                    else
-                    {
-                        _loginError = response?.ErrorMessage ?? "Invalid email or password. Please try again.";
-                        Snackbar.Add(_loginError, Severity.Error, config =>
-                        {
-                            config.VisibleStateDuration = 6000;
-                            config.ShowCloseIcon = true;
-                            config.Action = "Dismiss";
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _loginError = "An error occurred. Please try again.";
-                    Snackbar.Add(_loginError, Severity.Error, config =>
-                    {
-                        config.VisibleStateDuration = 6000;
-                        config.ShowCloseIcon = true;
-                    });
-                    Console.Error.WriteLine($"Login error: {ex.Message}");
-                }
-                finally
-                {
-                    _isLoading = false;
-                    StateHasChanged();
-                }
+                Navigation.NavigateTo("/");
             }
+            else
+            {
+                _loginError = response?.ErrorMessage ?? "Invalid email or password. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _loginError = "An error occurred. Please try again.";
+            Console.Error.WriteLine($"Login error: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 

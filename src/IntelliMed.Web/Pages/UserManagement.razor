@@ -3,330 +3,393 @@
 @using System.ComponentModel.DataAnnotations
 @using IntelliMed.Core.DTOs
 @using IntelliMed.Web.Services
-@using MudBlazor
 @inject IAdminService AdminService
 @inject IAuthService AuthService
-@inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 
 <PageTitle>User Management - IntelliMed</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">User Management</MudText>
+<h4 class="mb-4">User Management</h4>
 
 @* Toolbar *@
-<MudPaper Class="pa-3 mb-4" Elevation="1">
-    <div class="d-flex align-center justify-space-between">
-        <MudText Typo="Typo.body1">
-            <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />
+<div class="card mb-4">
+    <div class="card-body d-flex align-items-center justify-content-between">
+        <span class="d-flex align-items-center">
+            <span class="me-2">👥</span>
             Total Users: @(_users?.Count ?? 0)
-        </MudText>
-        <div>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.PersonAdd"
-                       OnClick="OpenCreateDialog">
-                Add User
-            </MudButton>
-        </div>
+        </span>
+        <button class="btn btn-primary" @onclick="OpenCreateDialog">
+            ➕ Add User
+        </button>
     </div>
-</MudPaper>
+</div>
 
 @* Loading State *@
 @if (_isLoading)
 {
-    <MudPaper Class="pa-8 text-center" Elevation="1">
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
-        <MudText Typo="Typo.body1" Class="mt-4">Loading users...</MudText>
-    </MudPaper>
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading users...
+        </div>
+    </div>
 }
 
 @* Error State *@
 @if (!string.IsNullOrEmpty(_error))
 {
-    <MudAlert Severity="Severity.Error" Class="mb-4" Dense="false">
-        @_error
-        <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="LoadUsers" Class="ml-4">Retry</MudButton>
-    </MudAlert>
+    <div class="alert alert-danger d-flex align-items-center mb-4">
+        ⚠️ @_error
+        <button class="btn btn-outline-danger btn-sm ms-auto" @onclick="LoadUsers">Retry</button>
+    </div>
 }
+
+@* Toast container for success/error messages *@
+<div class="toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite" aria-atomic="true">
+    @if (_toastMessage != null)
+    {
+        <div class="toast show align-items-center @(_toastIsError ? "text-bg-danger" : "text-bg-success") border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    @(_toastIsError ? "⚠️ " : "✅ ") @_toastMessage
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="DismissToast" aria-label="Close"></button>
+            </div>
+        </div>
+    }
+</div>
 
 @* Users Table *@
 @if (!_isLoading && _users != null)
 {
-    <MudPaper Elevation="1">
-        <MudTable Items="@_users"
-                  Hover="true"
-                  Dense="true"
-                  Striped="true"
-                  Elevation="0"
-                  SortLabel="Sort By"
-                  Filter="new Func<UserDto, bool>(FilterUsers)">
-            <ToolBarContent>
-                <MudText Typo="Typo.h6">Users</MudText>
-                <MudSpacer />
-                <MudTextField @bind-Value="_filter"
-                              Placeholder="Search users..."
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              IconSize="Size.Medium"
-                              Class="mt-0"
-                              Immediate="true" />
-            </ToolBarContent>
-
-            <HeaderContent>
-                <MudTh><MudTableSortBy SortBy="FullName" InitialDirection="SortDirection.Ascending">Name</MudTableSortBy></MudTh>
-                <MudTh><MudTableSortBy SortBy="Email">Email</MudTableSortBy></MudTh>
-                <MudTh><MudTableSortBy SortBy="Roles">Roles</MudTableSortBy></MudTh>
-                <MudTh><MudTableSortBy SortBy="IsActive">Status</MudTableSortBy></MudTh>
-                <MudTh><MudTableSortBy SortBy="LastLoginAt">Last Login</MudTableSortBy></MudTh>
-                <MudTh Style="text-align:right">Actions</MudTh>
-            </HeaderContent>
-
-            <RowTemplate>
-                <MudTd DataLabel="Name">
-                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-2 muted" />
-                    @context.FullName
-                </MudTd>
-                <MudTd DataLabel="Email">@context.Email</MudTd>
-                <MudTd DataLabel="Roles">
-                    @foreach (var role in context.Roles.OrderBy(r => r))
-                    {
-                        <MudChip Size="Size.Small"
-                                 Color="@GetRoleColor(role)"
-                                 Variant="Variant.Outlined"
-                                 Class="mr-1 mb-1">
-                            @role
-                        </MudChip>
+    <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h6 class="mb-0">Users</h6>
+            <div class="input-group" style="max-width: 300px;">
+                <span class="input-group-text">🔍</span>
+                <input type="text" class="form-control form-control-sm" placeholder="Search users..."
+                       @bind="_filter" @bind:event="oninput" />
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th @onclick="() => ToggleSort(nameof(UserDto.FullName))" style="cursor:pointer">
+                            Name @SortIndicator(nameof(UserDto.FullName))
+                        </th>
+                        <th @onclick="() => ToggleSort(nameof(UserDto.Email))" style="cursor:pointer">
+                            Email @SortIndicator(nameof(UserDto.Email))
+                        </th>
+                        <th @onclick="() => ToggleSort(nameof(UserDto.Roles))" style="cursor:pointer">
+                            Roles @SortIndicator(nameof(UserDto.Roles))
+                        </th>
+                        <th @onclick="() => ToggleSort(nameof(UserDto.IsActive))" style="cursor:pointer">
+                            Status @SortIndicator(nameof(UserDto.IsActive))
+                        </th>
+                        <th @onclick="() => ToggleSort(nameof(UserDto.LastLoginAt))" style="cursor:pointer">
+                            Last Login @SortIndicator(nameof(UserDto.LastLoginAt))
+                        </th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var filtered = FilteredAndSortedUsers();
+                        var paged = Paginate(filtered);
                     }
-                    @if (!context.Roles.Any())
+                    @foreach (var user in paged)
                     {
-                        <MudChip Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">No Roles</MudChip>
+                        <tr>
+                            <td>
+                                <span class="me-2 text-muted">👤</span>
+                                @user.FullName
+                            </td>
+                            <td>@user.Email</td>
+                            <td>
+                                @foreach (var role in user.Roles.OrderBy(r => r))
+                                {
+                                    <span class="badge @GetRoleBadgeClass(role) me-1 mb-1">@role</span>
+                                }
+                                @if (!user.Roles.Any())
+                                {
+                                    <span class="badge bg-secondary">No Roles</span>
+                                }
+                            </td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Inactive</span>
+                                }
+                            </td>
+                            <td>
+                                @(user.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary me-1" title="Edit"
+                                        @onclick="() => OpenEditDialog(user)">✏️</button>
+                                <button class="btn btn-sm btn-outline-warning me-1" title="Reset Password"
+                                        @onclick="() => OpenResetPasswordDialog(user)">🔑</button>
+                                <button class="btn btn-sm btn-outline-danger" title="Deactivate"
+                                        @onclick="() => OpenDeleteDialog(user)">🗑️</button>
+                            </td>
+                        </tr>
                     }
-                </MudTd>
-                <MudTd DataLabel="Status">
-                    @if (context.IsActive)
-                    {
-                        <MudChip Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Active</MudChip>
-                    }
-                    else
-                    {
-                        <MudChip Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">Inactive</MudChip>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Last Login">
-                    @(context.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")
-                </MudTd>
-                <MudTd DataLabel="Actions" Style="text-align:right">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Size="Size.Small"
-                                   Color="Color.Primary"
-                                   OnClick="() => OpenEditDialog(context)" />
-                    <MudIconButton Icon="@Icons.Material.Filled.LockReset"
-                                   Size="Size.Small"
-                                   Color="Color.Warning"
-                                   OnClick="() => OpenResetPasswordDialog(context)" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="() => OpenDeleteDialog(context)" />
-                </MudTd>
-            </RowTemplate>
-
-            <NoRecordsContent>
-                <MudText Typo="Typo.body1" Class="pa-4 text-center">
-                    No users found matching your search.
-                </MudText>
-            </NoRecordsContent>
-
-            <PagerContent>
-                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
-            </PagerContent>
-        </MudTable>
-    </MudPaper>
+                </tbody>
+            </table>
+        </div>
+        @if (filtered.Count == 0)
+        {
+            <div class="card-body text-center text-muted py-4">
+                No users found matching your search.
+            </div>
+        }
+        @* Pagination *@
+        @if (filtered.Count > _pageSize)
+        {
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <span class="text-muted small">
+                    Showing @((_currentPage - 1) * _pageSize + 1)-@Math.Min(_currentPage * _pageSize, filtered.Count) of @filtered.Count
+                </span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(_currentPage <= 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => _currentPage = 1" disabled="@(_currentPage <= 1)">««</button>
+                        </li>
+                        <li class="page-item @(_currentPage <= 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => _currentPage--" disabled="@(_currentPage <= 1)">«</button>
+                        </li>
+                        @for (int i = 1; i <= _totalPages; i++)
+                        {
+                            <li class="page-item @(i == _currentPage ? "active" : "")">
+                                <button class="page-link" @onclick="() => _currentPage = i">@i</button>
+                            </li>
+                        }
+                        <li class="page-item @(_currentPage >= _totalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => _currentPage++" disabled="@(_currentPage >= _totalPages)">»</button>
+                        </li>
+                        <li class="page-item @(_currentPage >= _totalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => _currentPage = _totalPages" disabled="@(_currentPage >= _totalPages)">»»</button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
 }
 
 @* =========================================================================
-   CREATE / EDIT USER DIALOG
+   CREATE / EDIT USER MODAL
    ========================================================================= *@
-<MudDialog Visible="_dialogVisible"
-           VisibleChanged="OnDialogVisibleChanged"
-           Title="@(_isEditing ? "Edit User" : "Create New User")"
-           Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true }">
-    <DialogContent>
-        <MudForm @ref="_dialogForm" IsValid="@_dialogValid" IsValidChanged="OnDialogValidChanged" Class="pa-4">
-            <MudTextField @bind-Value="_dialogModel.FirstName"
-                          Label="First Name"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Required="true"
-                          RequiredError="First name is required" />
+@if (_dialogVisible)
+{
+    <div class="modal-backdrop fade show" style="display:block;"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_isEditing ? "Edit User" : "Create New User")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDialog" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@_dialogModel" OnValidSubmit="SaveUser" FormName="userDialogForm">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-3" />
 
-            <MudTextField @bind-Value="_dialogModel.LastName"
-                          Label="Last Name"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Required="true"
-                          RequiredError="Last name is required" />
-
-            @if (!_isEditing)
-            {
-                <MudTextField @bind-Value="_dialogModel.Email"
-                              Label="Email Address"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Required="true"
-                              RequiredError="Email is required"
-                              InputType="InputType.Email" />
-
-                <MudTextField @bind-Value="_dialogModel.Password"
-                              Label="Password"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Required="true"
-                              RequiredError="Password is required"
-                              InputType="@(_showDialogPassword ? InputType.Text : InputType.Password)"
-                              Adornment="Adornment.End"
-                              AdornmentIcon="@(_showDialogPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                              OnAdornmentClick="() => _showDialogPassword = !_showDialogPassword"
-                              HelperText="Min 8 chars: upper, lower, digit, special" />
-            }
-
-            @* Role Assignment *@
-            <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Role Assignment</MudText>
-            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
-                @if (_availableRoles != null)
-                {
-                    foreach (var role in _availableRoles.OrderBy(r => r.Name))
-                    {
-                        var roleName = role.Name; // capture for lambda
-                        <div class="d-flex align-center mb-2">
-                            <MudCheckBox Checked="@_dialogModel.IsRoleSelected(roleName)"
-                                         CheckedChanged="(bool v) => _dialogModel.ToggleRole(roleName, v)"
-                                         Color="@GetRoleColor(roleName)"
-                                         Dense="true"
-                                         Label="@role.Name"
-                                         Class="mr-2" />
-                            <MudTooltip Text="@role.Description">
-                                <MudIcon Icon="@Icons.Material.Filled.Info"
-                                         Size="Size.Small"
-                                         Class="muted cursor-pointer" />
-                            </MudTooltip>
+                        <div class="mb-3">
+                            <label class="form-label">First Name <span class="text-danger">*</span></label>
+                            <InputText @bind-Value="_dialogModel.FirstName" class="form-control" />
+                            <ValidationMessage For="() => _dialogModel.FirstName" />
                         </div>
-                    }
-                }
-                else
-                {
-                    <MudText Typo="Typo.caption" Class="muted">Loading roles...</MudText>
-                }
-            </MudPaper>
 
-            @if (_isEditing)
-            {
-                <MudSwitch @bind-Checked="_dialogModel.IsActive"
-                           Label="Active Account"
-                           Color="Color.Success"
-                           Class="mt-4" />
-            }
-        </MudForm>
-    </DialogContent>
-    <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="CloseDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   OnClick="SaveUser"
-                   Disabled="@(!_dialogValid || _dialogSaving)">
-            @if (_dialogSaving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                <span>Saving...</span>
-            }
-            else
-            {
-                <span>@(_isEditing ? "Save Changes" : "Create User")</span>
-            }
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+                        <div class="mb-3">
+                            <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <InputText @bind-Value="_dialogModel.LastName" class="form-control" />
+                            <ValidationMessage For="() => _dialogModel.LastName" />
+                        </div>
 
-@* =========================================================================
-   RESET PASSWORD DIALOG
-   ========================================================================= *@
-<MudDialog Visible="_resetPasswordVisible"
-           VisibleChanged="OnResetPasswordVisibleChanged"
-           Title="Reset Password"
-           Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true }">
-    <DialogContent>
-        <MudText Typo="Typo.body1" Class="mb-4">
-            Reset password for <strong>@(_resetPasswordUser?.FullName)</strong> (@(_resetPasswordUser?.Email))
-        </MudText>
-        <MudTextField @bind-Value="_resetPasswordValue"
-                      Label="New Password"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense"
-                      Required="true"
-                      InputType="@(_showResetPassword ? InputType.Text : InputType.Password)"
-                      Adornment="Adornment.End"
-                      AdornmentIcon="@(_showResetPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                      OnAdornmentClick="() => _showResetPassword = !_showResetPassword"
-                      HelperText="Min 8 chars: upper, lower, digit, special" />
-    </DialogContent>
-    <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="() => _resetPasswordVisible = false">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Warning"
-                   OnClick="ResetPassword"
-                   Disabled="@(string.IsNullOrWhiteSpace(_resetPasswordValue) || _resetPasswordSaving)">
-            @if (_resetPasswordSaving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                <span>Resetting...</span>
-            }
-            else
-            {
-                <span>Reset Password</span>
-            }
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+                        @if (!_isEditing)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="_dialogModel.Email" class="form-control" type="email" />
+                                <ValidationMessage For="() => _dialogModel.Email" />
+                            </div>
 
-@* =========================================================================
-   DELETE CONFIRMATION DIALOG
-   ========================================================================= *@
-<MudDialog Visible="_deleteDialogVisible"
-           VisibleChanged="OnDeleteDialogVisibleChanged"
-           Title="Deactivate User"
-           Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true }">
-    <DialogContent>
-        <MudAlert Severity="Severity.Warning" Class="mb-4" Dense="false">
-            This will deactivate the user account. The user will no longer be able to log in.
-            No data is permanently deleted.
-        </MudAlert>
-        <MudText Typo="Typo.body1">
-            Are you sure you want to deactivate <strong>@(_deleteUser?.FullName)</strong> (@(_deleteUser?.Email))?
-        </MudText>
-    </DialogContent>
-    <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="() => _deleteDialogVisible = false">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Error"
-                   OnClick="DeleteUser"
-                   Disabled="@_deleteSaving">
-            @if (_deleteSaving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                <span>Deactivating...</span>
-            }
-            else
-            {
-                <span>Deactivate User</span>
-            }
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+                            <div class="mb-3">
+                                <label class="form-label">Password <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <InputText @bind-Value="_dialogModel.Password"
+                                               type="@(_showDialogPassword ? "text" : "password")"
+                                               class="form-control" />
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @onclick="() => _showDialogPassword = !_showDialogPassword">
+                                        @(_showDialogPassword ? "🙈" : "👁️")
+                                    </button>
+                                </div>
+                                <div class="form-text">Min 8 chars: upper, lower, digit, special</div>
+                                <ValidationMessage For="() => _dialogModel.Password" />
+                            </div>
+                        }
+
+                        @* Role Assignment *@
+                        <h6 class="mt-4 mb-2">Role Assignment</h6>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                @if (_availableRoles != null)
+                                {
+                                    foreach (var role in _availableRoles.OrderBy(r => r.Name))
+                                    {
+                                        var roleName = role.Name;
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                   checked="@_dialogModel.IsRoleSelected(roleName)"
+                                                   @onchange="(ChangeEventArgs e) => _dialogModel.ToggleRole(roleName, (bool)e.Value!)"
+                                                   id="role_@roleName" />
+                                            <label class="form-check-label" for="role_@roleName">
+                                                @role.Name
+                                            </label>
+                                            <span class="ms-1 text-muted" title="@role.Description" style="cursor:help">ℹ️</span>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Loading roles...</span>
+                                }
+                            </div>
+                        </div>
+
+                        @if (_isEditing)
+                        {
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       checked="@_dialogModel.IsActive"
+                                       @onchange="(ChangeEventArgs e) => _dialogModel.IsActive = (bool)e.Value!"
+                                       id="activeSwitch" />
+                                <label class="form-check-label" for="activeSwitch">Active Account</label>
+                            </div>
+                        }
+                    </EditForm>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                    <button type="submit" form="userDialogForm" class="btn btn-primary" disabled="@_dialogSaving">
+                        @if (_dialogSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>@(_isEditing ? "Save Changes" : "Create User")</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @* =========================================================================
-   SUCCESS / ERROR SNACKBAR
+   RESET PASSWORD MODAL
    ========================================================================= *@
-<MudSnackbarProvider />
+@if (_resetPasswordVisible)
+{
+    <div class="modal-backdrop fade show" style="display:block;"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reset Password</h5>
+                    <button type="button" class="btn-close" @onclick="() => _resetPasswordVisible = false" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        Reset password for <strong>@(_resetPasswordUser?.FullName)</strong> (@(_resetPasswordUser?.Email))
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">New Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="@(_showResetPassword ? "text" : "password")"
+                                   class="form-control"
+                                   @bind="_resetPasswordValue"
+                                   @bind:event="oninput" />
+                            <button type="button" class="btn btn-outline-secondary"
+                                    @onclick="() => _showResetPassword = !_showResetPassword">
+                                @(_showResetPassword ? "🙈" : "👁️")
+                            </button>
+                        </div>
+                        <div class="form-text">Min 8 chars: upper, lower, digit, special</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _resetPasswordVisible = false">Cancel</button>
+                    <button type="button" class="btn btn-warning"
+                            @onclick="ResetPassword"
+                            disabled="@(string.IsNullOrWhiteSpace(_resetPasswordValue) || _resetPasswordSaving)">
+                        @if (_resetPasswordSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Resetting...</span>
+                        }
+                        else
+                        {
+                            <span>Reset Password</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* =========================================================================
+   DELETE CONFIRMATION MODAL
+   ========================================================================= *@
+@if (_deleteDialogVisible)
+{
+    <div class="modal-backdrop fade show" style="display:block;"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Deactivate User</h5>
+                    <button type="button" class="btn-close" @onclick="() => _deleteDialogVisible = false" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning d-flex align-items-center mb-3">
+                        ⚠️ This will deactivate the user account. The user will no longer be able to log in.
+                        No data is permanently deleted.
+                    </div>
+                    <p>
+                        Are you sure you want to deactivate <strong>@(_deleteUser?.FullName)</strong> (@(_deleteUser?.Email))?
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _deleteDialogVisible = false">Cancel</button>
+                    <button type="button" class="btn btn-danger"
+                            @onclick="DeleteUser"
+                            disabled="@_deleteSaving">
+                        @if (_deleteSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Deactivating...</span>
+                        }
+                        else
+                        {
+                            <span>Deactivate User</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     // =========================================================================
@@ -339,19 +402,36 @@
     private string? _error;
 
     // =========================================================================
-    // CREATE / EDIT DIALOG STATE
+    // SORTING STATE
+    // =========================================================================
+    private string? _sortColumn;
+    private bool _sortAscending = true;
+
+    // =========================================================================
+    // PAGINATION STATE
+    // =========================================================================
+    private int _currentPage = 1;
+    private int _pageSize = 10;
+    private int _totalPages => Math.Max(1, (int)Math.Ceiling((double)FilteredAndSortedUsers().Count / _pageSize));
+
+    // =========================================================================
+    // TOAST STATE
+    // =========================================================================
+    private string? _toastMessage;
+    private bool _toastIsError;
+
+    // =========================================================================
+    // CREATE / EDIT MODAL STATE
     // =========================================================================
     private bool _dialogVisible;
     private bool _isEditing;
-    private bool _dialogValid;
     private bool _dialogSaving;
     private bool _showDialogPassword;
-    private MudForm? _dialogForm;
     private UserDialogModel _dialogModel = new();
     private UserDto? _editingUser;
 
     // =========================================================================
-    // RESET PASSWORD DIALOG STATE
+    // RESET PASSWORD MODAL STATE
     // =========================================================================
     private bool _resetPasswordVisible;
     private bool _resetPasswordSaving;
@@ -360,7 +440,7 @@
     private string _resetPasswordValue = string.Empty;
 
     // =========================================================================
-    // DELETE DIALOG STATE
+    // DELETE MODAL STATE
     // =========================================================================
     private bool _deleteDialogVisible;
     private bool _deleteSaving;
@@ -411,44 +491,118 @@
         }
     }
 
-    private bool FilterUsers(UserDto user)
+    // =========================================================================
+    // FILTERING, SORTING, PAGINATION
+    // =========================================================================
+    private List<UserDto> FilteredAndSortedUsers()
     {
-        if (string.IsNullOrWhiteSpace(_filter))
-            return true;
+        if (_users == null) return new();
 
-        return (user.FullName?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (user.Email?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false);
+        var filtered = _users.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_filter))
+        {
+            filtered = filtered.Where(u =>
+                (u.FullName?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (u.Email?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        if (_sortColumn != null)
+        {
+            filtered = _sortColumn switch
+            {
+                nameof(UserDto.FullName) => _sortAscending
+                    ? filtered.OrderBy(u => u.FullName)
+                    : filtered.OrderByDescending(u => u.FullName),
+                nameof(UserDto.Email) => _sortAscending
+                    ? filtered.OrderBy(u => u.Email)
+                    : filtered.OrderByDescending(u => u.Email),
+                nameof(UserDto.Roles) => _sortAscending
+                    ? filtered.OrderBy(u => string.Join(",", u.Roles.OrderBy(r => r)))
+                    : filtered.OrderByDescending(u => string.Join(",", u.Roles.OrderBy(r => r))),
+                nameof(UserDto.IsActive) => _sortAscending
+                    ? filtered.OrderBy(u => u.IsActive)
+                    : filtered.OrderByDescending(u => u.IsActive),
+                nameof(UserDto.LastLoginAt) => _sortAscending
+                    ? filtered.OrderBy(u => u.LastLoginAt ?? DateTime.MinValue)
+                    : filtered.OrderByDescending(u => u.LastLoginAt ?? DateTime.MinValue),
+                _ => filtered
+            };
+        }
+
+        return filtered.ToList();
+    }
+
+    private List<UserDto> Paginate(List<UserDto> users)
+    {
+        // Reset page if out of bounds
+        if (_currentPage > _totalPages) _currentPage = _totalPages;
+        return users.Skip((_currentPage - 1) * _pageSize).Take(_pageSize).ToList();
+    }
+
+    private void ToggleSort(string column)
+    {
+        if (_sortColumn == column)
+        {
+            _sortAscending = !_sortAscending;
+        }
+        else
+        {
+            _sortColumn = column;
+            _sortAscending = true;
+        }
+        _currentPage = 1;
+    }
+
+    private string SortIndicator(string column)
+    {
+        if (_sortColumn != column) return "";
+        return _sortAscending ? "▲" : "▼";
     }
 
     // =========================================================================
-    // ROLE COLOR HELPER
+    // TOAST
     // =========================================================================
-    private static Color GetRoleColor(string role) => role switch
+    private void ShowToast(string message, bool isError = false)
     {
-        "SuperAdmin" => Color.Error,
-        "Admin" => Color.Warning,
-        "Doctor" => Color.Primary,
-        "Nurse" => Color.Success,
-        "Receptionist" => Color.Info,
-        _ => Color.Default
+        _toastMessage = message;
+        _toastIsError = isError;
+        StateHasChanged();
+    }
+
+    private void DismissToast()
+    {
+        _toastMessage = null;
+    }
+
+    // =========================================================================
+    // ROLE BADGE HELPER
+    // =========================================================================
+    private static string GetRoleBadgeClass(string role) => role switch
+    {
+        "SuperAdmin" => "bg-danger",
+        "Admin" => "bg-warning text-dark",
+        "Doctor" => "bg-primary",
+        "Nurse" => "bg-success",
+        "Receptionist" => "bg-info text-dark",
+        _ => "bg-secondary"
     };
 
     // =========================================================================
-    // CREATE DIALOG
+    // CREATE MODAL
     // =========================================================================
     private void OpenCreateDialog()
     {
         _isEditing = false;
         _editingUser = null;
         _dialogModel = new UserDialogModel();
-        _dialogValid = false;
         _dialogSaving = false;
         _showDialogPassword = false;
         _dialogVisible = true;
     }
 
     // =========================================================================
-    // EDIT DIALOG
+    // EDIT MODAL
     // =========================================================================
     private void OpenEditDialog(UserDto user)
     {
@@ -462,7 +616,6 @@
             IsActive = user.IsActive,
             SelectedRoles = user.Roles.ToList()
         };
-        _dialogValid = true;
         _dialogSaving = false;
         _showDialogPassword = false;
         _dialogVisible = true;
@@ -472,26 +625,6 @@
     {
         _dialogVisible = false;
         _editingUser = null;
-    }
-
-    private void OnDialogVisibleChanged(bool visible)
-    {
-        _dialogVisible = visible;
-    }
-
-    private void OnDialogValidChanged(bool valid)
-    {
-        _dialogValid = valid;
-    }
-
-    private void OnResetPasswordVisibleChanged(bool visible)
-    {
-        _resetPasswordVisible = visible;
-    }
-
-    private void OnDeleteDialogVisibleChanged(bool visible)
-    {
-        _deleteDialogVisible = visible;
     }
 
     // =========================================================================
@@ -506,7 +639,6 @@
         {
             if (_isEditing && _editingUser != null)
             {
-                // Update existing user
                 var request = new UpdateUserRequest
                 {
                     FirstName = _dialogModel.FirstName,
@@ -519,18 +651,17 @@
 
                 if (result?.Success == true)
                 {
-                    Snackbar.Add("User updated successfully.", Severity.Success);
+                    ShowToast("User updated successfully.");
                     _dialogVisible = false;
                     await LoadUsers();
                 }
                 else
                 {
-                    Snackbar.Add(result?.Message ?? "Failed to update user.", Severity.Error);
+                    ShowToast(result?.Message ?? "Failed to update user.", true);
                 }
             }
             else
             {
-                // Create new user
                 var request = new CreateUserRequest
                 {
                     Email = _dialogModel.Email,
@@ -544,19 +675,19 @@
 
                 if (result?.Success == true)
                 {
-                    Snackbar.Add("User created successfully.", Severity.Success);
+                    ShowToast("User created successfully.");
                     _dialogVisible = false;
                     await LoadUsers();
                 }
                 else
                 {
-                    Snackbar.Add(result?.Message ?? "Failed to create user.", Severity.Error);
+                    ShowToast(result?.Message ?? "Failed to create user.", true);
                 }
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            ShowToast($"Error: {ex.Message}", true);
         }
         finally
         {
@@ -565,7 +696,7 @@
     }
 
     // =========================================================================
-    // RESET PASSWORD DIALOG
+    // RESET PASSWORD MODAL
     // =========================================================================
     private void OpenResetPasswordDialog(UserDto user)
     {
@@ -591,17 +722,17 @@
 
             if (result?.Success == true)
             {
-                Snackbar.Add("Password reset successfully.", Severity.Success);
+                ShowToast("Password reset successfully.");
                 _resetPasswordVisible = false;
             }
             else
             {
-                Snackbar.Add(result?.Message ?? "Failed to reset password.", Severity.Error);
+                ShowToast(result?.Message ?? "Failed to reset password.", true);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            ShowToast($"Error: {ex.Message}", true);
         }
         finally
         {
@@ -610,7 +741,7 @@
     }
 
     // =========================================================================
-    // DELETE (DEACTIVATE) DIALOG
+    // DELETE (DEACTIVATE) MODAL
     // =========================================================================
     private void OpenDeleteDialog(UserDto user)
     {
@@ -632,18 +763,18 @@
 
             if (result?.Success == true)
             {
-                Snackbar.Add("User deactivated successfully.", Severity.Success);
+                ShowToast("User deactivated successfully.");
                 _deleteDialogVisible = false;
                 await LoadUsers();
             }
             else
             {
-                Snackbar.Add(result?.Message ?? "Failed to deactivate user.", Severity.Error);
+                ShowToast(result?.Message ?? "Failed to deactivate user.", true);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            ShowToast($"Error: {ex.Message}", true);
         }
         finally
         {
@@ -672,7 +803,6 @@
 
         public List<string> SelectedRoles { get; set; } = new();
 
-        // Helper for MudCheckBox two-way binding with a list
         public bool IsRoleSelected(string role)
         {
             return SelectedRoles.Contains(role);

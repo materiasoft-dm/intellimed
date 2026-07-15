@@ -1,12 +1,11 @@
 ﻿@inherits LayoutComponentBase
 @using IntelliMed.Web.Services
-@using MudBlazor
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
 @inject IAdminService AdminService
 @inject ILoggerService Logger
 
-<MudLayout>
+<div class="mdi-layout">
     @* Pure HTML/CSS slide-over nav panel — avoids MudDrawer JS interop issues in WASM *@
     @if (_drawerOpen)
     {
@@ -16,87 +15,123 @@
         @* Slide-over panel *@
         <div class="mdi-slide-panel">
             <div class="mdi-slide-header">
-                <MudText Typo="Typo.h6" Class="mx-auto">IntelliMed</MudText>
+                <h6 class="mx-auto mb-0">IntelliMed</h6>
             </div>
-            <MudDivider />
+            <hr class="my-0" />
 
-            <MudNavMenu>
+            <nav class="nav flex-column mdi-nav-menu">
                 @* Dashboard *@
-                <MudNavLink Href="/" Icon="@Icons.Material.Filled.Dashboard" Match="NavLinkMatch.All">Dashboard</MudNavLink>
+                <a href="/" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">📊</span> Dashboard
+                </a>
 
-                <MudDivider Class="my-2" />
+                <hr class="my-2" />
 
                 @* Patients Section *@
-                <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Patients</MudText>
-                <MudNavLink Href="/patients" Icon="@Icons.Material.Filled.List">Patient List</MudNavLink>
-                <MudNavLink Href="/patients/add" Icon="@Icons.Material.Filled.PersonAdd">Add Patient</MudNavLink>
-                <MudNavLink Href="/patients/search" Icon="@Icons.Material.Filled.Search">Find Patient</MudNavLink>
+                <small class="text-muted px-4 text-uppercase">Patients</small>
+                <a href="/patients" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">📋</span> Patient List
+                </a>
+                <a href="/patients/add" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">➕</span> Add Patient
+                </a>
+                <a href="/patients/search" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">🔍</span> Find Patient
+                </a>
 
-                <MudDivider Class="my-2" />
+                <hr class="my-2" />
 
                 @* Appointments Section *@
-                <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Appointments</MudText>
-                <MudNavLink Href="/appointments" Icon="@Icons.Material.Filled.List">Appointment List</MudNavLink>
-                <MudNavLink Href="/appointments/new" Icon="@Icons.Material.Filled.Add">New Appointment</MudNavLink>
-                <MudNavLink Href="/appointments/calendar" Icon="@Icons.Material.Filled.DateRange">Calendar View</MudNavLink>
+                <small class="text-muted px-4 text-uppercase">Appointments</small>
+                <a href="/appointments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">📋</span> Appointment List
+                </a>
+                <a href="/appointments/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">➕</span> New Appointment
+                </a>
+                <a href="/appointments/calendar" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">📅</span> Calendar View
+                </a>
 
-                <MudDivider Class="my-2" />
+                <hr class="my-2" />
 
                 @* Invoices Section *@
-                <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Invoices</MudText>
-                <MudNavLink Href="/invoices" Icon="@Icons.Material.Filled.List">Invoice List</MudNavLink>
-                <MudNavLink Href="/invoices/new" Icon="@Icons.Material.Filled.Add">New Invoice</MudNavLink>
-                <MudNavLink Href="/invoices/payments" Icon="@Icons.Material.Filled.Payment">Payments</MudNavLink>
+                <small class="text-muted px-4 text-uppercase">Invoices</small>
+                <a href="/invoices" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">📋</span> Invoice List
+                </a>
+                <a href="/invoices/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">➕</span> New Invoice
+                </a>
+                <a href="/invoices/payments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">💳</span> Payments
+                </a>
 
                 @* Admin Section — conditional *@
                 @if (_accessiblePages.Contains("admin/users") || _accessiblePages.Contains("admin/roles"))
                 {
-                    <MudDivider Class="my-2" />
-                    <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Administration</MudText>
+                    <hr class="my-2" />
+                    <small class="text-muted px-4 text-uppercase">Administration</small>
                     @if (_accessiblePages.Contains("admin/users"))
                     {
-                        <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.ManageAccounts">User Management</MudNavLink>
+                        <a href="/admin/users" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <span class="me-2">👤</span> User Management
+                        </a>
                     }
                     @if (_accessiblePages.Contains("admin/roles"))
                     {
-                        <MudNavLink Href="/admin/roles" Icon="@Icons.Material.Filled.Security">Role Configuration</MudNavLink>
+                        <a href="/admin/roles" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <span class="me-2">🔒</span> Role Configuration
+                        </a>
                     }
                     @if (_accessiblePages.Contains("admin/audit"))
                     {
-                        <MudNavLink Href="/admin/audit" Icon="@Icons.Material.Filled.Analytics">Audit Log</MudNavLink>
+                        <a href="/admin/audit" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <span class="me-2">📈</span> Audit Log
+                        </a>
                     }
                     @if (_accessiblePages.Contains("admin/settings"))
                     {
-                        <MudNavLink Href="/admin/settings" Icon="@Icons.Material.Filled.Settings">System Settings</MudNavLink>
+                        <a href="/admin/settings" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <span class="me-2">⚙️</span> System Settings
+                        </a>
                     }
                 }
 
-                <MudDivider Class="my-2" />
+                <hr class="my-2" />
 
                 @* Help Section *@
-                <MudText Typo="Typo.overline" Class="px-4 mud-text-secondary">Help</MudText>
-                <MudNavLink Href="/about" Icon="@Icons.Material.Filled.Info">About IntelliMed</MudNavLink>
-                <MudNavLink Href="/help" Icon="@Icons.Material.Filled.Help">User Guide</MudNavLink>
-            </MudNavMenu>
+                <small class="text-muted px-4 text-uppercase">Help</small>
+                <a href="/about" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">ℹ️</span> About IntelliMed
+                </a>
+                <a href="/help" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <span class="me-2">❓</span> User Guide
+                </a>
+            </nav>
         </div>
     }
 
     @* Menu Bar — simplified: hamburger, brand, spacer, user + logout *@
-    <MudAppBar Dense="true" Elevation="1" Class="mdi-menu-bar">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="ml-2 d-none d-sm-flex">IntelliMed</MudText>
-        <MudSpacer />
-        <MudText Typo="Typo.body2" Class="d-none d-sm-flex mr-2 mud-text-secondary align-self-center">@GetCurrentUser()</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Edge="Edge.End" OnClick="SignOut" Title="Sign Out" />
-    </MudAppBar>
+    <nav class="navbar navbar-dark bg-primary mdi-menu-bar px-2">
+        <button class="btn btn-primary border-0" @onclick="ToggleDrawer" title="Menu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <span class="navbar-brand mb-0 h6 ms-2 d-none d-sm-inline">IntelliMed</span>
+        <div class="flex-grow-1"></div>
+        <span class="navbar-text d-none d-sm-inline me-2 small">@GetCurrentUser()</span>
+        <button class="btn btn-primary border-0" @onclick="SignOut" title="Sign Out">
+            🚪
+        </button>
+    </nav>
 
     @* Main Content *@
-    <MudMainContent Class="mdi-main-content">
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+    <main class="mdi-main-content">
+        <div class="container-fluid py-4">
             @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+        </div>
+    </main>
+</div>
 
 @code {
     private bool _drawerOpen = false;

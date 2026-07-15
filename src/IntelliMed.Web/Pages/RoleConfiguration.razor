@@ -2,154 +2,188 @@
 @layout MainLayout
 @using IntelliMed.Core.DTOs
 @using IntelliMed.Web.Services
-@using MudBlazor
 @inject IAdminService AdminService
-@inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 
 <PageTitle>Role Configuration - IntelliMed</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Role Configuration</MudText>
+<h4 class="mb-4">Role Configuration</h4>
 
-<MudPaper Class="pa-3 mb-4" Elevation="1">
-    <div class="d-flex align-center justify-space-between">
-        <MudText Typo="Typo.body1">
-            <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="mr-2" />
-            Configure which pages each role can access
-        </MudText>
-        <MudButton Variant="Variant.Outlined"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.ArrowBack"
-                   OnClick="NavigateBackToUsers">
-            Back to Users
-        </MudButton>
+@* =========================================================================
+   HEADER CARD
+   ========================================================================= *@
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+            <span class="d-flex align-items-center">
+                🛡️ Configure which pages each role can access
+            </span>
+            <button type="button" class="btn btn-outline-primary" @onclick="NavigateBackToUsers">
+                ⬅️ Back to Users
+            </button>
+        </div>
     </div>
-</MudPaper>
+</div>
 
+@* =========================================================================
+   LOADING STATE
+   ========================================================================= *@
 @if (_isLoading)
 {
-    <div class="d-flex justify-center pa-8">
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    <div class="d-flex justify-content-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
 }
 else if (_error != null)
 {
-    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+    <div class="alert alert-danger mb-4">@_error</div>
 }
 else
 {
-    @* Role selector *@
-    <MudPaper Class="pa-3 mb-4" Elevation="1">
-        <div class="d-flex align-center flex-wrap gap-4">
-            <MudSelect T="string"
-                       Label="Select Role"
-                       Value="@_selectedRole"
-                       ValueChanged="OnRoleChanged"
-                       AnchorOrigin="Origin.BottomCenter"
-                       Class="flex-grow-1"
-                       Style="max-width: 400px;">
-                @foreach (var role in _roles)
-                {
-                    <MudSelectItem Value="@role">@role</MudSelectItem>
-                }
-            </MudSelect>
-
-            <MudTextField T="string"
-                          Label="Search pages..."
-                          Value="@_searchText"
-                          ValueChanged="OnSearchChanged"
-                          Immediate="true"
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search"
-                          Class="flex-grow-1"
-                          Style="max-width: 400px;" />
-
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Save"
-                       OnClick="SavePermissionsAsync"
-                       Disabled="@(_selectedRole == null)">
-                Save Permissions
-            </MudButton>
+    @* =========================================================================
+       ROLE SELECTOR + SEARCH + SAVE
+       ========================================================================= *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Select Role</label>
+                    <select class="form-select" value="@_selectedRole"
+                            @onchange="OnRoleChanged">
+                        <option value="">-- Choose a role --</option>
+                        @foreach (var role in _roles)
+                        {
+                            <option value="@role">@role</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Search pages...</label>
+                    <div class="input-group">
+                        <span class="input-group-text">🔍</span>
+                        <input type="text" class="form-control" placeholder="Search..."
+                               value="@_searchText"
+                               @oninput="OnSearchChanged" />
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary w-100"
+                            @onclick="SavePermissionsAsync"
+                            disabled="@(_selectedRole == null)">
+                        💾 Save Permissions
+                    </button>
+                </div>
+            </div>
         </div>
-    </MudPaper>
+    </div>
 
+    @* =========================================================================
+       NO ROLE SELECTED
+       ========================================================================= *@
     @if (_selectedRole == null)
     {
-        <MudPaper Class="pa-8 text-center" Elevation="1">
-            <MudIcon Icon="@Icons.Material.Filled.TouchApp" Size="Size.Large" Color="Color.Secondary" />
-            <MudText Typo="Typo.h6" Class="mt-2">Select a role above to configure its page access</MudText>
-        </MudPaper>
+        <div class="card text-center py-5">
+            <div class="card-body">
+                <div class="fs-1 text-muted mb-3">👆</div>
+                <h5>Select a role above to configure its page access</h5>
+            </div>
+        </div>
     }
     else
     {
-        @* Page checkboxes grouped by category *@
+        @* =========================================================================
+           PAGE CHECKBOXES GROUPED BY CATEGORY
+           ========================================================================= *@
         @foreach (var category in _categories)
         {
             var categoryPages = _filteredPages.Where(p => p.Category == category).ToList();
             if (categoryPages.Count == 0) continue;
 
-            <MudPaper Class="pa-3 mb-3" Elevation="1">
-                <MudText Typo="Typo.h6" Class="mb-2 d-flex align-center">
-                    <MudIcon Icon="@GetCategoryIcon(category)" Class="mr-2" Color="Color.Primary" />
-                    @category
-                    <MudChip Size="Size.Small" Class="ml-2" Color="Color.Default">
-                        @categoryPages.Count pages
-                    </MudChip>
-                </MudText>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h6 class="d-flex align-items-center mb-3">
+                        <span class="me-2">@GetCategoryEmoji(category)</span>
+                        @category
+                        <span class="badge bg-secondary ms-2">@categoryPages.Count pages</span>
+                    </h6>
+                    <hr />
 
-                <MudDivider Class="mb-3" />
-
-                <div class="d-flex flex-wrap" style="gap: 8px;">
-                    @foreach (var page in categoryPages)
-                    {
-                        var pageName = page.PageName;
-                        var pageDesc = page.Description;
-                        var pageKey = page.PageKey;
-                        <MudPaper Class="pa-2" Elevation="0" Style="min-width: 220px; flex: 1 1 220px;">
-                            <MudCheckBox T="bool"
-                                         Label="@pageName"
-                                         Checked="@_selectedPageKeys.Contains(pageKey)"
-                                         CheckedChanged="@_pageCallbacks[pageKey]"
-                                         Color="Color.Primary"
-                                         Dense="true">
-                                <ChildContent>
-                                    <MudTooltip Text="@pageDesc">
-                                        <MudIcon Icon="@Icons.Material.Filled.Info"
-                                                 Size="Size.Small"
-                                                 Color="Color.Default"
-                                                 Class="ml-1" />
-                                    </MudTooltip>
-                                </ChildContent>
-                            </MudCheckBox>
-                        </MudPaper>
-                    }
-                </div>
-            </MudPaper>
-        }
-
-        @* Summary footer *@
-        <MudPaper Class="pa-3" Elevation="1">
-            <div class="d-flex align-center justify-space-between">
-                <MudText Typo="Typo.body1">
-                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-2" Color="Color.Success" />
-                    @_selectedPageKeys.Count of @_allPages.Count pages selected for <strong>@_selectedRole</strong>
-                </MudText>
-                <div>
-                    <MudButton Variant="Variant.Text"
-                               Color="Color.Primary"
-                               OnClick="SelectAllPages">
-                        Select All
-                    </MudButton>
-                    <MudButton Variant="Variant.Text"
-                               Color="Color.Error"
-                               OnClick="DeselectAllPages">
-                        Clear All
-                    </MudButton>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var page in categoryPages)
+                        {
+                            var pageName = page.PageName;
+                            var pageDesc = page.Description;
+                            var pageKey = page.PageKey;
+                            <div class="card border-0 bg-light p-2" style="min-width: 220px; flex: 1 1 220px;">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input"
+                                           id="chk_@pageKey"
+                                           checked="@_selectedPageKeys.Contains(pageKey)"
+                                           @onchange="_pageCallbacks[pageKey]" />
+                                    <label class="form-check-label" for="chk_@pageKey">
+                                        @pageName
+                                        @if (!string.IsNullOrWhiteSpace(pageDesc))
+                                        {
+                                            <span class="ms-1 text-muted"
+                                                  title="@pageDesc"
+                                                  data-bs-toggle="tooltip"
+                                                  data-bs-placement="top">
+                                                ℹ️
+                                            </span>
+                                        }
+                                    </label>
+                                </div>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
-        </MudPaper>
+        }
+
+        @* =========================================================================
+           SUMMARY FOOTER
+           ========================================================================= *@
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span>
+                        ✅ @_selectedPageKeys.Count of @_allPages.Count pages selected for <strong>@_selectedRole</strong>
+                    </span>
+                    <div>
+                        <button type="button" class="btn btn-outline-primary btn-sm me-2"
+                                @onclick="SelectAllPages">
+                            Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                @onclick="DeselectAllPages">
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     }
+}
+
+@* =========================================================================
+   TOAST NOTIFICATION
+   ========================================================================= *@
+@if (_toastMessage != null)
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        <div class="toast show align-items-center @(_toastIsError ? "text-bg-danger" : "text-bg-success") border-0"
+             role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    @_toastMessage
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                        @onclick="DismissToast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
@@ -178,7 +212,11 @@ else
     private string _searchText = string.Empty;
 
     // Pre-built callbacks for each page (avoids lambda in attributes)
-    private Dictionary<string, EventCallback<bool>> _pageCallbacks = new();
+    private Dictionary<string, EventCallback<ChangeEventArgs>> _pageCallbacks = new();
+
+    // Toast state
+    private string? _toastMessage;
+    private bool _toastIsError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -213,12 +251,13 @@ else
         foreach (var page in _allPages)
         {
             var pageKey = page.PageKey;
-            _pageCallbacks[pageKey] = EventCallback.Factory.Create<bool>(this, v => TogglePage(pageKey, v));
+            _pageCallbacks[pageKey] = EventCallback.Factory.Create<ChangeEventArgs>(this, e => TogglePage(pageKey, e));
         }
     }
 
-    private async Task OnRoleChanged(string roleName)
+    private async Task OnRoleChanged(ChangeEventArgs e)
     {
+        var roleName = e.Value?.ToString() ?? string.Empty;
         _selectedRole = roleName;
         _selectedPageKeys.Clear();
 
@@ -237,14 +276,14 @@ else
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"Failed to load permissions for {roleName}: {ex.Message}", Severity.Error);
+                ShowToast($"Failed to load permissions for {roleName}: {ex.Message}", true);
             }
         }
     }
 
-    private void OnSearchChanged(string text)
+    private void OnSearchChanged(ChangeEventArgs e)
     {
-        _searchText = text ?? string.Empty;
+        _searchText = e.Value?.ToString() ?? string.Empty;
         ApplySearch();
     }
 
@@ -266,8 +305,9 @@ else
         }
     }
 
-    private void TogglePage(string pageKey, bool isChecked)
+    private void TogglePage(string pageKey, ChangeEventArgs e)
     {
+        var isChecked = (bool)(e.Value ?? false);
         if (isChecked)
             _selectedPageKeys.Add(pageKey);
         else
@@ -299,28 +339,39 @@ else
             var result = await AdminService.SaveRolePermissionsAsync(_selectedRole, request);
             if (result?.Success == true)
             {
-                Snackbar.Add($"Permissions saved for '{_selectedRole}' ({_selectedPageKeys.Count} pages).",
-                    Severity.Success);
+                ShowToast($"Permissions saved for '{_selectedRole}' ({_selectedPageKeys.Count} pages).");
             }
             else
             {
-                Snackbar.Add(result?.Message ?? "Failed to save permissions.", Severity.Error);
+                ShowToast(result?.Message ?? "Failed to save permissions.", true);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error saving permissions: {ex.Message}", Severity.Error);
+            ShowToast($"Error saving permissions: {ex.Message}", true);
         }
     }
 
-    private static string GetCategoryIcon(string category) => category switch
+    private static string GetCategoryEmoji(string category) => category switch
     {
-        "Clinical" => Icons.Material.Filled.LocalHospital,
-        "Financial" => Icons.Material.Filled.AttachMoney,
-        "Admin" => Icons.Material.Filled.AdminPanelSettings,
-        "Reports" => Icons.Material.Filled.BarChart,
-        _ => Icons.Material.Filled.Web
+        "Clinical" => "🏥",
+        "Financial" => "💰",
+        "Admin" => "🛡️",
+        "Reports" => "📊",
+        _ => "🌐"
     };
+
+    private void ShowToast(string message, bool isError = false)
+    {
+        _toastMessage = message;
+        _toastIsError = isError;
+        StateHasChanged();
+    }
+
+    private void DismissToast()
+    {
+        _toastMessage = null;
+    }
 
     private void NavigateBackToUsers()
     {

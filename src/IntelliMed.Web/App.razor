@@ -1,10 +1,5 @@
 ﻿@inject ILoggerService Logger
 
-<MudThemeProvider />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-
 <ErrorBoundary>
     <ChildContent>
         <Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">

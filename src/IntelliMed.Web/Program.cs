@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using IntelliMed.Web;
 using IntelliMed.UI.Services;
 using IntelliMed.Web.Services;
-using MudBlazor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -29,8 +28,6 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 // Front-end error logging service
 builder.Services.AddScoped<ILoggerService, LoggerService>();
-// MudBlazor services
-builder.Services.AddMudServices();
 
 var host = builder.Build();
 
