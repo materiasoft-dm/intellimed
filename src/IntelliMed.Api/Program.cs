@@ -154,6 +154,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
     app.UseWebAssemblyDebugging();
+
+    // In Development mode, the project wwwroot doesn't have _framework files.
+    // They're in bin/Debug/net10.0/wwwroot from the CopyBlazorWasmOutput target.
+    // Add a static file provider that serves from the build output directory
+    // so _framework/* files resolve correctly (fixes SRI integrity failures).
+    var buildOutputWwwRoot = Path.Combine(app.Environment.ContentRootPath, "bin", "Debug", "net10.0", "wwwroot");
+    if (Directory.Exists(buildOutputWwwRoot))
+    {
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(buildOutputWwwRoot),
+            // Serve before the default static files so _framework takes priority
+        });
+    }
 }
 else
 {

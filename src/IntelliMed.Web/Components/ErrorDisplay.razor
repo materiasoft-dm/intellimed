@@ -3,8 +3,8 @@
 @inject NavigationManager NavigationManager
 
 <div class="error-boundary-overlay visible">
-    <div class="error-boundary-card bg-white pa-6">
-        <div class="d-flex align-center mb-4">
+    <div class="error-boundary-card bg-white p-4 rounded shadow-lg">
+        <div class="d-flex align-items-center mb-4">
             <span class="text-danger me-3" style="font-size: 2rem;">⚠️</span>
             <h5 class="text-danger mb-0">Something went wrong</h5>
         </div>
@@ -13,7 +13,7 @@
 
         @if (!string.IsNullOrEmpty(Exception.StackTrace))
         {
-            <div class="error-stacktrace pa-3 mb-4 border rounded">
+            <div class="error-stacktrace p-3 mb-4 border rounded">
                 <pre class="error-stacktrace-text" style="white-space: pre-wrap; font-family: monospace; max-height: 200px; overflow-y: auto; color: #616161;">@Exception.StackTrace</pre>
             </div>
         }
