@@ -28,6 +28,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 // Front-end error logging service
 builder.Services.AddScoped<ILoggerService, LoggerService>();
+// Patient management service
+builder.Services.AddScoped<IPatientService, PatientService>();
 
 var host = builder.Build();
 

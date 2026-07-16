@@ -1,0 +1,73 @@
+@page "/patients/add"
+@using IntelliMed.Core.DTOs
+@using Microsoft.AspNetCore.Components.Forms
+@inject IPatientService PatientService
+@inject NavigationManager NavManager
+
+<h3>Add New Patient</h3>
+
+<EditForm Model="patient" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="mb-3">
+        <label class="form-label">First Name</label>
+        <InputText @bind-Value="patient.FirstName" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Last Name</label>
+        <InputText @bind-Value="patient.LastName" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Date of Birth</label>
+        <InputDate @bind-Value="patient.DateOfBirth" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText @bind-Value="patient.Email" type="email" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Phone</label>
+        <InputText @bind-Value="patient.Phone" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Address</label>
+        <InputText @bind-Value="patient.Address" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Suburb</label>
+        <InputText @bind-Value="patient.Suburb" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">State</label>
+        <InputText @bind-Value="patient.State" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Postcode</label>
+        <InputText @bind-Value="patient.Postcode" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Medicare Number</label>
+        <InputText @bind-Value="patient.MedicareNumber" class="form-control" />
+    </div>
+    <!-- Additional optional fields can be added similarly -->
+    <button type="submit" class="btn btn-primary">Create Patient</button>
+</EditForm>
+
+@code {
+    private CreatePatientDto patient = new();
+
+    private async Task HandleValidSubmit()
+    {
+        var success = await PatientService.CreatePatientAsync(patient);
+        if (success)
+        {
+            // Navigate back to patient list or home page
+            NavManager.NavigateTo("/patients");
+        }
+        else
+        {
+            // Simple error handling – could show a toast or message
+            Console.Error.WriteLine("Failed to create patient.");
+        }
+    }
+}
