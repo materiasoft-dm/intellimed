@@ -1,0 +1,152 @@
+@page "/patients"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@using IntelliMed.Web.Components
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+
+<PageTitle>Patients - IntelliMed</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-2">
+    <h5 class="mb-0">🩺 Patients</h5>
+    <div class="d-flex gap-1">
+        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync" disabled="@_isLoading">
+            🔄 Refresh
+        </button>
+        <button class="btn btn-sm btn-primary" @onclick="GoToAdd">
+            ➕ New Patient
+        </button>
+    </div>
+</div>
+
+@* Status bar *@
+<div class="card mb-2">
+    <div class="card-body py-1 px-2 d-flex align-items-center justify-content-between">
+        <span class="text-muted small">
+            Showing <strong>@_patients.Count</strong> of <strong>@_totalCount</strong> patients
+        </span>
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <span class="text-danger small">⚠️ @_error</span>
+        }
+    </div>
+</div>
+
+@* Loading state *@
+@if (_isLoading && _patients.Count == 0)
+{
+    <div class="card text-center py-3">
+        <div class="card-body py-2">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading patients...
+        </div>
+    </div>
+}
+else if (_patients.Count == 0)
+{
+    <div class="card text-center py-3">
+        <div class="card-body py-2 text-muted">
+            No patients found.
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <ResizableTable @ref="_table"
+                            Id="patients-grid"
+                            Columns="_columns"
+                            Data="_gridData"
+                            PageSize="20"
+                            Search="true"
+                            Sort="true"
+                            Resizable="true" />
+        </div>
+    </div>
+}
+
+@code {
+    private ResizableTable? _table;
+    private List<PatientDto> _patients = new();
+    private int _totalCount;
+    private bool _isLoading;
+    private string? _error;
+
+    private static readonly IReadOnlyList<GridColumn> _columns = new List<GridColumn>
+    {
+        new() { Name = "ID", Width = "70px" },
+        new() { Name = "Name" },
+        new() { Name = "Age", Width = "60px" },
+        new() { Name = "D.O.B.", Width = "110px" },
+        new() { Name = "Phone" },
+        new() { Name = "Email" },
+        new() { Name = "Medicare#", Width = "110px" },
+        new() { Name = "Status", Width = "80px" },
+        new() { Name = "", Width = "60px", Sortable = false }
+    };
+
+    private IReadOnlyList<IReadOnlyList<object?>> _gridData = Array.Empty<IReadOnlyList<object?>>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            var search = new PatientSearchDto
+            {
+                Page = 1,
+                PageSize = 200  // Fetch all for client-side Grid.js pagination
+            };
+            var result = await PatientService.SearchPatientsAsync(search);
+            _patients = result.Items.ToList();
+            _totalCount = result.TotalCount;
+
+            _gridData = _patients.Select(p => new List<object?>
+            {
+                p.Id.ToString("D5"),
+                $"<strong>{System.Net.WebUtility.HtmlEncode(p.FullName)}</strong>",
+                p.Age,
+                p.DateOfBirth.ToString("dd/MM/yyyy"),
+                p.Phone,
+                p.Email,
+                p.MedicareNumber,
+                p.IsActive
+                    ? "<span class='badge bg-success'>Active</span>"
+                    : "<span class='badge bg-secondary'>Inactive</span>",
+                $"<button class='btn btn-sm btn-outline-primary' onclick='window.IntelliMedNavigate({p.Id})'>View</button>"
+            }).ToList<IReadOnlyList<object?>>();
+
+            // Refresh the grid after data loads (Grid.js renders on first render before data is available)
+            if (_table != null)
+            {
+                await _table.RefreshAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ViewPatient(int id)
+    {
+        Navigation.NavigateTo($"/patients/search?focus={id}");
+    }
+
+    private void GoToAdd()
+    {
+        Navigation.NavigateTo("/patients/add");
+    }
+}

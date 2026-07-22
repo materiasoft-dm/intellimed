@@ -1,0 +1,360 @@
+@page "/patients/search"
+@layout MainLayout
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using System.Linq
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+
+<PageTitle>Patient Search - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Patient Search</h4>
+
+@* Toolbar with total count and refresh button *@
+<div class="card mb-4">
+    <div class="card-body d-flex align-items-center justify-content-between">
+        <span class="d-flex align-items-center">
+            <span class="me-2">🩺</span>
+            Total Patients: @(_totalCount)
+        </span>
+        <button class="btn btn-primary" @onclick="RefreshAsync">🔄 Refresh</button>
+    </div>
+</div>
+
+@* Loading and error states *@
+@if (_isLoading)
+{
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading patients...
+        </div>
+    </div>
+}
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger d-flex align-items-center mb-4">
+        ⚠️ @_error
+        <button class="btn btn-outline-danger btn-sm ms-auto" @onclick="LoadPatientsAsync">Retry</button>
+    </div>
+}
+
+@* Layout: left sidebar (≈20%) and main area *@
+<div class="row">
+    @* Left-Hand Sidebar *@
+    <div class="col-2">
+        <div class="card mb-4">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs">
+                    <li class="nav-item"><a class="nav-link active" href="#">Basic</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Advance</a></li>
+                </ul>
+            </div>
+            <div class="card-body" style="max-height: 70vh; overflow-y: auto;">
+                @* Basic Search Fields *@
+                <div class="mb-2">
+                    <label class="form-label">Family/Org</label>
+                    <input class="form-control" @bind="_familyOrg" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">First</label>
+                    <input class="form-control" @bind="_firstName" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Medicare#</label>
+                    <input class="form-control" @bind="_medicareNumber" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Gender</label>
+                    <select class="form-select" @bind="_gender">
+                        <option>All</option>
+                        <option>Male</option>
+                        <option>Female</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">DVA#</label>
+                    <input class="form-control" @bind="_dvaNumber" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">File#</label>
+                    <input class="form-control" @bind="_fileNumber" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Pension/HCC</label>
+                    <input class="form-control" @bind="_pension" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Fund#</label>
+                    <input class="form-control" @bind="_fundNumber" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Lifecard#</label>
+                    <input class="form-control" @bind="_lifecardNumber" />
+                </div>
+                @* DOB range *@
+                <div class="mb-2 d-flex align-items-center">
+                    <label class="form-label me-2 mb-0">D.O.B.</label>
+                    <input type="date" class="form-control me-1" style="width:45%" @bind="_dobFrom" />
+                    <span class="mx-1">and</span>
+                    <input type="date" class="form-control" style="width:45%" @bind="_dobTo" />
+                </div>
+                @* Address fields *@
+                <div class="mb-2">
+                    <label class="form-label">Address</label>
+                    <input class="form-control" @bind="_address" />
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-4"><input class="form-control" placeholder="Suburb" @bind="_suburb" /></div>
+                    <div class="col-4"><input class="form-control" placeholder="Postcode" @bind="_postcode" /></div>
+                    <div class="col-4"><select class="form-select" @bind="_state"><option>State</option></select></div>
+                </div>
+                @* Postal address duplicate (omitted for brevity) *@
+                @* Phone & Email grid *@
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><input class="form-control" placeholder="Home Phone" @bind="_homePhone" /></div>
+                    <div class="col-6"><input class="form-control" placeholder="B.H." @bind="_bhPhone" /></div>
+                    <div class="col-6"><input class="form-control" placeholder="Mobile Phone" @bind="_mobilePhone" /></div>
+                    <div class="col-6"><input class="form-control" placeholder="Email" @bind="_email" /></div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">ATSI</label>
+                    <select class="form-select" @bind="_atsi"><option>All</option></select>
+                </div>
+                @* Additional date ranges (Created, Medicare EXP, PHI Joined) *@
+                <div class="mb-2 d-flex align-items-center">
+                    <label class="form-label me-2 mb-0">Created</label>
+                    <input type="date" class="form-control me-1" style="width:45%" @bind="_createdFrom" />
+                    <span class="mx-1">and</span>
+                    <input type="date" class="form-control" style="width:45%" @bind="_createdTo" />
+                </div>
+                @* Footer buttons *@
+                <div class="d-flex justify-content-between mt-3">
+                    <button class="btn btn-primary" @onclick="LoadPatientsAsync">Find</button>
+                    <button class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @* Main Patient Data Grid *@
+    <div class="col-10">
+        @if (!_isLoading && _patients != null)
+        {
+            <div class="card">
+                <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                    <table class="table table-hover table-striped table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th></th>
+                                <th>Patient Name</th>
+                                <th>Preferred</th>
+                                <th>D.O.B.</th>
+                                <th>File#</th>
+                                <th>Street Address</th>
+                                <th>Home Phone</th>
+                                <th>B.H. Phone</th>
+                                <th>Mobile Phone</th>
+                                <th>Gender</th>
+                                <th>DF Acc. Type</th>
+                                <th>Medicare#</th>
+                                <th>Veteran#</th>
+                                <th>Fund ID</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in _patients)
+                            {
+                                <tr class="@(p == _selectedPatient ? "table-primary" : "")" @onclick="() => SelectPatient(p)">
+                                    <td>@(p == _selectedPatient ? "▶" : "")</td>
+                                    <td>@p.FullName</td>
+                                    <td>@p.FirstName</td>
+                                    <td>@p.DateOfBirth:dd/MM/yyyy</td>
+                                    <td>@p.Id.ToString("D5")</td>
+                                    <td>@p.FullAddress</td>
+                                    <td>@p.Phone</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td>@p.MedicareNumber</td>
+                                    <td></td>
+                                    <td>@p.HealthFundName</td>
+                                    <td>@p.Email</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @* Pagination *@
+                @if (_totalCount > _pageSize)
+                {
+                    <div class="card-footer d-flex justify-content-between align-items-center">
+                        <span class="text-muted small">
+                            Showing @((_currentPage - 1) * _pageSize + 1)-@Math.Min(_currentPage * _pageSize, _totalCount) of @_totalCount
+                        </span>
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item @(_currentPage <= 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(1)" disabled="@(_currentPage <= 1)">««</button>
+                                </li>
+                                <li class="page-item @(_currentPage <= 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(_currentPage - 1)" disabled="@(_currentPage <= 1)">«</button>
+                                </li>
+                                @for (int i = 1; i <= _totalPages; i++)
+                                {
+                                    <li class="page-item @(i == _currentPage ? "active" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                                    </li>
+                                }
+                                <li class="page-item @(_currentPage >= _totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(_currentPage + 1)" disabled="@(_currentPage >= _totalPages)">»</button>
+                                </li>
+                                <li class="page-item @(_currentPage >= _totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(_totalPages)" disabled="@(_currentPage >= _totalPages)">»»</button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                }
+            </div>
+        }
+        @* Bottom Action Bar *@
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>Total: @_totalCount</div>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary" @onclick="()=>{}">Graph</button>
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Send SMS/Email</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#">Send SMS</a></li>
+                    <li><a class="dropdown-item" href="#">Send Email</a></li>
+                </ul>
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Enterprise Verification</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#">Verify</a></li>
+                </ul>
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Patient Verification</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#">Verify</a></li>
+                </ul>
+                <button class="btn btn-outline-secondary" @onclick="ExportCsvAsync">Export</button>
+                <button class="btn btn-outline-secondary" @onclick="()=>{}">Edit</button>
+                <button class="btn btn-outline-secondary" @onclick="()=>{}">New Org</button>
+                <button class="btn btn-outline-secondary" @onclick="()=>{}">New Person</button>
+                <button class="btn btn-outline-secondary" @onclick="()=>{}">Archive</button>
+                <button class="btn btn-outline-secondary" @onclick="()=>{}">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<PatientDto> _patients = new();
+    private PatientDto? _selectedPatient;
+    private int _totalCount;
+    private bool _isLoading;
+    private string? _error;
+    private int _currentPage = 1;
+    private int _pageSize = 10;
+    private int _totalPages => (int)Math.Ceiling((double)_totalCount / _pageSize);
+
+    // Filter fields (basic only)
+    private string? _familyOrg;
+    private string? _firstName;
+    private string? _medicareNumber;
+    private string? _gender = "All";
+    private string? _dvaNumber;
+    private string? _fileNumber;
+    private string? _pension;
+    private string? _fundNumber;
+    private string? _lifecardNumber;
+    private DateTime? _dobFrom;
+    private DateTime? _dobTo;
+    private string? _address;
+    private string? _suburb;
+    private string? _postcode;
+    private string? _state;
+    private string? _homePhone;
+    private string? _bhPhone;
+    private string? _mobilePhone;
+    private string? _email;
+    private string? _atsi;
+    private DateTime? _createdFrom;
+    private DateTime? _createdTo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPatientsAsync();
+    }
+
+    private async Task LoadPatientsAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            var search = new PatientSearchDto
+            {
+                Query = _familyOrg, // simplistic mapping; real implementation would combine fields
+                Page = _currentPage,
+                PageSize = _pageSize,
+                IsActive = null
+            };
+            var result = await PatientService.SearchPatientsAsync(search);
+            _patients = result.Items.ToList();
+            _totalCount = result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RefreshAsync() => await LoadPatientsAsync();
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1) page = 1;
+        if (page > _totalPages) page = _totalPages;
+        _currentPage = page;
+        await LoadPatientsAsync();
+    }
+
+    private void SelectPatient(PatientDto patient)
+    {
+        _selectedPatient = patient;
+    }
+
+    private void ClearFilters()
+    {
+        _familyOrg = _firstName = _medicareNumber = _dvaNumber = _fileNumber = _pension = _fundNumber = _lifecardNumber = null;
+        _gender = "All";
+        _dobFrom = _dobTo = _createdFrom = _createdTo = null;
+        _address = _suburb = _postcode = _state = _homePhone = _bhPhone = _mobilePhone = _email = _atsi = null;
+    }
+
+    private async Task ExportCsvAsync()
+    {
+        var csv = new StringBuilder();
+        csv.AppendLine("FullName,DateOfBirth,Email,PhoneNumber,IsActive");
+        foreach (var p in _patients)
+        {
+            var line = $"\"{p.FullName}\",{p.DateOfBirth:yyyy-MM-dd},\"{p.Email}\",\"{p.Phone}\",{p.IsActive}";
+            csv.AppendLine(line);
+        }
+        var bytes = Encoding.UTF8.GetBytes(csv.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+        var url = $"data:text/csv;base64,{base64}";
+        await JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+}

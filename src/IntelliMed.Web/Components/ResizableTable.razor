@@ -1,0 +1,92 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+
+<div id="@_elementId" class="gridjs-container"></div>
+
+@code {
+    [Parameter] public string Id { get; set; } = $"grid_{Guid.NewGuid():N}";
+    [Parameter] public IReadOnlyList<GridColumn> Columns { get; set; } = Array.Empty<GridColumn>();
+    [Parameter] public IReadOnlyList<IReadOnlyList<object?>> Data { get; set; } = Array.Empty<IReadOnlyList<object?>>();
+    [Parameter] public int PageSize { get; set; } = 20;
+    [Parameter] public bool Search { get; set; } = true;
+    [Parameter] public bool Sort { get; set; } = true;
+    [Parameter] public bool Resizable { get; set; } = true;
+    [Parameter] public string? Height { get; set; }
+    [Parameter] public EventCallback<IReadOnlyList<object?>> OnRowClick { get; set; }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private string _elementId => Id;
+    private bool _isInitialized;
+    private DotNetObjectReference<ResizableTable>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("eval", "window._intelliMedDotNet = arguments[0];", _dotNetRef);
+            await RenderGrid();
+            _isInitialized = true;
+        }
+    }
+
+    /// <summary>
+    /// Called from JS when a View button is clicked.
+    /// </summary>
+    [JSInvokable("NavigateToPatient")]
+    public void NavigateToPatient(int id)
+    {
+        // This will be overridden by the parent via OnRowClick or handled directly
+    }
+
+    /// <summary>
+    /// Re-render the grid with new data (call after data changes).
+    /// </summary>
+    public async Task RefreshAsync()
+    {
+        if (!_isInitialized)
+        {
+            await RenderGrid();
+            _isInitialized = true;
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("IntelliMedGrid.updateData", _elementId, Data);
+        }
+    }
+
+    private async Task RenderGrid()
+    {
+        var columns = Columns.Select(c => new
+        {
+            name = c.Name,
+            id = c.Id ?? c.Name.ToLowerInvariant(),
+            sort = c.Sortable,
+            width = c.Width,
+            formatter = c.FormatterName
+        }).ToList();
+
+        var options = new
+        {
+            columns,
+            data = Data,
+            pagination = new { limit = PageSize },
+            search = Search,
+            sort = Sort,
+            resizable = Resizable,
+            height = Height
+        };
+
+        await JS.InvokeVoidAsync("IntelliMedGrid.create", _elementId, options);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_isInitialized)
+        {
+            await JS.InvokeVoidAsync("IntelliMedGrid.destroy", _elementId);
+        }
+        _dotNetRef?.Dispose();
+    }
+}

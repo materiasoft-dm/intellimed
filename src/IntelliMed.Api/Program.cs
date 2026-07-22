@@ -1,6 +1,8 @@
 using System.Text;
 using IntelliMed.Core.Entities;
+using IntelliMed.Core.Interfaces;
 using IntelliMed.Infrastructure.Data;
+using IntelliMed.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +20,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
+
+builder.Services.AddScoped<IPatientRepository, PatientRepository>();
 
 // ============================================================================
 // ASP.NET IDENTITY CONFIGURATION

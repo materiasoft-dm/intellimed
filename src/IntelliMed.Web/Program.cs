@@ -26,6 +26,8 @@ builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 // Admin service for user/role management
 builder.Services.AddScoped<IAdminService, AdminService>();
+// Patient service for patient management
+builder.Services.AddScoped<IPatientService, PatientService>();
 // Front-end error logging service
 builder.Services.AddScoped<ILoggerService, LoggerService>();
 

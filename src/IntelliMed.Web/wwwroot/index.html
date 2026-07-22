@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>IntelliMed</title>
+    <base href="/" />
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+</head>
+<body>
+    <div id="app">Loading...</div>
+    <script>
+        window.BlazorTheme = {
+            setTheme: function (theme) {
+                document.body.className = theme;
+            }
+        };
+    </script>
+    <script>
+        // Ensure Bootstrap CSS is loaded even after Blazor head manipulation
+        (function() {
+            if (!document.querySelector('link[href*="bootstrap"]')) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css';
+                document.head.appendChild(link);
+            }
+            // Also observe for head changes and re-add if removed
+            var observer = new MutationObserver(function() {
+                if (!document.querySelector('link[href*="bootstrap.min.css"]')) {
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css';
+                    document.head.appendChild(link);
+                }
+                if (!document.querySelector('link[href*="bootstrap-icons"]')) {
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css';
+                    document.head.appendChild(link);
+                }
+            });
+            observer.observe(document.head, { childList: true });
+        })();
+    </script>
+    <script type="module">
+        import { Grid, h } from 'https://cdn.jsdelivr.net/npm/gridjs@6.1.1/dist/gridjs.module.js';
+        window.gridjs = { Grid, h };
+    </script>
+    <script src="js/gridjs-interop.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+</html>
