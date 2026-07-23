@@ -1,8 +1,7 @@
 using System.Text;
 using IntelliMed.Core.Entities;
-using IntelliMed.Core.Interfaces;
+using IntelliMed.Infrastructure;
 using IntelliMed.Infrastructure.Data;
-using IntelliMed.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -18,10 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=intellimed.db";
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(connectionString));
-
-builder.Services.AddScoped<IPatientRepository, PatientRepository>();
+builder.Services.AddInfrastructure(connectionString);
 
 // ============================================================================
 // ASP.NET IDENTITY CONFIGURATION
@@ -131,8 +127,8 @@ using (var scope = app.Services.CreateScope())
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
-        // Ensure database is created
-        await context.Database.EnsureCreatedAsync();
+        // Apply pending EF Core migrations
+        await context.Database.MigrateAsync();
 
         // Seed roles
         await SeedRolesAsync(roleManager);

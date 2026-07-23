@@ -10,4 +10,5 @@ public interface IPatientRepository : IRepository<Patient>
     Task<(IEnumerable<PatientDto> Items, int TotalCount)> GetPagedAsync(PatientSearchDto search);
     Task<int> CreateAsync(CreatePatientDto dto);
     Task UpdateAsync(int id, UpdatePatientDto dto);
+    Task ArchiveAsync(int id);
 }

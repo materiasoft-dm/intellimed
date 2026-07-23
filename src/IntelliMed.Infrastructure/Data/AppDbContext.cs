@@ -20,6 +20,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<PatientAddress> PatientAddresses => Set<PatientAddress>();
+    public DbSet<PatientReferral> PatientReferrals => Set<PatientReferral>();
+    public DbSet<PatientCompensationClaim> PatientCompensationClaims => Set<PatientCompensationClaim>();
+    public DbSet<PatientOccupation> PatientOccupations => Set<PatientOccupation>();
+    public DbSet<PatientFamilyRelationship> PatientFamilyRelationships => Set<PatientFamilyRelationship>();
+    public DbSet<UserDefinedFieldType> UserDefinedFieldTypes => Set<UserDefinedFieldType>();
+    public DbSet<PatientUserDefinedFieldValue> PatientUserDefinedFieldValues => Set<PatientUserDefinedFieldValue>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,8 +50,163 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Phone).HasMaxLength(20);
             entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.MedicareNumber).HasMaxLength(20);
+            entity.Property(e => e.MiddleName).HasMaxLength(100);
+            entity.Property(e => e.PreferredName).HasMaxLength(100);
+            entity.Property(e => e.MaidenName).HasMaxLength(100);
+            entity.Property(e => e.Title).HasMaxLength(20);
+            entity.Property(e => e.PlaceOfBirth).HasMaxLength(255);
+            entity.Property(e => e.InterpreterLanguage).HasMaxLength(100);
+            entity.Property(e => e.Ethnicity).HasMaxLength(100);
+            entity.Property(e => e.EntitlementStatus).HasMaxLength(50);
+            entity.Property(e => e.SafetyNetNumber).HasMaxLength(50);
+            entity.Property(e => e.HealthFundCode).HasMaxLength(20);
+            entity.Property(e => e.HealthFundRef).HasMaxLength(50);
+            entity.Property(e => e.HealthFundAliasFamily).HasMaxLength(100);
+            entity.Property(e => e.HealthFundAliasFirst).HasMaxLength(100);
+            entity.Property(e => e.FeeRateCode).HasMaxLength(20);
+            entity.Property(e => e.PayerName).HasMaxLength(200);
+            entity.Property(e => e.AccountName).HasMaxLength(200);
+            entity.Property(e => e.AccountBsb).HasMaxLength(10);
+            entity.Property(e => e.AccountNumber).HasMaxLength(30);
+            entity.Property(e => e.FileNumber).HasMaxLength(50);
+            entity.Property(e => e.UrNumber).HasMaxLength(50);
+            entity.Property(e => e.BusinessHoursPhone).HasMaxLength(20);
+            entity.Property(e => e.MobilePhone).HasMaxLength(20);
+            entity.Property(e => e.FaxNumber).HasMaxLength(20);
+            entity.Property(e => e.NextOfKinName).HasMaxLength(200);
+            entity.Property(e => e.NextOfKinPhone).HasMaxLength(20);
+            entity.Property(e => e.EmergencyContactName).HasMaxLength(200);
+            entity.Property(e => e.EmergencyContactPhone).HasMaxLength(20);
+            entity.Property(e => e.IhiNumber).HasMaxLength(16);
+            entity.Property(e => e.IhiRecordStatus).HasMaxLength(50);
+            entity.Property(e => e.IhiNumberStatus).HasMaxLength(50);
+            entity.Property(e => e.LifeCardNum).HasMaxLength(50);
             entity.HasIndex(e => e.MedicareNumber);
             entity.HasIndex(e => new { e.LastName, e.FirstName });
+
+            entity.HasOne(e => e.NextOfKinPatient)
+                .WithMany()
+                .HasForeignKey(e => e.NextOfKinPatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.EmergencyContactPatient)
+                .WithMany()
+                .HasForeignKey(e => e.EmergencyContactPatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.PayerPatient)
+                .WithMany()
+                .HasForeignKey(e => e.PayerPatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Provider)
+                .WithMany()
+                .HasForeignKey(e => e.ProviderId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PatientAddress configuration
+        modelBuilder.Entity<PatientAddress>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.AddressLine1).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.AddressLine2).HasMaxLength(255);
+            entity.Property(e => e.Suburb).HasMaxLength(100);
+            entity.Property(e => e.Postcode).HasMaxLength(10);
+            entity.Property(e => e.State).HasMaxLength(10);
+            entity.Property(e => e.AddressSubType).HasMaxLength(50);
+            entity.Property(e => e.Community).HasMaxLength(100);
+            entity.HasOne(e => e.Patient)
+                .WithMany()
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => new { e.PatientId, e.AddressType });
+        });
+
+        // PatientReferral configuration
+        modelBuilder.Entity<PatientReferral>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ReferralPeriod).HasMaxLength(2);
+            entity.Property(e => e.ReferringProviderName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ReferringProviderNumber).HasMaxLength(20);
+            entity.Property(e => e.RequestTypeCde).HasMaxLength(1);
+            entity.Property(e => e.Note).HasMaxLength(255);
+            entity.HasOne(e => e.Patient)
+                .WithMany()
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.PatientId);
+        });
+
+        // PatientCompensationClaim configuration
+        modelBuilder.Entity<PatientCompensationClaim>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ClaimNum).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.EmployerName).HasMaxLength(200);
+            entity.Property(e => e.CaseManagerName).HasMaxLength(200);
+            entity.Property(e => e.PayerName).HasMaxLength(200);
+            entity.Property(e => e.PublicNote).HasMaxLength(500);
+            entity.Property(e => e.PrivateNote).HasMaxLength(500);
+            entity.HasOne(e => e.Patient)
+                .WithMany()
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.PatientId);
+        });
+
+        // PatientOccupation configuration
+        modelBuilder.Entity<PatientOccupation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Occupation).HasMaxLength(255);
+            entity.Property(e => e.Employer).HasMaxLength(255);
+            entity.Property(e => e.Comment).HasMaxLength(255);
+            entity.HasOne(e => e.Patient)
+                .WithMany()
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.PatientId);
+        });
+
+        // PatientFamilyRelationship configuration
+        modelBuilder.Entity<PatientFamilyRelationship>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RelationshipType).HasMaxLength(50);
+            entity.HasOne(e => e.Patient)
+                .WithMany()
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.RelativePatient)
+                .WithMany()
+                .HasForeignKey(e => e.RelativePatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.PatientId);
+        });
+
+        // UserDefinedFieldType configuration
+        modelBuilder.Entity<UserDefinedFieldType>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.DefaultValue).HasMaxLength(255);
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        // PatientUserDefinedFieldValue configuration
+        modelBuilder.Entity<PatientUserDefinedFieldValue>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Value).HasMaxLength(255);
+            entity.Property(e => e.Note).HasMaxLength(255);
+            entity.HasOne(e => e.Patient)
+                .WithMany()
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.UserDefinedFieldType)
+                .WithMany()
+                .HasForeignKey(e => e.UserDefinedFieldTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.PatientId);
         });
 
         // Practitioner configuration

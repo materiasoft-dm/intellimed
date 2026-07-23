@@ -28,16 +28,55 @@ public class PatientService : IPatientService
             ?? new PagedResult<PatientDto>();
     }
 
-    public async Task<bool> CreatePatientAsync(CreatePatientDto dto)
+    private record CreateResult(int Id);
+
+    public async Task<int?> CreatePatientAsync(CreatePatientDto dto)
     {
         try
         {
             var response = await _httpClient.PostAsJsonAsync("api/patients", dto);
-            return response.IsSuccessStatusCode;
+            if (!response.IsSuccessStatusCode) return null;
+            var result = await response.Content.ReadFromJsonAsync<CreateResult>();
+            return result?.Id;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Create patient error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<PatientDto?> GetPatientByIdAsync(int id)
+    {
+        var response = await _httpClient.GetAsync($"api/patients/{id}");
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<PatientDto>();
+    }
+
+    public async Task<bool> UpdatePatientAsync(int id, UpdatePatientDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/patients/{id}", dto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Update patient error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> ArchivePatientAsync(int id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/patients/{id}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Archive patient error: {ex.Message}");
             return false;
         }
     }

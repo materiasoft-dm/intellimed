@@ -19,14 +19,14 @@ public static class ServiceExtensions
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IPractitionerRepository, PractitionerRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IPatientAddressRepository, PatientAddressRepository>();
+        services.AddScoped<IPatientReferralRepository, PatientReferralRepository>();
+        services.AddScoped<IPatientCompensationClaimRepository, PatientCompensationClaimRepository>();
+        services.AddScoped<IPatientOccupationRepository, PatientOccupationRepository>();
+        services.AddScoped<IPatientFamilyRelationshipRepository, PatientFamilyRelationshipRepository>();
+        services.AddScoped<IUserDefinedFieldTypeRepository, UserDefinedFieldTypeRepository>();
+        services.AddScoped<IPatientUserDefinedFieldValueRepository, PatientUserDefinedFieldValueRepository>();
 
         return services;
-    }
-
-    public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
-    {
-        using var scope = serviceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await context.Database.EnsureCreatedAsync();
     }
 }

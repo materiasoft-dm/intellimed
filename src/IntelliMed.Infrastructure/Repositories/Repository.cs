@@ -65,17 +65,6 @@ public class Repository<T> : IRepository<T> where T : class
     }
 }
 
-public class PagedResult<T>
-{
-    public IEnumerable<T> Items { get; set; } = Enumerable.Empty<T>();
-    public int TotalCount { get; set; }
-    public int Page { get; set; }
-    public int PageSize { get; set; }
-    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
-    public bool HasPreviousPage => Page > 1;
-    public bool HasNextPage => Page < TotalPages;
-}
-
 public class PagedRepository<T> : Repository<T>, IPagedRepository<T> where T : class
 {
     public PagedRepository(AppDbContext context) : base(context)

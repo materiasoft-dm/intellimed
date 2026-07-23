@@ -59,6 +59,17 @@ public class PatientRepository : Repository<Patient>, IPatientRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task ArchiveAsync(int id)
+    {
+        var patient = await _dbSet.FindAsync(id);
+        if (patient == null)
+            throw new InvalidOperationException($"Patient with ID {id} not found");
+
+        patient.IsActive = false;
+        patient.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
+
     private IQueryable<Patient> BuildSearchQuery(PatientSearchDto search)
     {
         var query = _dbSet.AsQueryable();

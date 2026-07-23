@@ -30,6 +30,14 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ILoggerService, LoggerService>();
 // Patient management service
 builder.Services.AddScoped<IPatientService, PatientService>();
+// Patient child-resource services (Referrals/WC-TAC/Occupations/Family/Addresses/UDF tabs)
+builder.Services.AddScoped<IPatientReferralService, PatientReferralService>();
+builder.Services.AddScoped<IPatientCompensationClaimService, PatientCompensationClaimService>();
+builder.Services.AddScoped<IPatientOccupationService, PatientOccupationService>();
+builder.Services.AddScoped<IPatientFamilyService, PatientFamilyService>();
+builder.Services.AddScoped<IPatientAddressService, PatientAddressService>();
+builder.Services.AddScoped<IPatientUdfValueService, PatientUdfValueService>();
+builder.Services.AddScoped<IUdfDefinitionService, UdfDefinitionService>();
 
 var host = builder.Build();
 
