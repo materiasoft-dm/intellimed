@@ -7,9 +7,12 @@
 
 <div class="mdi-layout">
     @* Menu Bar — hamburger (mobile only), brand, spacer, user + logout *@
-    <nav class="navbar navbar-dark bg-primary mdi-menu-bar px-2">
+    <nav class="navbar navbar-light mdi-menu-bar px-2">
         <button class="btn btn-primary border-0 d-lg-none" @onclick="ToggleDrawer" title="Menu">
             <span class="navbar-toggler-icon"></span>
+        </button>
+        <button class="btn btn-primary border-0 d-none d-lg-inline-flex" @onclick="ToggleSidebarCollapsed" title="@(_sidebarCollapsed ? "Show sidebar" : "Hide sidebar")">
+            <i class="bi @(_sidebarCollapsed ? "bi-chevron-right" : "bi-chevron-left")"></i>
         </button>
         <span class="navbar-brand mb-0 h6 ms-2 d-none d-sm-inline">IntelliMed</span>
         <div class="flex-grow-1"></div>
@@ -27,16 +30,16 @@
         }
 
         @* Sidebar — always rendered: docked column on desktop, slide-over drawer on mobile *@
-        <nav class="mdi-sidebar @(_drawerOpen ? "mdi-sidebar-open" : "")">
+        <nav class="mdi-sidebar @(_drawerOpen ? "mdi-sidebar-open" : "") @(_sidebarCollapsed ? "mdi-sidebar-collapsed" : "")">
             <div class="mdi-sidebar-header">
-                <h6 class="mx-auto mb-0">IntelliMed</h6>
+                <span class="mdi-logo-mark">IM</span>
+                <h6 class="mb-0">IntelliMed</h6>
             </div>
-            <hr class="my-0" />
 
             <div class="nav flex-column mdi-nav-menu">
                 @* Dashboard *@
                 <a href="/" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                    <i class="bi bi-speedometer2 me-2"></i> <span class="mdi-nav-label">Dashboard</span>
                 </a>
 
                 <hr class="my-2" />
@@ -44,7 +47,7 @@
                 @* Patients Section *@
                 <small class="text-muted px-4 text-uppercase">Patients</small>
                 <a href="/patients/search" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-search me-2"></i> Find Patient
+                    <i class="bi bi-search me-2"></i> <span class="mdi-nav-label">Find Patient</span>
                 </a>
 
                 <hr class="my-2" />
@@ -52,13 +55,13 @@
                 @* Appointments Section *@
                 <small class="text-muted px-4 text-uppercase">Appointments</small>
                 <a href="/appointments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-calendar-week me-2"></i> Appointment List
+                    <i class="bi bi-calendar-week me-2"></i> <span class="mdi-nav-label">Appointment List</span>
                 </a>
                 <a href="/appointments/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-plus-lg me-2"></i> New Appointment
+                    <i class="bi bi-plus-lg me-2"></i> <span class="mdi-nav-label">New Appointment</span>
                 </a>
                 <a href="/appointments/calendar" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-calendar3 me-2"></i> Calendar View
+                    <i class="bi bi-calendar3 me-2"></i> <span class="mdi-nav-label">Calendar View</span>
                 </a>
 
                 <hr class="my-2" />
@@ -66,13 +69,13 @@
                 @* Invoices Section *@
                 <small class="text-muted px-4 text-uppercase">Invoices</small>
                 <a href="/invoices" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-receipt me-2"></i> Invoice List
+                    <i class="bi bi-receipt me-2"></i> <span class="mdi-nav-label">Invoice List</span>
                 </a>
                 <a href="/invoices/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-plus-lg me-2"></i> New Invoice
+                    <i class="bi bi-plus-lg me-2"></i> <span class="mdi-nav-label">New Invoice</span>
                 </a>
                 <a href="/invoices/payments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-credit-card me-2"></i> Payments
+                    <i class="bi bi-credit-card me-2"></i> <span class="mdi-nav-label">Payments</span>
                 </a>
 
                 @* Admin Section — conditional *@
@@ -83,25 +86,25 @@
                     @if (_accessiblePages.Contains("admin/users"))
                     {
                         <a href="/admin/users" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                            <i class="bi bi-person me-2"></i> User Management
+                            <i class="bi bi-person me-2"></i> <span class="mdi-nav-label">User Management</span>
                         </a>
                     }
                     @if (_accessiblePages.Contains("admin/roles"))
                     {
                         <a href="/admin/roles" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                            <i class="bi bi-shield-lock me-2"></i> Role Configuration
+                            <i class="bi bi-shield-lock me-2"></i> <span class="mdi-nav-label">Role Configuration</span>
                         </a>
                     }
                     @if (_accessiblePages.Contains("admin/audit"))
                     {
                         <a href="/admin/audit" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                            <i class="bi bi-graph-up me-2"></i> Audit Log
+                            <i class="bi bi-graph-up me-2"></i> <span class="mdi-nav-label">Audit Log</span>
                         </a>
                     }
                     @if (_accessiblePages.Contains("admin/settings"))
                     {
                         <a href="/admin/settings" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                            <i class="bi bi-gear me-2"></i> System Settings
+                            <i class="bi bi-gear me-2"></i> <span class="mdi-nav-label">System Settings</span>
                         </a>
                     }
                 }
@@ -111,10 +114,10 @@
                 @* Help Section *@
                 <small class="text-muted px-4 text-uppercase">Help</small>
                 <a href="/about" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-info-circle me-2"></i> About IntelliMed
+                    <i class="bi bi-info-circle me-2"></i> <span class="mdi-nav-label">About IntelliMed</span>
                 </a>
                 <a href="/help" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-question-circle me-2"></i> User Guide
+                    <i class="bi bi-question-circle me-2"></i> <span class="mdi-nav-label">User Guide</span>
                 </a>
             </div>
         </nav>
@@ -130,6 +133,7 @@
 
 @code {
     private bool _drawerOpen = false;
+    private bool _sidebarCollapsed = false;
     private string _currentUserName = "User";
     private string _currentUserEmail = "";
     private IList<string> _currentUserRoles = new List<string>();
@@ -212,6 +216,11 @@
     void CloseDrawer()
     {
         _drawerOpen = false;
+    }
+
+    void ToggleSidebarCollapsed()
+    {
+        _sidebarCollapsed = !_sidebarCollapsed;
     }
 
     string GetCurrentUser()

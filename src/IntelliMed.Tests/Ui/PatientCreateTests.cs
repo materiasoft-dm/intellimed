@@ -193,8 +193,7 @@ public class PatientCreateTests
         await page.Field("Email").FillAsync("john.doe@example.com");
 
         // Health Fund
-        await page.FieldInCard("Health Fund", "Fund Id").FillAsync("BUPA");
-        await page.FieldInCard("Health Fund", "Fund Name").FillAsync("BUPA Health Insurance");
+        await page.FieldInCard("Health Fund", "Fund Id").SelectOptionAsync(new SelectOptionValue { Label = "BUP - Bupa" });
 
         // File
         await page.Field("File#").FillAsync("FILE001");
@@ -215,8 +214,7 @@ public class PatientCreateTests
         await Assertions.Expect(page.Field("State")).ToHaveValueAsync("VIC");
         await Assertions.Expect(page.Field("Home Phone")).ToHaveValueAsync("0398765432");
         await Assertions.Expect(page.Field("Email")).ToHaveValueAsync("john.doe@example.com");
-        await Assertions.Expect(page.FieldInCard("Health Fund", "Fund Id")).ToHaveValueAsync("BUPA");
-        await Assertions.Expect(page.FieldInCard("Health Fund", "Fund Name")).ToHaveValueAsync("BUPA Health Insurance");
+        await Assertions.Expect(page.FieldInCard("Health Fund", "Fund Id")).ToHaveValueAsync("2");
         await Assertions.Expect(page.Field("File#")).ToHaveValueAsync("FILE001");
     }
 

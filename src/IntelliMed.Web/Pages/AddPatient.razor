@@ -13,6 +13,7 @@
 @inject IPatientFamilyService FamilyService
 @inject IPatientUdfValueService UdfValueService
 @inject IUdfDefinitionService UdfDefinitionService
+@inject IHealthFundService HealthFundService
 @inject NavigationManager NavManager
 
 <PageTitle>@(Id.HasValue ? "Edit Patient" : "Add Patient") - IntelliMed</PageTitle>
@@ -47,7 +48,15 @@ else
                     <div class="card-body py-1">
                         <div class="row g-1">
                             <div class="col-6">
-                                <label class="form-label small mb-0">Surname</label>
+                                <label class="form-label small mb-0">Type</label>
+                                <InputSelect @bind-Value="_model.Type" class="form-select form-select-sm">
+                                    <option value="@PatientTypeEnum.Person">Person</option>
+                                    <option value="@PatientTypeEnum.Organisation">Organisation</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-6"></div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">@(_model.Type == PatientTypeEnum.Organisation ? "Family/Org" : "Surname")</label>
                                 <InputText @bind-Value="_model.LastName" class="form-control form-control-sm" />
                             </div>
                             <div class="col-6">
@@ -370,13 +379,15 @@ else
                     <div class="card-header py-1"><strong>Health Fund</strong></div>
                     <div class="card-body py-1">
                         <div class="row g-1">
-                            <div class="col-4">
+                            <div class="col-12">
                                 <label class="form-label small mb-0">Fund Id</label>
-                                <InputText @bind-Value="_model.HealthFundCode" class="form-control form-control-sm" />
-                            </div>
-                            <div class="col-8">
-                                <label class="form-label small mb-0">Fund Name</label>
-                                <InputText @bind-Value="_model.HealthFundName" class="form-control form-control-sm" />
+                                <InputSelect @bind-Value="_model.HealthFundId" class="form-select form-select-sm">
+                                    <option value="">-- None --</option>
+                                    @foreach (var fund in _healthFunds)
+                                    {
+                                        <option value="@fund.Id">@fund.Code - @fund.Name</option>
+                                    }
+                                </InputSelect>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small mb-0">Member#</label>
@@ -393,6 +404,10 @@ else
                             <div class="col-6">
                                 <label class="form-label small mb-0">Alias First</label>
                                 <InputText @bind-Value="_model.HealthFundAliasFirst" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Joined</label>
+                                <InputDate @bind-Value="_model.HealthFundJoinDate" class="form-control form-control-sm" />
                             </div>
                         </div>
                     </div>
@@ -424,7 +439,14 @@ else
                             </div>
                             <div class="col-12">
                                 <label class="form-label small mb-0">Payer</label>
-                                <InputText @bind-Value="_model.PayerName" class="form-control form-control-sm" />
+                                <div class="input-group input-group-sm">
+                                    <input class="form-control form-control-sm" value="@_model.PayerName" readonly placeholder="No payer selected" />
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="OpenPayerPicker">Find</button>
+                                    @if (_model.PayerPatientId.HasValue)
+                                    {
+                                        <button type="button" class="btn btn-outline-secondary" @onclick="ClearPayer">x</button>
+                                    }
+                                </div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label small mb-0">Acc. Name</label>
@@ -602,10 +624,49 @@ else
             </div>
         </div>
     }
+
+    @if (_showPayerPickerModal)
+    {
+        <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title">Find Payer</h6>
+                        <button type="button" class="btn-close" @onclick="@(() => _showPayerPickerModal = false)"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input class="form-control form-control-sm mb-2" placeholder="Search by name..."
+                               @bind="_payerSearchTerm" @bind:event="oninput" @bind:after="SearchPayerCandidatesAsync" />
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            @if (_payerSearchResults.Count == 0)
+                            {
+                                <div class="text-muted small">No matches.</div>
+                            }
+                            else
+                            {
+                                <ul class="list-group">
+                                    @foreach (var candidate in _payerSearchResults)
+                                    {
+                                        <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectPayer(candidate))">
+                                            @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showPayerPickerModal = false)">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 @code {
     [Parameter] public int? Id { get; set; }
+    [SupplyParameterFromQuery] public string? Type { get; set; }
 
     private class PatientFormModel : UpdatePatientDto
     {
@@ -619,6 +680,7 @@ else
     private string? _statusMessage;
     private bool _statusIsError;
     private string? _underConstructionMessage;
+    private List<HealthFundDto> _healthFunds = new();
 
     private string _addressTab = "Residential";
     private Dictionary<PatientAddressType, PatientAddressDto> _addressCache = new();
@@ -654,6 +716,11 @@ else
     private string _newFamilyLastName = string.Empty;
     private string _newFamilyRelationship = string.Empty;
 
+    // Payer picker
+    private bool _showPayerPickerModal;
+    private string _payerSearchTerm = string.Empty;
+    private List<PatientDto> _payerSearchResults = new();
+
     // UDF
     private List<PatientUserDefinedFieldValueDto> _udfValues = new();
     private List<UserDefinedFieldTypeDto> _udfDefinitions = new();
@@ -662,6 +729,11 @@ else
     private string? _udfValueText;
     private string? _udfNoteText;
     private int? _editingUdfValueId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _healthFunds = (await HealthFundService.GetAllActiveAsync()).ToList();
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -683,7 +755,10 @@ else
         }
         else
         {
-            _model = new PatientFormModel { DateOfBirth = DateTime.Today.AddYears(-30) };
+            var type = string.Equals(Type, "Organisation", StringComparison.OrdinalIgnoreCase)
+                ? PatientTypeEnum.Organisation
+                : PatientTypeEnum.Person;
+            _model = new PatientFormModel { DateOfBirth = DateTime.Today.AddYears(-30), Type = type };
         }
         _isLoading = false;
     }
@@ -756,6 +831,37 @@ else
         {
             SetStatus("Failed to create family member.", true);
         }
+    }
+
+    private void OpenPayerPicker()
+    {
+        _payerSearchTerm = string.Empty;
+        _payerSearchResults = new();
+        _showPayerPickerModal = true;
+    }
+
+    private async Task SearchPayerCandidatesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_payerSearchTerm))
+        {
+            _payerSearchResults = new();
+            return;
+        }
+        var result = await PatientService.SearchPatientsAsync(new PatientSearchDto { Query = _payerSearchTerm, PageSize = 10 });
+        _payerSearchResults = result.Items.ToList();
+    }
+
+    private void SelectPayer(PatientDto candidate)
+    {
+        _model.PayerPatientId = candidate.Id;
+        _model.PayerName = candidate.FullName;
+        _showPayerPickerModal = false;
+    }
+
+    private void ClearPayer()
+    {
+        _model.PayerPatientId = null;
+        _model.PayerName = null;
     }
 
     private PatientAddressDto GetOrCreateAddress(PatientAddressType type)

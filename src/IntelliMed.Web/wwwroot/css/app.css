@@ -1,5 +1,5 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 0.875rem;
     overflow: hidden;
     height: 100%;
@@ -9,9 +9,9 @@ html, body {
 }
 
 :root {
-    --imed-primary: #0c447c;
-    --imed-primary-dark: #042c53;
-    --imed-primary-light: #e6f1fb;
+    --imed-primary: #4272d7;
+    --imed-primary-dark: #2f5bc4;
+    --imed-primary-light: #eaf0fc;
     --imed-accent: #085041;
     --imed-neutral-900: #1a1a1a;
     --imed-neutral-700: #495057;
@@ -20,6 +20,12 @@ html, body {
     --imed-neutral-100: #f5f7fa;
     --imed-danger: #b02a37;
     --imed-success: #146c43;
+
+    --imed-sidebar-bg: #1c2333;
+    --imed-sidebar-text: rgba(255, 255, 255, 0.85);
+    --imed-sidebar-text-active: #ffffff;
+    --imed-card-radius: 10px;
+    --imed-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 h1:focus {
@@ -134,6 +140,45 @@ code {
     text-align: start;
 }
 
+/* Global card/table restyle so every page (Patients, RoleConfiguration, UserManagement, etc.)
+   picks up the softer rounded/shadowed look with no per-page markup changes. */
+.card {
+    border-radius: var(--imed-card-radius);
+    box-shadow: var(--imed-card-shadow);
+    border: none;
+}
+
+.table thead {
+    background-color: var(--imed-neutral-100);
+}
+
+.table-hover > tbody > tr:hover > * {
+    background-color: var(--imed-primary-light);
+}
+
+/* Soft-tinted icon badges used on dashboard stat tiles / quick-link cards */
+.stat-icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.stat-icon-badge--blue { background: #eaf0fc; color: #4272d7; }
+.stat-icon-badge--green { background: #e7f7ef; color: #146c43; }
+.stat-icon-badge--amber { background: #fdf1e0; color: #b5720a; }
+.stat-icon-badge--purple { background: #f1ebfb; color: #6f42c1; }
+
+.stat-tile-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--imed-neutral-900);
+}
+
 /* App shell: full-width top bar, sidebar + content row below it */
 .mdi-layout {
     height: 100vh;
@@ -143,10 +188,26 @@ code {
 }
 
 .mdi-menu-bar {
-    background-color: var(--imed-primary) !important;
-    color: white !important;
-    border-bottom: 1px solid var(--imed-primary-dark);
+    background-color: #fff !important;
+    color: var(--imed-neutral-900) !important;
+    border-bottom: 1px solid var(--imed-neutral-300);
     flex-shrink: 0;
+}
+
+.mdi-menu-bar .navbar-brand,
+.mdi-menu-bar .navbar-text {
+    color: var(--imed-neutral-900) !important;
+}
+
+.mdi-menu-bar .btn-primary {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--imed-neutral-700) !important;
+}
+
+.mdi-menu-bar .btn-primary:hover {
+    background-color: var(--imed-neutral-100);
+    color: var(--imed-primary) !important;
 }
 
 .mdi-body {
@@ -166,19 +227,110 @@ code {
 .mdi-sidebar {
     width: 240px;
     flex-shrink: 0;
-    background: #fff;
-    border-right: 1px solid var(--imed-neutral-300);
+    background: var(--imed-sidebar-bg);
+    border-right: 1px solid transparent;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    transition: width 0.2s ease, border-color 0.2s ease;
+}
+
+@media (min-width: 992px) {
+    /* Collapsed = icon rail: nav icons stay visible and clickable, labels/section headers hide */
+    .mdi-sidebar.mdi-sidebar-collapsed {
+        width: 68px;
+        overflow: hidden;
+    }
+
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-sidebar-header {
+        justify-content: center;
+        padding: 16px 0;
+    }
+
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-sidebar-header h6,
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-nav-label,
+    .mdi-sidebar.mdi-sidebar-collapsed small.text-muted {
+        display: none;
+    }
+
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-nav-link {
+        justify-content: center;
+        padding: 10px 0 !important;
+    }
+
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-nav-link i {
+        margin-right: 0 !important;
+        font-size: 1.1rem;
+    }
 }
 
 .mdi-sidebar-header {
-    display: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px;
+    min-height: 56px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mdi-logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: var(--imed-primary);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.mdi-sidebar-header h6 {
+    color: var(--imed-sidebar-text-active);
+    margin: 0;
+}
+
+.mdi-sidebar .text-muted {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.mdi-sidebar hr {
+    border-color: rgba(255, 255, 255, 0.08);
+    opacity: 1;
+}
+
+/* Fixed-width label used so filter-panel fields line up with the label to the left of the input */
+.filter-label {
+    width: 92px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+}
+
+/* Narrower label variant for two-column filter rows (e.g. Family/Org + First side by side) */
+.filter-label-sm {
+    width: 68px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Clickable header that toggles a collapsible filter-panel section */
+.filter-section-header {
+    cursor: pointer;
+    padding: 4px 0;
+    user-select: none;
+}
+
+.filter-section-header:hover {
+    color: var(--imed-primary);
 }
 
 .mdi-nav-link {
-    color: var(--imed-neutral-700) !important;
+    color: var(--imed-sidebar-text) !important;
     padding: 10px 24px !important;
     display: flex;
     align-items: center;
@@ -187,14 +339,15 @@ code {
 }
 
 .mdi-nav-link:hover {
-    background-color: var(--imed-primary-light);
-    color: var(--imed-primary) !important;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--imed-sidebar-text-active) !important;
 }
 
 .mdi-nav-link.active {
-    background-color: var(--imed-primary-light);
-    color: var(--imed-primary) !important;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--imed-sidebar-text-active) !important;
     font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--imed-primary);
 }
 
 .mdi-overlay-backdrop {
@@ -217,15 +370,6 @@ code {
 
     .mdi-sidebar.mdi-sidebar-open {
         transform: translateX(0);
-    }
-
-    .mdi-sidebar-header {
-        display: flex;
-        align-items: center;
-        padding: 12px 16px;
-        min-height: 48px;
-        background: var(--imed-neutral-100);
-        border-bottom: 1px solid var(--imed-neutral-300);
     }
 
     .mdi-overlay-backdrop {

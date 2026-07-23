@@ -1,12 +1,11 @@
 @page "/patients/search"
 @layout MainLayout
-@using System.ComponentModel.DataAnnotations
 @using System.Text
-@using System.Text.Encodings.Web
-@using System.Linq
 @using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
 @using IntelliMed.Web.Services
 @inject IPatientService PatientService
+@inject IHealthFundService HealthFundService
 @inject NavigationManager Navigation
 
 <PageTitle>Patient Search - IntelliMed</PageTitle>
@@ -17,10 +16,10 @@
 <div class="card mb-4">
     <div class="card-body d-flex align-items-center justify-content-between">
         <span class="d-flex align-items-center">
-            <span class="me-2">🩺</span>
+            <i class="bi bi-heart-pulse me-2"></i>
             Total Patients: @(_totalCount)
         </span>
-        <button class="btn btn-primary" @onclick="RefreshAsync">🔄 Refresh</button>
+        <button class="btn btn-primary" @onclick="RefreshAsync"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
     </div>
 </div>
 
@@ -37,110 +36,328 @@
 @if (!string.IsNullOrEmpty(_error))
 {
     <div class="alert alert-danger d-flex align-items-center mb-4">
-        ⚠️ @_error
+        <i class="bi bi-exclamation-triangle me-2"></i> @_error
         <button class="btn btn-outline-danger btn-sm ms-auto" @onclick="LoadPatientsAsync">Retry</button>
     </div>
 }
 
-@* Layout: left sidebar (≈20%) and main area *@
+@* Layout: left filter sidebar and main results area *@
 <div class="row">
     @* Left-Hand Sidebar *@
-    <div class="col-2">
+    <div class="col-3">
         <div class="card mb-4">
             <div class="card-header">
                 <ul class="nav nav-tabs card-header-tabs">
-                    <li class="nav-item"><a class="nav-link active" href="#">Basic</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">Advance</a></li>
+                    <li class="nav-item"><a class="nav-link @(_activeTab == "Basic" ? "active" : "")" href="#" @onclick="@(() => _activeTab = "Basic")" @onclick:preventDefault>Basic</a></li>
+                    <li class="nav-item"><a class="nav-link @(_activeTab == "Advance" ? "active" : "")" href="#" @onclick="@(() => _activeTab = "Advance")" @onclick:preventDefault>Advance</a></li>
                 </ul>
             </div>
-            <div class="card-body" style="max-height: 70vh; overflow-y: auto;">
-                @* Basic Search Fields *@
-                <div class="mb-2">
-                    <label class="form-label">Family/Org</label>
-                    <input class="form-control" @bind="_familyOrg" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">First</label>
-                    <input class="form-control" @bind="_firstName" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Medicare#</label>
-                    <input class="form-control" @bind="_medicareNumber" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Gender</label>
-                    <select class="form-select" @bind="_gender">
-                        <option>All</option>
-                        <option>Male</option>
-                        <option>Female</option>
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">DVA#</label>
-                    <input class="form-control" @bind="_dvaNumber" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">File#</label>
-                    <input class="form-control" @bind="_fileNumber" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Pension/HCC</label>
-                    <input class="form-control" @bind="_pension" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Fund#</label>
-                    <input class="form-control" @bind="_fundNumber" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Lifecard#</label>
-                    <input class="form-control" @bind="_lifecardNumber" />
-                </div>
-                @* DOB range *@
-                <div class="mb-2 d-flex align-items-center">
-                    <label class="form-label me-2 mb-0">D.O.B.</label>
-                    <input type="date" class="form-control me-1" style="width:45%" @bind="_dobFrom" />
-                    <span class="mx-1">and</span>
-                    <input type="date" class="form-control" style="width:45%" @bind="_dobTo" />
-                </div>
-                @* Address fields *@
-                <div class="mb-2">
-                    <label class="form-label">Address</label>
-                    <input class="form-control" @bind="_address" />
-                </div>
-                <div class="row g-2 mb-2">
-                    <div class="col-4"><input class="form-control" placeholder="Suburb" @bind="_suburb" /></div>
-                    <div class="col-4"><input class="form-control" placeholder="Postcode" @bind="_postcode" /></div>
-                    <div class="col-4"><select class="form-select" @bind="_state"><option>State</option></select></div>
-                </div>
-                @* Postal address duplicate (omitted for brevity) *@
-                @* Phone & Email grid *@
-                <div class="row g-2 mb-2">
-                    <div class="col-6"><input class="form-control" placeholder="Home Phone" @bind="_homePhone" /></div>
-                    <div class="col-6"><input class="form-control" placeholder="B.H." @bind="_bhPhone" /></div>
-                    <div class="col-6"><input class="form-control" placeholder="Mobile Phone" @bind="_mobilePhone" /></div>
-                    <div class="col-6"><input class="form-control" placeholder="Email" @bind="_email" /></div>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">ATSI</label>
-                    <select class="form-select" @bind="_atsi"><option>All</option></select>
-                </div>
-                @* Additional date ranges (Created, Medicare EXP, PHI Joined) *@
-                <div class="mb-2 d-flex align-items-center">
-                    <label class="form-label me-2 mb-0">Created</label>
-                    <input type="date" class="form-control me-1" style="width:45%" @bind="_createdFrom" />
-                    <span class="mx-1">and</span>
-                    <input type="date" class="form-control" style="width:45%" @bind="_createdTo" />
-                </div>
+            <div class="card-body" style="max-height: 75vh; overflow-y: auto;" @onkeydown="HandleFilterKeyDown">
+                @if (_activeTab == "Basic")
+                {
+                    <div class="filter-section-header d-flex justify-content-between align-items-center" @onclick="@(() => _secIdentifiers = !_secIdentifiers)">
+                        <span class="small fw-semibold text-uppercase text-muted">Identifiers</span>
+                        <i class="bi @(_secIdentifiers ? "bi-chevron-up" : "bi-chevron-down") small text-muted"></i>
+                    </div>
+                    @if (_secIdentifiers)
+                    {
+                        <div class="row g-2 mb-1">
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">Family/Org</label>
+                                <input class="form-control form-control-sm" @bind="_filter.Surname" @bind:event="oninput" />
+                            </div>
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">First</label>
+                                <input class="form-control form-control-sm" @bind="_filter.GivenName" @bind:event="oninput" />
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-1">
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">Medicare#</label>
+                                <input class="form-control form-control-sm" @bind="_filter.MedicareNumber" @bind:event="oninput" />
+                            </div>
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">Gender</label>
+                                <select class="form-select form-select-sm" @bind="_filter.Gender">
+                                    <option value="">All</option>
+                                    <option value="@GenderEnum.Unspecified">Unspecified</option>
+                                    <option value="@GenderEnum.Male">Male</option>
+                                    <option value="@GenderEnum.Female">Female</option>
+                                    <option value="@GenderEnum.Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-1">
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">DVA#</label>
+                                <input class="form-control form-control-sm" @bind="_filter.DvaNumber" @bind:event="oninput" />
+                            </div>
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">File#</label>
+                                <input class="form-control form-control-sm" @bind="_filter.FileNumber" @bind:event="oninput" />
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-1">
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">Pension</label>
+                                <input class="form-control form-control-sm" @bind="_filter.PensionNumber" @bind:event="oninput" />
+                            </div>
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">Fund#</label>
+                                <input class="form-control form-control-sm" @bind="_filter.HealthFundNumber" @bind:event="oninput" />
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Lifecard#</label>
+                            <input class="form-control form-control-sm" @bind="_filter.LifeCardNum" @bind:event="oninput" />
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">D.O.B.</label>
+                            <input type="date" class="form-control form-control-sm" @bind="_filter.DobFrom" />
+                            <span class="small text-muted">-</span>
+                            <input type="date" class="form-control form-control-sm" @bind="_filter.DobTo" />
+                        </div>
+                    }
+
+                    <hr class="my-2" />
+
+                    <div class="filter-section-header d-flex justify-content-between align-items-center" @onclick="@(() => _secAddress = !_secAddress)">
+                        <span class="small fw-semibold text-uppercase text-muted">Address</span>
+                        <i class="bi @(_secAddress ? "bi-chevron-up" : "bi-chevron-down") small text-muted"></i>
+                    </div>
+                    @if (_secAddress)
+                    {
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Address</label>
+                            <input class="form-control form-control-sm" @bind="_filter.Address" @bind:event="oninput" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <span class="filter-label"></span>
+                            <input class="form-control form-control-sm" placeholder="Suburb" @bind="_filter.Suburb" @bind:event="oninput" />
+                            <input class="form-control form-control-sm" placeholder="Postcode" @bind="_filter.Postcode" @bind:event="oninput" />
+                            <input class="form-control form-control-sm" placeholder="State" @bind="_filter.State" @bind:event="oninput" />
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Postal Addr</label>
+                            <input class="form-control form-control-sm" @bind="_filter.PostalAddress" @bind:event="oninput" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <span class="filter-label"></span>
+                            <input class="form-control form-control-sm" placeholder="Suburb" @bind="_filter.PostalSuburb" @bind:event="oninput" />
+                            <input class="form-control form-control-sm" placeholder="Postcode" @bind="_filter.PostalPostcode" @bind:event="oninput" />
+                            <input class="form-control form-control-sm" placeholder="State" @bind="_filter.PostalState" @bind:event="oninput" />
+                        </div>
+                    }
+
+                    <hr class="my-2" />
+
+                    <div class="filter-section-header d-flex justify-content-between align-items-center" @onclick="@(() => _secContact = !_secContact)">
+                        <span class="small fw-semibold text-uppercase text-muted">Contact</span>
+                        <i class="bi @(_secContact ? "bi-chevron-up" : "bi-chevron-down") small text-muted"></i>
+                    </div>
+                    @if (_secContact)
+                    {
+                        <div class="row g-2 mb-1">
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">Home Ph.</label>
+                                <input class="form-control form-control-sm" @bind="_filter.HomePhone" @bind:event="oninput" />
+                            </div>
+                            <div class="col-6 d-flex align-items-center gap-1 flex-wrap">
+                                <label class="form-label small filter-label-sm">B.H.</label>
+                                <input class="form-control form-control-sm" @bind="_filter.BusinessHoursPhone" @bind:event="oninput" />
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Mobile Phone</label>
+                            <input class="form-control form-control-sm" @bind="_filter.MobilePhone" @bind:event="oninput" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Email</label>
+                            <input class="form-control form-control-sm" @bind="_filter.Email" @bind:event="oninput" />
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">ATSI</label>
+                            <select class="form-select form-select-sm" @bind="_filter.AtsiStatus">
+                                <option value="">All</option>
+                                <option value="@AtsiStatusEnum.NotAsked">Not Asked</option>
+                                <option value="@AtsiStatusEnum.AboriginalOnly">Aboriginal Only</option>
+                                <option value="@AtsiStatusEnum.TorresStraitIslanderOnly">TSI Only</option>
+                                <option value="@AtsiStatusEnum.Both">Both</option>
+                                <option value="@AtsiStatusEnum.NeitherAboriginalNorTorresStraitIslander">Neither</option>
+                            </select>
+                        </div>
+                    }
+
+                    <hr class="my-2" />
+
+                    <div class="filter-section-header d-flex justify-content-between align-items-center" @onclick="@(() => _secDates = !_secDates)">
+                        <span class="small fw-semibold text-uppercase text-muted">Date Ranges</span>
+                        <i class="bi @(_secDates ? "bi-chevron-up" : "bi-chevron-down") small text-muted"></i>
+                    </div>
+                    @if (_secDates)
+                    {
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Created</label>
+                            <input type="date" class="form-control form-control-sm" @bind="_filter.CreatedFrom" />
+                            <span class="small text-muted">-</span>
+                            <input type="date" class="form-control form-control-sm" @bind="_filter.CreatedTo" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Medicare EXP</label>
+                            <input type="date" class="form-control form-control-sm" @bind="_filter.MedicareExpiryFrom" />
+                            <span class="small text-muted">-</span>
+                            <input type="date" class="form-control form-control-sm" @bind="_filter.MedicareExpiryTo" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">PHI Joined</label>
+                            <input type="date" class="form-control form-control-sm" @bind="_filter.HealthFundJoinFrom" />
+                            <span class="small text-muted">-</span>
+                            <input type="date" class="form-control form-control-sm" @bind="_filter.HealthFundJoinTo" />
+                        </div>
+                    }
+
+                    <hr class="my-2" />
+
+                    <div class="filter-section-header d-flex justify-content-between align-items-center" @onclick="@(() => _secAccount = !_secAccount)">
+                        <span class="small fw-semibold text-uppercase text-muted">Account / Notes</span>
+                        <i class="bi @(_secAccount ? "bi-chevron-up" : "bi-chevron-down") small text-muted"></i>
+                    </div>
+                    @if (_secAccount)
+                    {
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Warnings</label>
+                            <input class="form-control form-control-sm" @bind="_filter.Warnings" @bind:event="oninput" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Note</label>
+                            <input class="form-control form-control-sm" @bind="_filter.Notes" @bind:event="oninput" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Referred by</label>
+                            <div class="input-group input-group-sm">
+                                <input class="form-control form-control-sm" @bind="_filter.ReferredBy" @bind:event="oninput" />
+                                @if (!string.IsNullOrEmpty(_filter.ReferredBy))
+                                {
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="@(() => _filter.ReferredBy = null)">x</button>
+                                }
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Patient Type</label>
+                            <select class="form-select form-select-sm" @bind="_filter.PatientType">
+                                <option value="">All</option>
+                                <option value="@PatientTypeEnum.Person">Person</option>
+                                <option value="@PatientTypeEnum.Organisation">Organisation</option>
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">UR No</label>
+                            <input class="form-control form-control-sm" @bind="_filter.UrNumber" @bind:event="oninput" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Fund Id</label>
+                            <select class="form-select form-select-sm" @bind="_filter.HealthFundId">
+                                <option value="">All</option>
+                                @foreach (var fund in _healthFunds)
+                                {
+                                    <option value="@fund.Id">@fund.Code - @fund.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">DF Payer</label>
+                            <div class="input-group input-group-sm">
+                                <input class="form-control form-control-sm" value="@_payerDisplayName" readonly placeholder="Any" />
+                                <button type="button" class="btn btn-outline-secondary" @onclick="OpenPayerPicker">Find</button>
+                                @if (_filter.PayerPatientId.HasValue)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="ClearPayer">x</button>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-start gap-2 mb-1">
+                            <label class="form-label small filter-label mt-1">DF Acc. Type</label>
+                            <div class="border rounded p-2 flex-grow-1" style="max-height: 140px; overflow-y: auto;">
+                                @foreach (var type in Enum.GetValues<AccountTypeEnum>())
+                                {
+                                    <div class="form-check form-check-sm">
+                                        <input class="form-check-input" type="checkbox" id="acctype_@type"
+                                               checked="@_selectedAccountTypes.Contains(type)"
+                                               @onchange="@(e => ToggleAccountType(type, (bool)e.Value!))" />
+                                        <label class="form-check-label small" for="acctype_@type">@type</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <hr class="my-2" />
+
+                    <div class="filter-section-header d-flex justify-content-between align-items-center" @onclick="@(() => _secFlags = !_secFlags)">
+                        <span class="small fw-semibold text-uppercase text-muted">Flags</span>
+                        <i class="bi @(_secFlags ? "bi-chevron-up" : "bi-chevron-down") small text-muted"></i>
+                    </div>
+                    @if (_secFlags)
+                    {
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkDeceased" @bind="_filter.Deceased" />
+                                    <label class="form-check-label small" for="chkDeceased">Deceased</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkArchived" @bind="_filter.IncludeArchived" />
+                                    <label class="form-check-label small" for="chkArchived">Archived</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Accept Email</label>
+                            <select class="form-select form-select-sm" @bind="_filter.AcceptEmail">
+                                <option value="">Any</option>
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <label class="form-label small filter-label">Accept SMS</label>
+                            <select class="form-select form-select-sm" @bind="_filter.AcceptSms">
+                                <option value="">Any</option>
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                            <label class="form-label small filter-label">SMS Mktg</label>
+                            <select class="form-select form-select-sm" @bind="_filter.AcceptSmsMarketing">
+                                <option value="">Any</option>
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </select>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-muted small">Advanced filters coming soon.</div>
+                }
+
                 @* Footer buttons *@
                 <div class="d-flex justify-content-between mt-3">
-                    <button class="btn btn-primary" @onclick="LoadPatientsAsync">Find</button>
-                    <button class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
+                    <button type="button" class="btn btn-primary" @onclick="FindAsync">Find</button>
+                    <button type="button" class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
                 </div>
             </div>
         </div>
     </div>
     @* Main Patient Data Grid *@
-    <div class="col-10">
+    <div class="col-9">
         @if (!_isLoading && _patients != null)
         {
             <div class="card">
@@ -172,17 +389,17 @@
                                     <td>@(p == _selectedPatient ? "▶" : "")</td>
                                     <td>@p.FullName</td>
                                     <td>@p.FirstName</td>
-                                    <td>@p.DateOfBirth:dd/MM/yyyy</td>
+                                    <td>@p.DateOfBirth.ToString("dd/MM/yyyy")</td>
                                     <td>@p.Id.ToString("D5")</td>
                                     <td>@p.FullAddress</td>
                                     <td>@p.Phone</td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
+                                    <td>@p.BusinessHoursPhone</td>
+                                    <td>@p.MobilePhone</td>
+                                    <td>@p.Gender</td>
+                                    <td>@p.AccountType</td>
                                     <td>@p.MedicareNumber</td>
-                                    <td></td>
-                                    <td>@p.HealthFundName</td>
+                                    <td>@p.DvaNumber</td>
+                                    <td>@p.HealthFundCode</td>
                                     <td>@p.Email</td>
                                 </tr>
                             }
@@ -236,20 +453,69 @@
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="#">Verify</a></li>
                 </ul>
-                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Patient Verification</button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#">Verify</a></li>
-                </ul>
+                <button class="btn btn-outline-secondary" @onclick="ShowUnderConstruction">Patient Verification</button>
                 <button class="btn btn-outline-secondary" @onclick="ExportCsvAsync">Export</button>
-                <button class="btn btn-outline-secondary" @onclick="()=>{}">Edit</button>
-                <button class="btn btn-outline-secondary" @onclick="()=>{}">New Org</button>
-                <button class="btn btn-outline-secondary" @onclick="()=>{}">New Person</button>
-                <button class="btn btn-outline-secondary" @onclick="()=>{}">Archive</button>
+                <button class="btn btn-outline-secondary" @onclick="EditSelected" disabled="@(_selectedPatient == null)">Edit</button>
+                <button class="btn btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo("/patients/add?type=Organisation"))">New Org</button>
+                <button class="btn btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo("/patients/add"))">New Person</button>
+                <button class="btn btn-outline-secondary" @onclick="ArchiveSelectedAsync" disabled="@(_selectedPatient == null)">Archive</button>
                 <button class="btn btn-outline-secondary" @onclick="()=>{}">Close</button>
             </div>
         </div>
     </div>
 </div>
+
+@if (_showPayerPickerModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Find Payer</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showPayerPickerModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <input class="form-control form-control-sm mb-2" placeholder="Search by name..."
+                           @bind="_payerSearchTerm" @bind:event="oninput" @bind:after="SearchPayerCandidatesAsync" />
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        @if (_payerSearchResults.Count == 0)
+                        {
+                            <div class="text-muted small">No matches.</div>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var candidate in _payerSearchResults)
+                                {
+                                    <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectPayer(candidate))">
+                                        @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showPayerPickerModal = false)">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_underConstructionMessage != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <p class="mb-3">@_underConstructionMessage</p>
+                    <button class="btn btn-primary btn-sm" @onclick="@(() => _underConstructionMessage = null)">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private List<PatientDto> _patients = new();
@@ -260,33 +526,29 @@
     private int _currentPage = 1;
     private int _pageSize = 10;
     private int _totalPages => (int)Math.Ceiling((double)_totalCount / _pageSize);
+    private string _activeTab = "Basic";
+    private string? _underConstructionMessage;
 
-    // Filter fields (basic only)
-    private string? _familyOrg;
-    private string? _firstName;
-    private string? _medicareNumber;
-    private string? _gender = "All";
-    private string? _dvaNumber;
-    private string? _fileNumber;
-    private string? _pension;
-    private string? _fundNumber;
-    private string? _lifecardNumber;
-    private DateTime? _dobFrom;
-    private DateTime? _dobTo;
-    private string? _address;
-    private string? _suburb;
-    private string? _postcode;
-    private string? _state;
-    private string? _homePhone;
-    private string? _bhPhone;
-    private string? _mobilePhone;
-    private string? _email;
-    private string? _atsi;
-    private DateTime? _createdFrom;
-    private DateTime? _createdTo;
+    private List<HealthFundDto> _healthFunds = new();
+    private PatientSearchDto _filter = new();
+    private HashSet<AccountTypeEnum> _selectedAccountTypes = new();
+
+    // Collapsible filter sections — only the first is expanded by default
+    private bool _secIdentifiers = true;
+    private bool _secAddress = false;
+    private bool _secContact = false;
+    private bool _secDates = false;
+    private bool _secAccount = false;
+    private bool _secFlags = false;
+
+    private string? _payerDisplayName;
+    private bool _showPayerPickerModal;
+    private string _payerSearchTerm = string.Empty;
+    private List<PatientDto> _payerSearchResults = new();
 
     protected override async Task OnInitializedAsync()
     {
+        _healthFunds = (await HealthFundService.GetAllActiveAsync()).ToList();
         await LoadPatientsAsync();
     }
 
@@ -296,14 +558,11 @@
         _error = null;
         try
         {
-            var search = new PatientSearchDto
-            {
-                Query = _familyOrg, // simplistic mapping; real implementation would combine fields
-                Page = _currentPage,
-                PageSize = _pageSize,
-                IsActive = null
-            };
-            var result = await PatientService.SearchPatientsAsync(search);
+            _filter.Page = _currentPage;
+            _filter.PageSize = _pageSize;
+            _filter.AccountTypes = _selectedAccountTypes.Count > 0 ? _selectedAccountTypes.ToList() : null;
+
+            var result = await PatientService.SearchPatientsAsync(_filter);
             _patients = result.Items.ToList();
             _totalCount = result.TotalCount;
         }
@@ -314,6 +573,20 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task FindAsync()
+    {
+        _currentPage = 1;
+        await LoadPatientsAsync();
+    }
+
+    private async Task HandleFilterKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await FindAsync();
         }
     }
 
@@ -332,12 +605,67 @@
         _selectedPatient = patient;
     }
 
+    private void ToggleAccountType(AccountTypeEnum type, bool isChecked)
+    {
+        if (isChecked) _selectedAccountTypes.Add(type);
+        else _selectedAccountTypes.Remove(type);
+    }
+
     private void ClearFilters()
     {
-        _familyOrg = _firstName = _medicareNumber = _dvaNumber = _fileNumber = _pension = _fundNumber = _lifecardNumber = null;
-        _gender = "All";
-        _dobFrom = _dobTo = _createdFrom = _createdTo = null;
-        _address = _suburb = _postcode = _state = _homePhone = _bhPhone = _mobilePhone = _email = _atsi = null;
+        _filter = new PatientSearchDto();
+        _selectedAccountTypes.Clear();
+        _payerDisplayName = null;
+    }
+
+    private void OpenPayerPicker()
+    {
+        _payerSearchTerm = string.Empty;
+        _payerSearchResults = new();
+        _showPayerPickerModal = true;
+    }
+
+    private async Task SearchPayerCandidatesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_payerSearchTerm))
+        {
+            _payerSearchResults = new();
+            return;
+        }
+        var result = await PatientService.SearchPatientsAsync(new PatientSearchDto { Query = _payerSearchTerm, PageSize = 10 });
+        _payerSearchResults = result.Items.ToList();
+    }
+
+    private void SelectPayer(PatientDto candidate)
+    {
+        _filter.PayerPatientId = candidate.Id;
+        _payerDisplayName = candidate.FullName;
+        _showPayerPickerModal = false;
+    }
+
+    private void ClearPayer()
+    {
+        _filter.PayerPatientId = null;
+        _payerDisplayName = null;
+    }
+
+    private void EditSelected()
+    {
+        if (_selectedPatient != null)
+            Navigation.NavigateTo($"/patients/edit/{_selectedPatient.Id}");
+    }
+
+    private async Task ArchiveSelectedAsync()
+    {
+        if (_selectedPatient == null) return;
+        await PatientService.ArchivePatientAsync(_selectedPatient.Id);
+        _selectedPatient = null;
+        await LoadPatientsAsync();
+    }
+
+    private void ShowUnderConstruction()
+    {
+        _underConstructionMessage = "Under construction";
     }
 
     private async Task ExportCsvAsync()

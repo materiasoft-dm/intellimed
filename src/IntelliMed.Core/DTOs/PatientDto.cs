@@ -276,8 +276,6 @@ public class UpdatePatientDto
 
     // Health Fund
     public int? HealthFundId { get; set; }
-    public string? HealthFundCode { get; set; }
-    public string? HealthFundName { get; set; }
     public string? HealthFundNumber { get; set; }
     public string? HealthFundRef { get; set; }
     public string? HealthFundAliasFamily { get; set; }

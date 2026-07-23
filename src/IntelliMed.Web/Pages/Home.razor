@@ -1,89 +1,208 @@
-﻿@page "/"
+@page "/"
 @layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
 @using IntelliMed.Web.Services
 @inject IAuthService AuthService
 @inject IAdminService AdminService
+@inject IPatientService PatientService
 @inject ILoggerService Logger
+@inject IJSRuntime JS
 
 <PageTitle>IntelliMed - Dashboard</PageTitle>
 
 <h3 class="mb-1">Welcome, @_currentUserName</h3>
-<p class="text-muted mb-4">Here's a quick way to get to what you need.</p>
+<p class="text-muted mb-4">Here's what's happening across your practice today.</p>
 
-<div class="row g-3">
-    <div class="col-sm-6 col-lg-3">
-        <a href="/patients/search" class="text-decoration-none">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body d-flex align-items-center">
-                    <i class="bi bi-search fs-2 text-primary me-3"></i>
-                    <div>
-                        <div class="fw-semibold">Find Patient</div>
-                        <div class="text-muted small">Search and manage patients</div>
-                    </div>
-                </div>
-            </div>
-        </a>
+@if (_isLoading)
+{
+    <div class="text-center py-5">
+        <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+        Loading dashboard...
     </div>
-    <div class="col-sm-6 col-lg-3">
-        <a href="/patients/add" class="text-decoration-none">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body d-flex align-items-center">
-                    <i class="bi bi-plus-lg fs-2 text-success me-3"></i>
-                    <div>
-                        <div class="fw-semibold">Add Patient</div>
-                        <div class="text-muted small">Register a new patient</div>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <a href="/appointments" class="text-decoration-none">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body d-flex align-items-center">
-                    <i class="bi bi-calendar-week fs-2 text-primary me-3"></i>
-                    <div>
-                        <div class="fw-semibold">Appointments</div>
-                        <div class="text-muted small">Schedule and review visits</div>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <a href="/invoices" class="text-decoration-none">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body d-flex align-items-center">
-                    <i class="bi bi-receipt fs-2 text-primary me-3"></i>
-                    <div>
-                        <div class="fw-semibold">Invoices</div>
-                        <div class="text-muted small">Billing and payments</div>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    @if (_showAdminCard)
-    {
+}
+else
+{
+    @* Stat tiles *@
+    <div class="row g-3 mb-3">
         <div class="col-sm-6 col-lg-3">
-            <a href="/admin/users" class="text-decoration-none">
-                <div class="card h-100 shadow-sm border-0">
-                    <div class="card-body d-flex align-items-center">
-                        <i class="bi bi-shield-lock fs-2 text-primary me-3"></i>
+            <div class="card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="stat-icon-badge stat-icon-badge--blue"><i class="bi bi-people"></i></span>
+                    <div>
+                        <div class="stat-tile-value">@_totalPatients</div>
+                        <div class="text-muted small">Total Patients</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="stat-icon-badge stat-icon-badge--green"><i class="bi bi-person-check"></i></span>
+                    <div>
+                        <div class="stat-tile-value">@_activePatients</div>
+                        <div class="text-muted small">Active Patients</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="stat-icon-badge stat-icon-badge--amber"><i class="bi bi-person-plus"></i></span>
+                    <div>
+                        <div class="stat-tile-value">@_newThisWeek</div>
+                        <div class="text-muted small">New This Week</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="stat-icon-badge stat-icon-badge--purple"><i class="bi bi-archive"></i></span>
+                    <div>
+                        <div class="stat-tile-value">@_archivedPatients</div>
+                        <div class="text-muted small">Archived</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="mb-1">Patients by Account Type</h6>
+                    <p class="text-muted small mb-3">Distribution across all registered patients.</p>
+                    @if (_totalPatients == 0)
+                    {
+                        <p class="text-muted small">No patients yet — add one to see this chart.</p>
+                    }
+                    else
+                    {
+                        <div style="height: 260px;">
+                            <canvas id="patientsByAccountTypeChart"></canvas>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0">Recent Patients</h6>
+                        <a href="/patients/search" class="small text-decoration-none">View all</a>
+                    </div>
+                    <p class="text-muted small mb-3">Most recently registered.</p>
+                    @if (_recentPatients.Count == 0)
+                    {
+                        <p class="text-muted small">No patients yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var p in _recentPatients)
+                            {
+                                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                    <span>@p.FullName</span>
+                                    <span class="text-muted small">@p.CreatedAt.ToString("dd/MM/yyyy")</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Quick links *@
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+            <a href="/patients/search" class="text-decoration-none">
+                <div class="card h-100">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <span class="stat-icon-badge stat-icon-badge--blue"><i class="bi bi-search"></i></span>
                         <div>
-                            <div class="fw-semibold">Administration</div>
-                            <div class="text-muted small">Users and role access</div>
+                            <div class="fw-semibold">Find Patient</div>
+                            <div class="text-muted small">Search and manage patients</div>
                         </div>
                     </div>
                 </div>
             </a>
         </div>
-    }
-</div>
+        <div class="col-sm-6 col-lg-3">
+            <a href="/patients/add" class="text-decoration-none">
+                <div class="card h-100">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <span class="stat-icon-badge stat-icon-badge--green"><i class="bi bi-plus-lg"></i></span>
+                        <div>
+                            <div class="fw-semibold">Add Patient</div>
+                            <div class="text-muted small">Register a new patient</div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <a href="/appointments" class="text-decoration-none">
+                <div class="card h-100">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <span class="stat-icon-badge stat-icon-badge--amber"><i class="bi bi-calendar-week"></i></span>
+                        <div>
+                            <div class="fw-semibold">Appointments</div>
+                            <div class="text-muted small">Schedule and review visits</div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <a href="/invoices" class="text-decoration-none">
+                <div class="card h-100">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <span class="stat-icon-badge stat-icon-badge--purple"><i class="bi bi-receipt"></i></span>
+                        <div>
+                            <div class="fw-semibold">Invoices</div>
+                            <div class="text-muted small">Billing and payments</div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        @if (_showAdminCard)
+        {
+            <div class="col-sm-6 col-lg-3">
+                <a href="/admin/users" class="text-decoration-none">
+                    <div class="card h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <span class="stat-icon-badge stat-icon-badge--blue"><i class="bi bi-shield-lock"></i></span>
+                            <div>
+                                <div class="fw-semibold">Administration</div>
+                                <div class="text-muted small">Users and role access</div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}
 
 @code {
     private string _currentUserName = "User";
     private bool _showAdminCard;
+    private bool _isLoading = true;
+
+    private int _totalPatients;
+    private int _activePatients;
+    private int _archivedPatients;
+    private int _newThisWeek;
+    private List<PatientDto> _recentPatients = new();
+    private List<(string Label, int Count)> _accountTypeCounts = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -110,6 +229,55 @@
         catch (Exception ex)
         {
             await Logger.LogErrorAsync(ex, "Home.OnInitializedAsync");
+        }
+
+        await LoadPatientStatsAsync();
+        _isLoading = false;
+    }
+
+    private async Task LoadPatientStatsAsync()
+    {
+        try
+        {
+            var result = await PatientService.SearchPatientsAsync(new PatientSearchDto
+            {
+                Page = 1,
+                PageSize = 1000,
+                IncludeArchived = true
+            });
+
+            var patients = result.Items.ToList();
+            _totalPatients = patients.Count;
+            _activePatients = patients.Count(p => p.IsActive);
+            _archivedPatients = patients.Count(p => !p.IsActive);
+
+            var weekAgo = DateTime.UtcNow.AddDays(-7);
+            _newThisWeek = patients.Count(p => p.CreatedAt >= weekAgo);
+
+            _recentPatients = patients
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(5)
+                .ToList();
+
+            _accountTypeCounts = patients
+                .GroupBy(p => p.AccountType)
+                .Select(g => (Label: g.Key.ToString(), Count: g.Count()))
+                .OrderByDescending(x => x.Count)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            await Logger.LogErrorAsync(ex, "Home.LoadPatientStatsAsync");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_isLoading && _totalPatients > 0)
+        {
+            var labels = _accountTypeCounts.Select(x => x.Label).ToArray();
+            var data = _accountTypeCounts.Select(x => x.Count).ToArray();
+            await JS.InvokeVoidAsync("IntelliMedRenderBarChart", "patientsByAccountTypeChart", labels, data, "#4272d7");
         }
     }
 }

@@ -8,6 +8,9 @@ namespace IntelliMed.Tests.Ui;
 // PlaywrightServerFixture), so the patient count keeps growing across the whole suite. Tests here
 // deliberately check *relative* counts (before/after creating one patient) rather than absolute
 // counts, since the database is never actually empty once other test classes have run.
+//
+// Patients.razor (a separate list page) was consolidated into PatientSearch.razor — these tests
+// exercise the search page's results grid and toolbar instead of a standalone list page.
 [Collection("Playwright UI")]
 public class PatientListTests
 {
@@ -26,30 +29,30 @@ public class PatientListTests
     }
 
     [Fact]
-    public async Task PatientList_ShowsNewPatientAndRefreshButtons()
+    public async Task PatientSearch_ShowsRefreshAndNewPersonButtons()
     {
         var page = await _fixture.NewPageAsync();
-        await page.GotoAsync("/patients");
-        await page.WaitForSelectorAsync("text=Patients");
+        await page.GotoAsync("/patients/search");
+        await page.WaitForSelectorAsync("text=Patient Search");
 
-        await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = "➕ New Patient" })).ToBeVisibleAsync();
-        await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = "🔄 Refresh" })).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = "Refresh" })).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = "New Person" })).ToBeVisibleAsync();
     }
 
     [Fact]
-    public async Task NewPatientButton_NavigatesToAddPatientPage()
+    public async Task NewPersonButton_NavigatesToAddPatientPage()
     {
         var page = await _fixture.NewPageAsync();
-        await page.GotoAsync("/patients");
-        await page.WaitForSelectorAsync("text=Patients");
+        await page.GotoAsync("/patients/search");
+        await page.WaitForSelectorAsync("text=Patient Search");
 
-        await page.GetByRole(AriaRole.Button, new() { Name = "➕ New Patient" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Person" }).ClickAsync();
 
         await page.WaitForURLAsync(url => url.Contains("/patients/add"));
     }
 
     [Fact]
-    public async Task PatientList_AfterCreatingAPatient_CountIncreasesByOne()
+    public async Task PatientSearch_AfterCreatingAPatient_CountIncreasesByOne()
     {
         var page = await _fixture.NewPageAsync();
         var countBefore = await GetTotalPatientCountAsync(page);
@@ -61,21 +64,14 @@ public class PatientListTests
         await page.GetByRole(AriaRole.Button, new() { Name = "💾 Save" }).ClickAsync();
         await page.WaitForURLAsync(url => url.Contains("/patients/edit/"));
 
-        await page.GotoAsync("/patients");
-        await page.WaitForSelectorAsync("text=Patients");
+        await page.GotoAsync("/patients/search");
+        await page.WaitForSelectorAsync("text=Patient Search");
 
-        // NOTE: as of this writing, the patient list grid (ResizableTable/Grid.js) does not
-        // render row data even though the "Showing X of Y" count above it is correct — see the
-        // "Fix Grid.js rows not rendering on Patients list" follow-up task. This assertion only
-        // checks the count text, which is independent of the grid rendering bug.
-        await Assertions.Expect(page.GetByText($"Showing {countBefore + 1} of {countBefore + 1} patients")).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByText($"Total Patients: {countBefore + 1}")).ToBeVisibleAsync();
     }
 
-    [Fact(Skip = "Known pre-existing bug: Grid.js row rendering doesn't display data even though " +
-        "the correct rows reach the library (header/search/pagination render fine, body stays " +
-        "empty). Tracked as a separate follow-up ('Fix Grid.js rows not rendering on Patients " +
-        "list'). Un-skip this once that's fixed.")]
-    public async Task PatientList_AfterCreatingAPatient_ShowsPatientRowInGrid()
+    [Fact]
+    public async Task PatientSearch_AfterCreatingAPatient_ShowsPatientRowInGrid()
     {
         var page = await _fixture.NewPageAsync();
 
@@ -86,8 +82,16 @@ public class PatientListTests
         await page.GetByRole(AriaRole.Button, new() { Name = "💾 Save" }).ClickAsync();
         await page.WaitForURLAsync(url => url.Contains("/patients/edit/"));
 
-        await page.GotoAsync("/patients");
-        await page.WaitForSelectorAsync("text=Patients");
+        await page.GotoAsync("/patients/search");
+        await page.WaitForSelectorAsync("text=Patient Search");
+
+        // The default unfiltered results page only shows the first 10 patients (by last/first
+        // name), and the shared test database accumulates far more than that across the whole
+        // suite — filter by surname so the new patient is guaranteed to be on the results page.
+        await page.Field("Family/Org").FillAsync("GridRow");
+        // Exact-name match is ambiguous: the DF Payer field also has its own "Find" button. The
+        // main search button is last in DOM order (bottom of the filter panel).
+        await page.GetByRole(AriaRole.Button, new() { Name = "Find" }).Last.ClickAsync();
 
         await Assertions.Expect(page.GetByText("Visible GridRow")).ToBeVisibleAsync();
     }
