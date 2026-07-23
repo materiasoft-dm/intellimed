@@ -102,3 +102,30 @@ src/
 - When adding BlazorWebView, use `Microsoft.AspNetCore.Components.WebView.Maui` package
 - For MudBlazor integration, add services in MauiProgram.cs: `builder.Services.AddMauiBlazorWebView();`
 - Windows target: `net9.0-windows10.0.19041.0`
+
+## 8. Deployment Environments
+
+### Staging
+- **URL:** https://intellimed-staging.onrender.com
+- **Provider:** Render.com
+- **Method:** Docker container (see `Dockerfile`)
+- **Purpose:** Pre-production testing and validation
+- **Database:** SQLite (file-based, `/app/data/intellimed.db`)
+- **Notes:**
+  - Auto-deploys from `main` branch
+  - Build command: `dotnet publish -c Release`
+  - Run command: `dotnet IntelliMed.Api.dll`
+  - Port: 80 (HTTP)
+  - See `Dockerfile` for full multi-stage build configuration
+
+### Local Development
+- **URL:** http://localhost:5284 (API)
+- **Database:** SQLite (`intellimed.db` in project root)
+- **Notes:**
+  - Run via `dotnet run` in `IntelliMed.Api` project
+  - Blazor WASM client available at `/`
+  - Database migrations run automatically on startup
+
+### Production (Future)
+- **Provider:** TBD
+- **Notes:** SQL Server recommended for production scale
