@@ -26,6 +26,7 @@ public static class ServiceExtensions
         services.AddScoped<IPatientFamilyRelationshipRepository, PatientFamilyRelationshipRepository>();
         services.AddScoped<IUserDefinedFieldTypeRepository, UserDefinedFieldTypeRepository>();
         services.AddScoped<IPatientUserDefinedFieldValueRepository, PatientUserDefinedFieldValueRepository>();
+        services.AddScoped<IHealthFundRepository, HealthFundRepository>();
 
         return services;
     }

@@ -5,6 +5,7 @@ namespace IntelliMed.Core.DTOs;
 public class PatientDto
 {
     public int Id { get; set; }
+    public PatientTypeEnum Type { get; set; }
 
     // Personal
     public string FirstName { get; set; } = string.Empty;
@@ -68,12 +69,14 @@ public class PatientDto
     public bool SameAsNextOfKin { get; set; }
 
     // Health Fund
+    public int? HealthFundId { get; set; }
     public string? HealthFundCode { get; set; }
     public string? HealthFundName { get; set; }
     public string? HealthFundNumber { get; set; }
     public string? HealthFundRef { get; set; }
     public string? HealthFundAliasFamily { get; set; }
     public string? HealthFundAliasFirst { get; set; }
+    public DateTime? HealthFundJoinDate { get; set; }
 
     // Account
     public AccountTypeEnum AccountType { get; set; }
@@ -117,6 +120,8 @@ public class PatientDto
 
 public class CreatePatientDto
 {
+    public PatientTypeEnum Type { get; set; } = PatientTypeEnum.Person;
+
     // Personal
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
@@ -174,12 +179,12 @@ public class CreatePatientDto
     public bool SameAsNextOfKin { get; set; }
 
     // Health Fund
-    public string? HealthFundCode { get; set; }
-    public string? HealthFundName { get; set; }
+    public int? HealthFundId { get; set; }
     public string? HealthFundNumber { get; set; }
     public string? HealthFundRef { get; set; }
     public string? HealthFundAliasFamily { get; set; }
     public string? HealthFundAliasFirst { get; set; }
+    public DateTime? HealthFundJoinDate { get; set; }
 
     // Account
     public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.PrivatePatient;
@@ -211,6 +216,8 @@ public class CreatePatientDto
 
 public class UpdatePatientDto
 {
+    public PatientTypeEnum Type { get; set; } = PatientTypeEnum.Person;
+
     // Personal
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
@@ -268,12 +275,12 @@ public class UpdatePatientDto
     public bool SameAsNextOfKin { get; set; }
 
     // Health Fund
-    public string? HealthFundCode { get; set; }
-    public string? HealthFundName { get; set; }
+    public int? HealthFundId { get; set; }
     public string? HealthFundNumber { get; set; }
     public string? HealthFundRef { get; set; }
     public string? HealthFundAliasFamily { get; set; }
     public string? HealthFundAliasFirst { get; set; }
+    public DateTime? HealthFundJoinDate { get; set; }
 
     // Account
     public AccountTypeEnum AccountType { get; set; }
@@ -311,4 +318,61 @@ public class PatientSearchDto
     public bool? IsActive { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
+
+    // Basic
+    public string? Surname { get; set; }
+    public string? GivenName { get; set; }
+    public string? MedicareNumber { get; set; }
+    public GenderEnum? Gender { get; set; }
+    public string? DvaNumber { get; set; }
+    public string? FileNumber { get; set; }
+    public string? PensionNumber { get; set; }
+    public string? HealthFundNumber { get; set; }
+    public string? LifeCardNum { get; set; }
+    public DateTime? DobFrom { get; set; }
+    public DateTime? DobTo { get; set; }
+
+    // Residential address
+    public string? Address { get; set; }
+    public string? Suburb { get; set; }
+    public string? Postcode { get; set; }
+    public string? State { get; set; }
+
+    // Postal address (matched against PatientAddress rows of type Postal)
+    public string? PostalAddress { get; set; }
+    public string? PostalSuburb { get; set; }
+    public string? PostalPostcode { get; set; }
+    public string? PostalState { get; set; }
+
+    // Contact
+    public string? HomePhone { get; set; }
+    public string? BusinessHoursPhone { get; set; }
+    public string? MobilePhone { get; set; }
+    public string? Email { get; set; }
+    public AtsiStatusEnum? AtsiStatus { get; set; }
+
+    // Date ranges
+    public DateTime? CreatedFrom { get; set; }
+    public DateTime? CreatedTo { get; set; }
+    public DateTime? MedicareExpiryFrom { get; set; }
+    public DateTime? MedicareExpiryTo { get; set; }
+    public DateTime? HealthFundJoinFrom { get; set; }
+    public DateTime? HealthFundJoinTo { get; set; }
+
+    // Misc / account
+    public string? Warnings { get; set; }
+    public string? Notes { get; set; }
+    public string? ReferredBy { get; set; }
+    public PatientTypeEnum? PatientType { get; set; }
+    public string? UrNumber { get; set; }
+    public int? HealthFundId { get; set; }
+    public int? PayerPatientId { get; set; }
+    public List<AccountTypeEnum>? AccountTypes { get; set; }
+
+    // Flags
+    public bool? Deceased { get; set; }
+    public bool IncludeArchived { get; set; }
+    public bool? AcceptEmail { get; set; }
+    public bool? AcceptSms { get; set; }
+    public bool? AcceptSmsMarketing { get; set; }
 }

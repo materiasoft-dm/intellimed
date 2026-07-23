@@ -6,23 +6,37 @@
 @inject ILoggerService Logger
 
 <div class="mdi-layout">
-    @* Pure HTML/CSS slide-over nav panel — avoids MudDrawer JS interop issues in WASM *@
-    @if (_drawerOpen)
-    {
-        @* Backdrop *@
-        <div class="mdi-overlay-backdrop" @onclick="CloseDrawer" @onclick:preventDefault></div>
+    @* Menu Bar — hamburger (mobile only), brand, spacer, user + logout *@
+    <nav class="navbar navbar-dark bg-primary mdi-menu-bar px-2">
+        <button class="btn btn-primary border-0 d-lg-none" @onclick="ToggleDrawer" title="Menu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <span class="navbar-brand mb-0 h6 ms-2 d-none d-sm-inline">IntelliMed</span>
+        <div class="flex-grow-1"></div>
+        <span class="navbar-text d-none d-sm-inline me-2 small">@GetCurrentUser()</span>
+        <button class="btn btn-primary border-0" @onclick="SignOut" title="Sign Out">
+            <i class="bi bi-box-arrow-right"></i>
+        </button>
+    </nav>
 
-        @* Slide-over panel *@
-        <div class="mdi-slide-panel">
-            <div class="mdi-slide-header">
+    <div class="mdi-body">
+        @* Backdrop — only rendered while the mobile drawer is open *@
+        @if (_drawerOpen)
+        {
+            <div class="mdi-overlay-backdrop" @onclick="CloseDrawer" @onclick:preventDefault></div>
+        }
+
+        @* Sidebar — always rendered: docked column on desktop, slide-over drawer on mobile *@
+        <nav class="mdi-sidebar @(_drawerOpen ? "mdi-sidebar-open" : "")">
+            <div class="mdi-sidebar-header">
                 <h6 class="mx-auto mb-0">IntelliMed</h6>
             </div>
             <hr class="my-0" />
 
-            <nav class="nav flex-column mdi-nav-menu">
+            <div class="nav flex-column mdi-nav-menu">
                 @* Dashboard *@
                 <a href="/" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">📊</span> Dashboard
+                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
                 </a>
 
                 <hr class="my-2" />
@@ -30,13 +44,13 @@
                 @* Patients Section *@
                 <small class="text-muted px-4 text-uppercase">Patients</small>
                 <a href="/patients" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">📋</span> Patient List
+                    <i class="bi bi-list-ul me-2"></i> Patient List
                 </a>
                 <a href="/patients/add" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">➕</span> Add Patient
+                    <i class="bi bi-plus-lg me-2"></i> Add Patient
                 </a>
                 <a href="/patients/search" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">🔍</span> Find Patient
+                    <i class="bi bi-search me-2"></i> Find Patient
                 </a>
 
                 <hr class="my-2" />
@@ -44,13 +58,13 @@
                 @* Appointments Section *@
                 <small class="text-muted px-4 text-uppercase">Appointments</small>
                 <a href="/appointments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">📋</span> Appointment List
+                    <i class="bi bi-calendar-week me-2"></i> Appointment List
                 </a>
                 <a href="/appointments/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">➕</span> New Appointment
+                    <i class="bi bi-plus-lg me-2"></i> New Appointment
                 </a>
                 <a href="/appointments/calendar" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">📅</span> Calendar View
+                    <i class="bi bi-calendar3 me-2"></i> Calendar View
                 </a>
 
                 <hr class="my-2" />
@@ -58,13 +72,13 @@
                 @* Invoices Section *@
                 <small class="text-muted px-4 text-uppercase">Invoices</small>
                 <a href="/invoices" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">📋</span> Invoice List
+                    <i class="bi bi-receipt me-2"></i> Invoice List
                 </a>
                 <a href="/invoices/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">➕</span> New Invoice
+                    <i class="bi bi-plus-lg me-2"></i> New Invoice
                 </a>
                 <a href="/invoices/payments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">💳</span> Payments
+                    <i class="bi bi-credit-card me-2"></i> Payments
                 </a>
 
                 @* Admin Section — conditional *@
@@ -75,25 +89,25 @@
                     @if (_accessiblePages.Contains("admin/users"))
                     {
                         <a href="/admin/users" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                            <span class="me-2">👤</span> User Management
+                            <i class="bi bi-person me-2"></i> User Management
                         </a>
                     }
                     @if (_accessiblePages.Contains("admin/roles"))
                     {
                         <a href="/admin/roles" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                            <span class="me-2">🔒</span> Role Configuration
+                            <i class="bi bi-shield-lock me-2"></i> Role Configuration
                         </a>
                     }
                     @if (_accessiblePages.Contains("admin/audit"))
                     {
                         <a href="/admin/audit" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                            <span class="me-2">📈</span> Audit Log
+                            <i class="bi bi-graph-up me-2"></i> Audit Log
                         </a>
                     }
                     @if (_accessiblePages.Contains("admin/settings"))
                     {
                         <a href="/admin/settings" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                            <span class="me-2">⚙️</span> System Settings
+                            <i class="bi bi-gear me-2"></i> System Settings
                         </a>
                     }
                 }
@@ -103,34 +117,21 @@
                 @* Help Section *@
                 <small class="text-muted px-4 text-uppercase">Help</small>
                 <a href="/about" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">ℹ️</span> About IntelliMed
+                    <i class="bi bi-info-circle me-2"></i> About IntelliMed
                 </a>
                 <a href="/help" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <span class="me-2">❓</span> User Guide
+                    <i class="bi bi-question-circle me-2"></i> User Guide
                 </a>
-            </nav>
-        </div>
-    }
+            </div>
+        </nav>
 
-    @* Menu Bar — simplified: hamburger, brand, spacer, user + logout *@
-    <nav class="navbar navbar-dark bg-primary mdi-menu-bar px-2">
-        <button class="btn btn-primary border-0" @onclick="ToggleDrawer" title="Menu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <span class="navbar-brand mb-0 h6 ms-2 d-none d-sm-inline">IntelliMed</span>
-        <div class="flex-grow-1"></div>
-        <span class="navbar-text d-none d-sm-inline me-2 small">@GetCurrentUser()</span>
-        <button class="btn btn-primary border-0" @onclick="SignOut" title="Sign Out">
-            🚪
-        </button>
-    </nav>
-
-    @* Main Content *@
-    <main class="mdi-main-content">
-        <div class="container-fluid py-4">
-            @Body
-        </div>
-    </main>
+        @* Main Content *@
+        <main class="mdi-main-content">
+            <div class="container-fluid py-4">
+                @Body
+            </div>
+        </main>
+    </div>
 </div>
 
 @code {

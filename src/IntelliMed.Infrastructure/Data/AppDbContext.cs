@@ -27,6 +27,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PatientFamilyRelationship> PatientFamilyRelationships => Set<PatientFamilyRelationship>();
     public DbSet<UserDefinedFieldType> UserDefinedFieldTypes => Set<UserDefinedFieldType>();
     public DbSet<PatientUserDefinedFieldValue> PatientUserDefinedFieldValues => Set<PatientUserDefinedFieldValue>();
+    public DbSet<HealthFund> HealthFunds => Set<HealthFund>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,7 +60,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Ethnicity).HasMaxLength(100);
             entity.Property(e => e.EntitlementStatus).HasMaxLength(50);
             entity.Property(e => e.SafetyNetNumber).HasMaxLength(50);
-            entity.Property(e => e.HealthFundCode).HasMaxLength(20);
             entity.Property(e => e.HealthFundRef).HasMaxLength(50);
             entity.Property(e => e.HealthFundAliasFamily).HasMaxLength(100);
             entity.Property(e => e.HealthFundAliasFirst).HasMaxLength(100);
@@ -100,6 +100,32 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.HealthFund)
+                .WithMany()
+                .HasForeignKey(e => e.HealthFundId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // HealthFund configuration
+        modelBuilder.Entity<HealthFund>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(150);
+            entity.HasIndex(e => e.Code).IsUnique();
+
+            entity.HasData(
+                new HealthFund { Id = 1, Code = "MED", Name = "Medibank Private" },
+                new HealthFund { Id = 2, Code = "BUP", Name = "Bupa" },
+                new HealthFund { Id = 3, Code = "HCF", Name = "HCF" },
+                new HealthFund { Id = 4, Code = "NIB", Name = "nib" },
+                new HealthFund { Id = 5, Code = "GMH", Name = "GMHBA" },
+                new HealthFund { Id = 6, Code = "AU", Name = "Australian Unity" },
+                new HealthFund { Id = 7, Code = "HBF", Name = "HBF Health" },
+                new HealthFund { Id = 8, Code = "TUH", Name = "Teachers Health" },
+                new HealthFund { Id = 9, Code = "DHF", Name = "Doctors' Health Fund" },
+                new HealthFund { Id = 10, Code = "FRK", Name = "Frank Health Insurance" }
+            );
         });
 
         // PatientAddress configuration

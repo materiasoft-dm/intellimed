@@ -16,10 +16,10 @@
     <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
             <span class="d-flex align-items-center">
-                🛡️ Configure which pages each role can access
+                <i class="bi bi-shield-lock me-2"></i> Configure which pages each role can access
             </span>
             <button type="button" class="btn btn-outline-primary" @onclick="NavigateBackToUsers">
-                ⬅️ Back to Users
+                <i class="bi bi-arrow-left me-1"></i> Back to Users
             </button>
         </div>
     </div>
@@ -62,7 +62,7 @@ else
                 <div class="col-md-5">
                     <label class="form-label">Search pages...</label>
                     <div class="input-group">
-                        <span class="input-group-text">🔍</span>
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" class="form-control" placeholder="Search..."
                                value="@_searchText"
                                @oninput="OnSearchChanged" />
@@ -72,7 +72,7 @@ else
                     <button type="button" class="btn btn-primary w-100"
                             @onclick="SavePermissionsAsync"
                             disabled="@(_selectedRole == null)">
-                        💾 Save Permissions
+                        <i class="bi bi-save me-1"></i> Save Permissions
                     </button>
                 </div>
             </div>
@@ -86,7 +86,7 @@ else
     {
         <div class="card text-center py-5">
             <div class="card-body">
-                <div class="fs-1 text-muted mb-3">👆</div>
+                <i class="bi bi-hand-index-thumb fs-1 text-muted mb-3 d-block"></i>
                 <h5>Select a role above to configure its page access</h5>
             </div>
         </div>
@@ -104,7 +104,7 @@ else
             <div class="card mb-3">
                 <div class="card-body">
                     <h6 class="d-flex align-items-center mb-3">
-                        <span class="me-2">@GetCategoryEmoji(category)</span>
+                        <i class="bi @GetCategoryIcon(category) me-2"></i>
                         @category
                         <span class="badge bg-secondary ms-2">@categoryPages.Count pages</span>
                     </h6>
@@ -126,12 +126,10 @@ else
                                         @pageName
                                         @if (!string.IsNullOrWhiteSpace(pageDesc))
                                         {
-                                            <span class="ms-1 text-muted"
-                                                  title="@pageDesc"
-                                                  data-bs-toggle="tooltip"
-                                                  data-bs-placement="top">
-                                                ℹ️
-                                            </span>
+                                            <i class="bi bi-info-circle ms-1 text-muted"
+                                               title="@pageDesc"
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="top"></i>
                                         }
                                     </label>
                                 </div>
@@ -149,7 +147,7 @@ else
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <span>
-                        ✅ @_selectedPageKeys.Count of @_allPages.Count pages selected for <strong>@_selectedRole</strong>
+                        <i class="bi bi-check-circle-fill text-success me-1"></i> @_selectedPageKeys.Count of @_allPages.Count pages selected for <strong>@_selectedRole</strong>
                     </span>
                     <div>
                         <button type="button" class="btn btn-outline-primary btn-sm me-2"
@@ -352,13 +350,13 @@ else
         }
     }
 
-    private static string GetCategoryEmoji(string category) => category switch
+    private static string GetCategoryIcon(string category) => category switch
     {
-        "Clinical" => "🏥",
-        "Financial" => "💰",
-        "Admin" => "🛡️",
-        "Reports" => "📊",
-        _ => "🌐"
+        "Clinical" => "bi-hospital",
+        "Financial" => "bi-cash-coin",
+        "Admin" => "bi-shield-lock",
+        "Reports" => "bi-graph-up",
+        _ => "bi-globe"
     };
 
     private void ShowToast(string message, bool isError = false)

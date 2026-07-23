@@ -4,6 +4,8 @@ public class Patient
 {
     public int Id { get; set; }
 
+    public PatientTypeEnum Type { get; set; } = PatientTypeEnum.Person;
+
     // Personal
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
@@ -61,12 +63,12 @@ public class Patient
     public bool SameAsNextOfKin { get; set; }
 
     // Health Fund
-    public string? HealthFundCode { get; set; }
-    public string? HealthFundName { get; set; }
+    public int? HealthFundId { get; set; }
     public string? HealthFundNumber { get; set; }
     public string? HealthFundRef { get; set; }
     public string? HealthFundAliasFamily { get; set; }
     public string? HealthFundAliasFirst { get; set; }
+    public DateTime? HealthFundJoinDate { get; set; }
 
     // Account
     public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.PrivatePatient;
@@ -104,4 +106,5 @@ public class Patient
     public Patient? EmergencyContactPatient { get; set; }
     public Patient? PayerPatient { get; set; }
     public Practitioner? Provider { get; set; }
+    public HealthFund? HealthFund { get; set; }
 }

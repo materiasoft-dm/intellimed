@@ -350,3 +350,6 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
     await context.RolePermissions.AddRangeAsync(permissions);
     await context.SaveChangesAsync();
 }
+
+// Exposes the top-level Program for WebApplicationFactory<Program> in integration/UI tests.
+public partial class Program { }

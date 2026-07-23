@@ -1,5 +1,11 @@
 namespace IntelliMed.Core.Entities;
 
+public enum PatientTypeEnum
+{
+    Person,
+    Organisation
+}
+
 public enum GenderEnum
 {
     Unspecified,

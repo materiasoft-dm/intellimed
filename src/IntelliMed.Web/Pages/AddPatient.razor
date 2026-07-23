@@ -28,8 +28,8 @@
 }
 else
 {
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <h5 class="mb-0">🩺 @(Id.HasValue ? $"Edit Patient — {_model.FirstName} {_model.LastName}" : "New Patient")</h5>
+    <div class="d-flex align-items-center justify-content-between mb-1">
+        <h5 class="mb-0 small">🩺 @(Id.HasValue ? $"Edit Patient — {_model.FirstName} {_model.LastName}" : "New Patient")</h5>
         @if (!string.IsNullOrEmpty(_statusMessage))
         {
             <span class="small @(_statusIsError ? "text-danger" : "text-success")">@_statusMessage</span>
@@ -39,13 +39,13 @@ else
     <EditForm Model="_model" OnValidSubmit="HandleSaveAsync">
         <DataAnnotationsValidator />
 
-        <div class="row g-2 mb-2">
+        <div class="row g-1 mb-1">
             @* ===================== PERSONAL ===================== *@
             <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-header py-1"><strong>Personal</strong></div>
-                    <div class="card-body py-2">
-                        <div class="row g-2">
+                    <div class="card-body py-1">
+                        <div class="row g-1">
                             <div class="col-6">
                                 <label class="form-label small mb-0">Surname</label>
                                 <InputText @bind-Value="_model.LastName" class="form-control form-control-sm" />
@@ -136,8 +136,8 @@ else
             <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-header py-1"><strong>Entitlement</strong></div>
-                    <div class="card-body py-2">
-                        <div class="row g-2">
+                    <div class="card-body py-1">
+                        <div class="row g-1">
                             <div class="col-6">
                                 <label class="form-label small mb-0">Medicare#</label>
                                 <InputText @bind-Value="_model.MedicareNumber" class="form-control form-control-sm" />
@@ -200,7 +200,7 @@ else
             </div>
         </div>
 
-        <div class="row g-2 mb-2">
+        <div class="row g-1 mb-1">
             @* ===================== ADDRESSES ===================== *@
             <div class="col-lg-6">
                 <div class="card h-100">
@@ -211,10 +211,10 @@ else
                             <li class="nav-item"><a class="nav-link @(_addressTab == "Other" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _addressTab = "Other")">Other Addresses</a></li>
                         </ul>
                     </div>
-                    <div class="card-body py-2">
+                    <div class="card-body py-1">
                         @if (_addressTab == "Residential")
                         {
-                            <div class="row g-2">
+                            <div class="row g-1">
                                 <div class="col-12">
                                     <label class="form-label small mb-0">Address</label>
                                     <InputText @bind-Value="_model.Address" class="form-control form-control-sm" />
@@ -237,7 +237,7 @@ else
                         {
                             var addrType = _addressTab == "Postal" ? PatientAddressType.Postal : PatientAddressType.Other;
                             var addr = GetOrCreateAddress(addrType);
-                            <div class="row g-2">
+                            <div class="row g-1">
                                 <div class="col-12">
                                     <label class="form-label small mb-0">Address</label>
                                     <input class="form-control form-control-sm" @bind="addr.AddressLine1" />
@@ -285,8 +285,8 @@ else
             <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-header py-1"><strong>Contact Details</strong></div>
-                    <div class="card-body py-2">
-                        <div class="row g-2">
+                    <div class="card-body py-1">
+                        <div class="row g-1">
                             <div class="col-6">
                                 <label class="form-label small mb-0">Home Phone</label>
                                 <InputText @bind-Value="_model.Phone" class="form-control form-control-sm" />
@@ -363,13 +363,13 @@ else
             </div>
         </div>
 
-        <div class="row g-2 mb-2">
+        <div class="row g-1 mb-1">
             @* ===================== HEALTH FUND ===================== *@
             <div class="col-lg-4">
                 <div class="card h-100">
                     <div class="card-header py-1"><strong>Health Fund</strong></div>
-                    <div class="card-body py-2">
-                        <div class="row g-2">
+                    <div class="card-body py-1">
+                        <div class="row g-1">
                             <div class="col-4">
                                 <label class="form-label small mb-0">Fund Id</label>
                                 <InputText @bind-Value="_model.HealthFundCode" class="form-control form-control-sm" />
@@ -403,8 +403,8 @@ else
             <div class="col-lg-4">
                 <div class="card h-100">
                     <div class="card-header py-1"><strong>Account</strong></div>
-                    <div class="card-body py-2">
-                        <div class="row g-2">
+                    <div class="card-body py-1">
+                        <div class="row g-1">
                             <div class="col-6">
                                 <label class="form-label small mb-0">Acc. Type</label>
                                 <InputSelect @bind-Value="_model.AccountType" class="form-select form-select-sm">
@@ -453,8 +453,8 @@ else
             <div class="col-lg-4">
                 <div class="card h-100">
                     <div class="card-header py-1"><strong>File</strong></div>
-                    <div class="card-body py-2">
-                        <div class="row g-2">
+                    <div class="card-body py-1">
+                        <div class="row g-1">
                             <div class="col-6">
                                 <label class="form-label small mb-0">File#</label>
                                 <InputText @bind-Value="_model.FileNumber" class="form-control form-control-sm" />
@@ -488,7 +488,7 @@ else
         </div>
 
         @* ===================== BOTTOM TAB STRIP ===================== *@
-        <div class="card mb-2">
+        <div class="card mb-1">
             <div class="card-header py-1">
                 <ul class="nav nav-tabs card-header-tabs">
                     @foreach (var tab in _bottomTabs)
@@ -499,7 +499,7 @@ else
                     }
                 </ul>
             </div>
-            <div class="card-body py-2" style="min-height: 220px;">
+            <div class="card-body py-1" style="min-height: 150px;">
                 @if (!Id.HasValue)
                 {
                     <div class="text-muted small">Save the patient first to manage @_activeBottomTab.</div>
@@ -842,6 +842,7 @@ else
 
     private static PatientFormModel MapToFormModel(PatientDto dto) => new()
     {
+        Type = dto.Type,
         FirstName = dto.FirstName,
         LastName = dto.LastName,
         MiddleName = dto.MiddleName,
@@ -890,12 +891,12 @@ else
         EmergencyContactName = dto.EmergencyContactName,
         EmergencyContactPhone = dto.EmergencyContactPhone,
         SameAsNextOfKin = dto.SameAsNextOfKin,
-        HealthFundCode = dto.HealthFundCode,
-        HealthFundName = dto.HealthFundName,
+        HealthFundId = dto.HealthFundId,
         HealthFundNumber = dto.HealthFundNumber,
         HealthFundRef = dto.HealthFundRef,
         HealthFundAliasFamily = dto.HealthFundAliasFamily,
         HealthFundAliasFirst = dto.HealthFundAliasFirst,
+        HealthFundJoinDate = dto.HealthFundJoinDate,
         AccountType = dto.AccountType,
         FeeRateCode = dto.FeeRateCode,
         PayerPatientId = dto.PayerPatientId,
@@ -969,12 +970,12 @@ else
         EmergencyContactName = m.EmergencyContactName,
         EmergencyContactPhone = m.EmergencyContactPhone,
         SameAsNextOfKin = m.SameAsNextOfKin,
-        HealthFundCode = m.HealthFundCode,
-        HealthFundName = m.HealthFundName,
+        HealthFundId = m.HealthFundId,
         HealthFundNumber = m.HealthFundNumber,
         HealthFundRef = m.HealthFundRef,
         HealthFundAliasFamily = m.HealthFundAliasFamily,
         HealthFundAliasFirst = m.HealthFundAliasFirst,
+        HealthFundJoinDate = m.HealthFundJoinDate,
         AccountType = m.AccountType,
         FeeRateCode = m.FeeRateCode,
         PayerPatientId = m.PayerPatientId,

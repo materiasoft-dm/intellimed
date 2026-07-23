@@ -9,6 +9,7 @@ public static class EntityMapper
     public static PatientDto ToDto(Patient entity) => new()
     {
         Id = entity.Id,
+        Type = entity.Type,
         FirstName = entity.FirstName,
         LastName = entity.LastName,
         MiddleName = entity.MiddleName,
@@ -57,12 +58,14 @@ public static class EntityMapper
         EmergencyContactName = entity.EmergencyContactName,
         EmergencyContactPhone = entity.EmergencyContactPhone,
         SameAsNextOfKin = entity.SameAsNextOfKin,
-        HealthFundCode = entity.HealthFundCode,
-        HealthFundName = entity.HealthFundName,
+        HealthFundId = entity.HealthFundId,
+        HealthFundCode = entity.HealthFund?.Code,
+        HealthFundName = entity.HealthFund?.Name,
         HealthFundNumber = entity.HealthFundNumber,
         HealthFundRef = entity.HealthFundRef,
         HealthFundAliasFamily = entity.HealthFundAliasFamily,
         HealthFundAliasFirst = entity.HealthFundAliasFirst,
+        HealthFundJoinDate = entity.HealthFundJoinDate,
         AccountType = entity.AccountType,
         FeeRateCode = entity.FeeRateCode,
         PayerPatientId = entity.PayerPatientId,
@@ -89,6 +92,7 @@ public static class EntityMapper
 
     public static Patient ToEntity(CreatePatientDto dto) => new()
     {
+        Type = dto.Type,
         FirstName = dto.FirstName,
         LastName = dto.LastName,
         MiddleName = dto.MiddleName,
@@ -137,12 +141,12 @@ public static class EntityMapper
         EmergencyContactName = dto.EmergencyContactName,
         EmergencyContactPhone = dto.EmergencyContactPhone,
         SameAsNextOfKin = dto.SameAsNextOfKin,
-        HealthFundCode = dto.HealthFundCode,
-        HealthFundName = dto.HealthFundName,
+        HealthFundId = dto.HealthFundId,
         HealthFundNumber = dto.HealthFundNumber,
         HealthFundRef = dto.HealthFundRef,
         HealthFundAliasFamily = dto.HealthFundAliasFamily,
         HealthFundAliasFirst = dto.HealthFundAliasFirst,
+        HealthFundJoinDate = dto.HealthFundJoinDate,
         AccountType = dto.AccountType,
         FeeRateCode = dto.FeeRateCode,
         PayerPatientId = dto.PayerPatientId,
@@ -168,6 +172,7 @@ public static class EntityMapper
 
     public static void UpdateEntity(Patient entity, UpdatePatientDto dto)
     {
+        entity.Type = dto.Type;
         entity.FirstName = dto.FirstName;
         entity.LastName = dto.LastName;
         entity.MiddleName = dto.MiddleName;
@@ -216,12 +221,12 @@ public static class EntityMapper
         entity.EmergencyContactName = dto.EmergencyContactName;
         entity.EmergencyContactPhone = dto.EmergencyContactPhone;
         entity.SameAsNextOfKin = dto.SameAsNextOfKin;
-        entity.HealthFundCode = dto.HealthFundCode;
-        entity.HealthFundName = dto.HealthFundName;
+        entity.HealthFundId = dto.HealthFundId;
         entity.HealthFundNumber = dto.HealthFundNumber;
         entity.HealthFundRef = dto.HealthFundRef;
         entity.HealthFundAliasFamily = dto.HealthFundAliasFamily;
         entity.HealthFundAliasFirst = dto.HealthFundAliasFirst;
+        entity.HealthFundJoinDate = dto.HealthFundJoinDate;
         entity.AccountType = dto.AccountType;
         entity.FeeRateCode = dto.FeeRateCode;
         entity.PayerPatientId = dto.PayerPatientId;

@@ -3,6 +3,11 @@
  * Provides resizable columns, pagination, sorting, and search via Grid.js
  */
 
+// Stashes the ResizableTable's DotNetObjectReference so IntelliMedNavigate can call back into it.
+window.IntelliMedSetDotNetRef = function (dotNetRef) {
+    window._intelliMedDotNet = dotNetRef;
+};
+
 // Global navigation callback for View buttons
 window.IntelliMedNavigate = function (id) {
     // Navigate using Blazor NavigationManager via history push
@@ -30,10 +35,14 @@ window.IntelliMedGrid = {
         this.destroy(id);
 
         // Process columns: mark HTML columns with formatter
-        const columns = (options.columns || []).map(function (col) {
+        const columns = (options.columns || []).map(function (col, idx) {
+            // Grid.js column ids must be plain alphanumeric — strip punctuation from whatever id
+            // we were given (column names like "D.O.B." or "Medicare#" otherwise produce invalid
+            // ids like "d.o.b." or "medicare#").
+            const sanitizedId = (col.id || col.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const c = {
                 name: col.name,
-                id: col.id || col.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+                id: sanitizedId || ('col' + idx),
                 sort: col.sort !== undefined ? col.sort : true,
                 width: col.width || undefined
             };
