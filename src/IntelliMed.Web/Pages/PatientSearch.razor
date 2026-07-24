@@ -12,47 +12,31 @@
 
 <h4 class="mb-4">Patient Search</h4>
 
-@* Toolbar with total count and refresh button *@
-<div class="card mb-4">
-    <div class="card-body d-flex align-items-center justify-content-between">
-        <span class="d-flex align-items-center">
-            <i class="bi bi-heart-pulse me-2"></i>
-            Total Patients: @(_totalCount)
-        </span>
-        <button class="btn btn-primary" @onclick="RefreshAsync"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
-    </div>
-</div>
-
-@* Loading and error states *@
-@if (_isLoading)
-{
-    <div class="card text-center py-5">
-        <div class="card-body">
-            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
-            Loading patients...
-        </div>
-    </div>
-}
+@* Error state (the grid shows its own loading spinner) *@
 @if (!string.IsNullOrEmpty(_error))
 {
     <div class="alert alert-danger d-flex align-items-center mb-4">
         <i class="bi bi-exclamation-triangle me-2"></i> @_error
-        <button class="btn btn-outline-danger btn-sm ms-auto" @onclick="LoadPatientsAsync">Retry</button>
+        <button class="btn btn-outline-danger btn-sm ms-auto" @onclick="RefreshAsync">Retry</button>
     </div>
 }
 
 @* Layout: left filter sidebar and main results area *@
 <div class="row">
     @* Left-Hand Sidebar *@
-    <div class="col-3">
-        <div class="card mb-4">
-            <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs">
+    <div class="col-12 col-md-3">
+        <div class="card mb-4 filter-panel-card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <ul class="nav nav-tabs card-header-tabs flex-grow-1 mb-0">
                     <li class="nav-item"><a class="nav-link @(_activeTab == "Basic" ? "active" : "")" href="#" @onclick="@(() => _activeTab = "Basic")" @onclick:preventDefault>Basic</a></li>
                     <li class="nav-item"><a class="nav-link @(_activeTab == "Advance" ? "active" : "")" href="#" @onclick="@(() => _activeTab = "Advance")" @onclick:preventDefault>Advance</a></li>
                 </ul>
+                <button type="button" class="btn btn-sm btn-link text-decoration-none d-md-none p-0 ms-2"
+                        @onclick="@(() => _mobileFiltersExpanded = !_mobileFiltersExpanded)" title="Show/hide filters">
+                    <i class="bi @(_mobileFiltersExpanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                </button>
             </div>
-            <div class="card-body" style="max-height: 75vh; overflow-y: auto;" @onkeydown="HandleFilterKeyDown">
+            <div class="card-body filter-panel-body @(_mobileFiltersExpanded ? "" : "d-none d-md-block")" @onkeydown="HandleFilterKeyDown">
                 @if (_activeTab == "Basic")
                 {
                     <div class="filter-section-header d-flex justify-content-between align-items-center" @onclick="@(() => _secIdentifiers = !_secIdentifiers)">
@@ -347,119 +331,141 @@
                 {
                     <div class="text-muted small">Advanced filters coming soon.</div>
                 }
-
-                @* Footer buttons *@
-                <div class="d-flex justify-content-between mt-3">
-                    <button type="button" class="btn btn-primary" @onclick="FindAsync">Find</button>
-                    <button type="button" class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
-                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between filter-panel-footer @(_mobileFiltersExpanded ? "" : "d-none d-md-flex")">
+                <button type="button" class="btn btn-primary" @onclick="FindAsync">Find</button>
+                <button type="button" class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
             </div>
         </div>
     </div>
     @* Main Patient Data Grid *@
-    <div class="col-9">
-        @if (!_isLoading && _patients != null)
-        {
-            <div class="card">
-                <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
-                    <table class="table table-hover table-striped table-sm mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th></th>
-                                <th>Patient Name</th>
-                                <th>Preferred</th>
-                                <th>D.O.B.</th>
-                                <th>File#</th>
-                                <th>Street Address</th>
-                                <th>Home Phone</th>
-                                <th>B.H. Phone</th>
-                                <th>Mobile Phone</th>
-                                <th>Gender</th>
-                                <th>DF Acc. Type</th>
-                                <th>Medicare#</th>
-                                <th>Veteran#</th>
-                                <th>Fund ID</th>
-                                <th>Email</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var p in _patients)
-                            {
-                                <tr class="@(p == _selectedPatient ? "table-primary" : "")" @onclick="() => SelectPatient(p)">
-                                    <td>@(p == _selectedPatient ? "▶" : "")</td>
-                                    <td>@p.FullName</td>
-                                    <td>@p.FirstName</td>
-                                    <td>@p.DateOfBirth.ToString("dd/MM/yyyy")</td>
-                                    <td>@p.Id.ToString("D5")</td>
-                                    <td>@p.FullAddress</td>
-                                    <td>@p.Phone</td>
-                                    <td>@p.BusinessHoursPhone</td>
-                                    <td>@p.MobilePhone</td>
-                                    <td>@p.Gender</td>
-                                    <td>@p.AccountType</td>
-                                    <td>@p.MedicareNumber</td>
-                                    <td>@p.DvaNumber</td>
-                                    <td>@p.HealthFundCode</td>
-                                    <td>@p.Email</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-                @* Pagination *@
-                @if (_totalCount > _pageSize)
+    <div class="col-12 col-md-9 mt-3 mt-md-0">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between py-2">
+                <span class="small text-muted"><i class="bi bi-heart-pulse me-1"></i> Total Patients: <strong>@_totalCount</strong></span>
+                <button class="btn btn-sm btn-outline-primary" @onclick="RefreshAsync">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                </button>
+            </div>
+
+            @* Desktop/tablet: full data grid with column show/hide/reorder + server paging *@
+            <div class="d-none d-md-block">
+                <RadzenDataGrid @ref="_grid" TItem="PatientDto" Data="@_patients" Count="@_totalCount"
+                                 LoadData="@LoadDataAsync" IsLoading="@_isLoading"
+                                 AllowPaging="true" PageSize="@_pageSize" PagerHorizontalAlign="HorizontalAlign.Center"
+                                 AllowColumnResize="true" AllowColumnReorder="true" AllowColumnPicking="true"
+                                 SelectionMode="DataGridSelectionMode.Single"
+                                 RowSelect="@(p => SelectPatient(p))"
+                                 EmptyText="No patients found.">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="PatientDto" Property="FullName" Title="Patient Name" Width="180px">
+                            <Template Context="p">
+                                <a href="javascript:void(0)" class="link-primary" @onclick="() => EditPatient(p)" @onclick:stopPropagation>@p.FullName</a>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="PatientDto" Property="FirstName" Title="Preferred" Width="120px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="DateOfBirth" Title="D.O.B." Width="110px" FormatString="{0:dd/MM/yyyy}" />
+                        <RadzenDataGridColumn TItem="PatientDto" Title="File#" Width="80px">
+                            <Template Context="p">@p.Id.ToString("D5")</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="PatientDto" Property="FullAddress" Title="Street Address" Width="220px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="Phone" Title="Home Phone" Width="120px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="BusinessHoursPhone" Title="B.H. Phone" Width="120px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="MobilePhone" Title="Mobile Phone" Width="120px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="Gender" Title="Gender" Width="100px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="AccountType" Title="DF Acc. Type" Width="130px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="MedicareNumber" Title="Medicare#" Width="130px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="DvaNumber" Title="Veteran#" Width="110px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="HealthFundCode" Title="Fund ID" Width="90px" />
+                        <RadzenDataGridColumn TItem="PatientDto" Property="Email" Title="Email" Width="180px" />
+                    </Columns>
+                </RadzenDataGrid>
+            </div>
+
+            @* Mobile only: card list — the grid above stays mounted (hidden) so it keeps driving paging/loading *@
+            <div class="d-md-none p-2">
+                @if (_isLoading)
                 {
-                    <div class="card-footer d-flex justify-content-between align-items-center">
-                        <span class="text-muted small">
-                            Showing @((_currentPage - 1) * _pageSize + 1)-@Math.Min(_currentPage * _pageSize, _totalCount) of @_totalCount
-                        </span>
-                        <nav>
-                            <ul class="pagination pagination-sm mb-0">
-                                <li class="page-item @(_currentPage <= 1 ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(1)" disabled="@(_currentPage <= 1)">««</button>
-                                </li>
-                                <li class="page-item @(_currentPage <= 1 ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(_currentPage - 1)" disabled="@(_currentPage <= 1)">«</button>
-                                </li>
-                                @for (int i = 1; i <= _totalPages; i++)
+                    <div class="text-center text-muted py-4">
+                        <span class="spinner-border spinner-border-sm text-primary me-2"></span> Loading...
+                    </div>
+                }
+                else if (_patients.Count == 0)
+                {
+                    <div class="text-center text-muted py-4">No patients found.</div>
+                }
+                else
+                {
+                    @foreach (var p in _patients)
+                    {
+                        <div class="card mb-2 patient-mobile-card @(p == _selectedPatient ? "border-primary" : "")" @onclick="() => SelectPatient(p)">
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <a href="javascript:void(0)" class="fw-semibold link-primary" @onclick="() => EditPatient(p)" @onclick:stopPropagation>@p.FullName</a>
+                                    @if (p == _selectedPatient)
+                                    {
+                                        <i class="bi bi-check-circle-fill text-primary"></i>
+                                    }
+                                </div>
+                                <div class="small text-muted">File# @p.Id.ToString("D5") &middot; @p.DateOfBirth.ToString("dd/MM/yyyy")</div>
+                                @if (!string.IsNullOrWhiteSpace(p.FullAddress))
                                 {
-                                    <li class="page-item @(i == _currentPage ? "active" : "")">
-                                        <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
-                                    </li>
+                                    <div class="small mt-1"><i class="bi bi-geo-alt text-muted me-1"></i>@p.FullAddress</div>
                                 }
-                                <li class="page-item @(_currentPage >= _totalPages ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(_currentPage + 1)" disabled="@(_currentPage >= _totalPages)">»</button>
-                                </li>
-                                <li class="page-item @(_currentPage >= _totalPages ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(_totalPages)" disabled="@(_currentPage >= _totalPages)">»»</button>
-                                </li>
-                            </ul>
-                        </nav>
+                                @if (!string.IsNullOrWhiteSpace(p.MobilePhone))
+                                {
+                                    <div class="small"><i class="bi bi-telephone text-muted me-1"></i>@p.MobilePhone</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(p.Email))
+                                {
+                                    <div class="small"><i class="bi bi-envelope text-muted me-1"></i>@p.Email</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    <div class="d-flex justify-content-between align-items-center mt-2 mb-1">
+                        <button class="btn btn-sm btn-outline-secondary" disabled="@(_mobilePage <= 1)" @onclick="() => GoToMobilePageAsync(_mobilePage - 1)">
+                            <i class="bi bi-chevron-left"></i> Prev
+                        </button>
+                        <span class="small text-muted">Page @_mobilePage of @_mobileTotalPages</span>
+                        <button class="btn btn-sm btn-outline-secondary" disabled="@(_mobilePage >= _mobileTotalPages)" @onclick="() => GoToMobilePageAsync(_mobilePage + 1)">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </button>
                     </div>
                 }
             </div>
-        }
+        </div>
+
         @* Bottom Action Bar *@
-        <div class="d-flex justify-content-between align-items-center mt-3">
-            <div>Total: @_totalCount</div>
-            <div class="btn-group">
-                <button class="btn btn-outline-secondary" @onclick="()=>{}">Graph</button>
-                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Send SMS/Email</button>
+        <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-sm btn-primary" @onclick="@(() => Navigation.NavigateTo("/patients/add"))">
+                    <i class="bi bi-person-plus"></i> <span class="d-none d-sm-inline">New Person</span>
+                </button>
+                <button class="btn btn-sm btn-outline-primary" @onclick="@(() => Navigation.NavigateTo("/patients/add?type=Organisation"))">
+                    <i class="bi bi-building-add"></i> <span class="d-none d-sm-inline">New Org</span>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" @onclick="ArchiveSelectedAsync" disabled="@(_selectedPatient == null)">
+                    <i class="bi bi-archive"></i> <span class="d-none d-sm-inline">Archive</span>
+                </button>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-three-dots"></i> <span class="d-none d-sm-inline">More</span>
+                </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#">Send SMS</a></li>
-                    <li><a class="dropdown-item" href="#">Send Email</a></li>
+                    <li><h6 class="dropdown-header">Reports</h6></li>
+                    <li><a class="dropdown-item" href="#" @onclick="()=>{}" @onclick:preventDefault><i class="bi bi-bar-chart me-2"></i>Graph</a></li>
+                    <li><a class="dropdown-item" href="#" @onclick="ExportCsvAsync" @onclick:preventDefault><i class="bi bi-download me-2"></i>Export</a></li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li><h6 class="dropdown-header">Communication</h6></li>
+                    <li><a class="dropdown-item" href="#" @onclick:preventDefault><i class="bi bi-chat-dots me-2"></i>Send SMS</a></li>
+                    <li><a class="dropdown-item" href="#" @onclick:preventDefault><i class="bi bi-envelope me-2"></i>Send Email</a></li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li><h6 class="dropdown-header">Verification</h6></li>
+                    <li><a class="dropdown-item" href="#" @onclick:preventDefault><i class="bi bi-shield-check me-2"></i>Enterprise Verification</a></li>
+                    <li><a class="dropdown-item" href="#" @onclick="ShowUnderConstruction" @onclick:preventDefault><i class="bi bi-patch-check me-2"></i>Patient Verification</a></li>
                 </ul>
-                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Enterprise Verification</button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#">Verify</a></li>
-                </ul>
-                <button class="btn btn-outline-secondary" @onclick="ShowUnderConstruction">Patient Verification</button>
-                <button class="btn btn-outline-secondary" @onclick="ExportCsvAsync">Export</button>
-                <button class="btn btn-outline-secondary" @onclick="EditSelected" disabled="@(_selectedPatient == null)">Edit</button>
-                <button class="btn btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo("/patients/add?type=Organisation"))">New Org</button>
-                <button class="btn btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo("/patients/add"))">New Person</button>
-                <button class="btn btn-outline-secondary" @onclick="ArchiveSelectedAsync" disabled="@(_selectedPatient == null)">Archive</button>
-                <button class="btn btn-outline-secondary" @onclick="()=>{}">Close</button>
             </div>
         </div>
     </div>
@@ -518,16 +524,21 @@
 }
 
 @code {
+    private RadzenDataGrid<PatientDto>? _grid;
     private List<PatientDto> _patients = new();
     private PatientDto? _selectedPatient;
     private int _totalCount;
     private bool _isLoading;
     private string? _error;
-    private int _currentPage = 1;
     private int _pageSize = 10;
-    private int _totalPages => (int)Math.Ceiling((double)_totalCount / _pageSize);
+    private int _mobilePage = 1;
+    private int _mobileTotalPages => Math.Max(1, (int)Math.Ceiling((double)_totalCount / _pageSize));
     private string _activeTab = "Basic";
     private string? _underConstructionMessage;
+
+    // Mobile only (the CSS classes ignore this on tablet/desktop): filters start expanded,
+    // then collapse after a search so the results have room.
+    private bool _mobileFiltersExpanded = true;
 
     private List<HealthFundDto> _healthFunds = new();
     private PatientSearchDto _filter = new();
@@ -549,18 +560,27 @@
     protected override async Task OnInitializedAsync()
     {
         _healthFunds = (await HealthFundService.GetAllActiveAsync()).ToList();
-        await LoadPatientsAsync();
     }
 
-    private async Task LoadPatientsAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _grid != null)
+        {
+            await _grid.Reload();
+        }
+    }
+
+    /// <summary>Called by RadzenDataGrid whenever it needs a page of data (initial load, paging, Reload()).</summary>
+    private async Task LoadDataAsync(LoadDataArgs args)
     {
         _isLoading = true;
         _error = null;
         try
         {
-            _filter.Page = _currentPage;
+            _filter.Page = (args.Skip ?? 0) / _pageSize + 1;
             _filter.PageSize = _pageSize;
             _filter.AccountTypes = _selectedAccountTypes.Count > 0 ? _selectedAccountTypes.ToList() : null;
+            _mobilePage = _filter.Page;
 
             var result = await PatientService.SearchPatientsAsync(_filter);
             _patients = result.Items.ToList();
@@ -576,10 +596,25 @@
         }
     }
 
+    /// <summary>Mobile card-view pager — drives the same (hidden) RadzenDataGrid so loading stays in one place.</summary>
+    private async Task GoToMobilePageAsync(int page)
+    {
+        if (page < 1 || page > _mobileTotalPages || _grid == null) return;
+        await _grid.GoToPage(page - 1);
+    }
+
     private async Task FindAsync()
     {
-        _currentPage = 1;
-        await LoadPatientsAsync();
+        // GoToPage(0) is a no-op in Radzen when the grid is already on page 0, which would
+        // silently ignore a new filter typed while still viewing the first page. Fetch directly
+        // instead, then just sync the grid's own paging UI to match.
+        await LoadDataAsync(new LoadDataArgs { Skip = 0, Top = _pageSize });
+        if (_grid != null)
+        {
+            await _grid.GoToPage(0);
+        }
+        _mobileFiltersExpanded = false;
+        StateHasChanged();
     }
 
     private async Task HandleFilterKeyDown(KeyboardEventArgs e)
@@ -590,14 +625,12 @@
         }
     }
 
-    private async Task RefreshAsync() => await LoadPatientsAsync();
-
-    private async Task ChangePage(int page)
+    private async Task RefreshAsync()
     {
-        if (page < 1) page = 1;
-        if (page > _totalPages) page = _totalPages;
-        _currentPage = page;
-        await LoadPatientsAsync();
+        if (_grid != null)
+        {
+            await _grid.Reload();
+        }
     }
 
     private void SelectPatient(PatientDto patient)
@@ -649,10 +682,9 @@
         _payerDisplayName = null;
     }
 
-    private void EditSelected()
+    private void EditPatient(PatientDto patient)
     {
-        if (_selectedPatient != null)
-            Navigation.NavigateTo($"/patients/edit/{_selectedPatient.Id}");
+        Navigation.NavigateTo($"/patients/edit/{patient.Id}");
     }
 
     private async Task ArchiveSelectedAsync()
@@ -660,7 +692,10 @@
         if (_selectedPatient == null) return;
         await PatientService.ArchivePatientAsync(_selectedPatient.Id);
         _selectedPatient = null;
-        await LoadPatientsAsync();
+        if (_grid != null)
+        {
+            await _grid.Reload();
+        }
     }
 
     private void ShowUnderConstruction()

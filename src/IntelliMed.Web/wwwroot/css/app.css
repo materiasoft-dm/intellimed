@@ -329,6 +329,37 @@ code {
     color: var(--imed-primary);
 }
 
+/* Mobile card-list rows (Patient Search etc.) — tap target with a subtle selected/hover state */
+.patient-mobile-card {
+    cursor: pointer;
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.patient-mobile-card:hover {
+    box-shadow: var(--imed-card-shadow);
+}
+
+/* Patient Search filter panel: stretches to match the results column's height on desktop/tablet
+   (the parent .row is a flex container with the default align-items: stretch) so the Find/Clear
+   footer stays pinned to the bottom of the panel instead of trailing after the filter fields. */
+@media (min-width: 768px) {
+    .filter-panel-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .filter-panel-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        min-height: 0;
+    }
+
+    .filter-panel-footer {
+        flex-shrink: 0;
+    }
+}
+
 .mdi-nav-link {
     color: var(--imed-sidebar-text) !important;
     padding: 10px 24px !important;

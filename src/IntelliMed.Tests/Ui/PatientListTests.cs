@@ -93,6 +93,8 @@ public class PatientListTests
         // main search button is last in DOM order (bottom of the filter panel).
         await page.GetByRole(AriaRole.Button, new() { Name = "Find" }).Last.ClickAsync();
 
-        await Assertions.Expect(page.GetByText("Visible GridRow")).ToBeVisibleAsync();
+        // Desktop grid and the mobile card view (toggled via CSS, not conditional rendering) both
+        // exist in the DOM at once, so the patient's name legitimately appears twice.
+        await Assertions.Expect(page.GetByText("Visible GridRow").First).ToBeVisibleAsync();
     }
 }

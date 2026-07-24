@@ -2,17 +2,20 @@ using IntelliMed.UI.Services;
 
 namespace IntelliMed.Web.Services;
 
+/// <summary>
+/// Tracks which clinic the current user is working in, in local storage. The X-Clinic-Id
+/// header itself is attached per-request by AuthHeaderHandler (reading the same storage key),
+/// so every API call — regardless of which page or service makes it — is always scoped
+/// consistently without relying on load ordering between components.
+/// </summary>
 public class ClinicContextService : IClinicContextService
 {
     private const string ClinicIdKey = "intellimed_current_clinic_id";
-    private const string HeaderName = "X-Clinic-Id";
 
-    private readonly HttpClient _httpClient;
     private readonly IClientStorage _storage;
 
-    public ClinicContextService(HttpClient httpClient, IClientStorage storage)
+    public ClinicContextService(IClientStorage storage)
     {
-        _httpClient = httpClient;
         _storage = storage;
     }
 
@@ -25,27 +28,10 @@ public class ClinicContextService : IClinicContextService
     public async Task SetCurrentClinicIdAsync(int clinicId)
     {
         await _storage.SetItemAsync(ClinicIdKey, clinicId.ToString());
-        ApplyHeader(clinicId);
-    }
-
-    public async Task RestoreAsync()
-    {
-        var clinicId = await GetCurrentClinicIdAsync();
-        if (clinicId.HasValue)
-        {
-            ApplyHeader(clinicId.Value);
-        }
     }
 
     public async Task ClearAsync()
     {
         await _storage.SetItemAsync(ClinicIdKey, null);
-        _httpClient.DefaultRequestHeaders.Remove(HeaderName);
-    }
-
-    private void ApplyHeader(int clinicId)
-    {
-        _httpClient.DefaultRequestHeaders.Remove(HeaderName);
-        _httpClient.DefaultRequestHeaders.Add(HeaderName, clinicId.ToString());
     }
 }

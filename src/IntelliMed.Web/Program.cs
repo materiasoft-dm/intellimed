@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using IntelliMed.Web;
 using IntelliMed.UI.Services;
 using IntelliMed.Web.Services;
+using Radzen;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -21,7 +22,7 @@ builder.Services.AddScoped(sp =>
 
 // Platform storage and theme service
 builder.Services.AddScoped<IClientStorage, BrowserClientStorage>();
-builder.Services.AddScoped<IThemeService, ThemeService>();
+builder.Services.AddScoped<IThemeService, IntelliMed.UI.Services.ThemeService>();
 // Authentication service
 builder.Services.AddScoped<IAuthService, AuthService>();
 // Admin service for user/role management
@@ -43,6 +44,9 @@ builder.Services.AddScoped<IProviderGroupService, ProviderGroupService>();
 builder.Services.AddScoped<IClinicSettingsService, ClinicSettingsService>();
 builder.Services.AddScoped<IClinicContextService, ClinicContextService>();
 builder.Services.AddScoped<IClinicService, ClinicService>();
+
+// Radzen DataGrid (column show/hide/reorder + server-side paging) for list pages
+builder.Services.AddRadzenComponents();
 
 var host = builder.Build();
 

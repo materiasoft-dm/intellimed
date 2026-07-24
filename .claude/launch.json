@@ -6,6 +6,12 @@
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/IntelliMed.Api/IntelliMed.Api.csproj", "--launch-profile", "http"],
       "port": 5284
+    },
+    {
+      "name": "intellimed-web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/IntelliMed.Web/IntelliMed.Web.csproj", "--launch-profile", "http"],
+      "port": 5159
     }
   ]
 }
