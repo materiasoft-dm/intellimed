@@ -29,19 +29,19 @@ public class InvoiceRepositoryTests : IDisposable
     public async Task CreateAsync_WithValidDto_ReturnsNewInvoiceId()
     {
         // Arrange
-        var patient = new Patient
+        var client = new Client
         {
             FirstName = "Test",
-            LastName = "Patient",
+            LastName = "Client",
             Email = "test@example.com",
             IsActive = true
         };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         await _context.SaveChangesAsync();
 
         var dto = new CreateInvoiceDto
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             DueDate = DateTime.Today.AddDays(30),
             Notes = "Test invoice",
             Items = new List<CreateInvoiceItemDto>
@@ -60,7 +60,7 @@ public class InvoiceRepositoryTests : IDisposable
             .Include(i => i.Items)
             .FirstOrDefaultAsync(i => i.Id == result);
         invoice.Should().NotBeNull();
-        invoice!.PatientId.Should().Be(patient.Id);
+        invoice!.ClientId.Should().Be(client.Id);
         invoice.Items.Should().HaveCount(2);
     }
 
@@ -68,19 +68,19 @@ public class InvoiceRepositoryTests : IDisposable
     public async Task GetByIdAsync_WithExistingInvoice_ReturnsInvoiceDto()
     {
         // Arrange
-        var patient = new Patient
+        var client = new Client
         {
             FirstName = "Test",
-            LastName = "Patient",
+            LastName = "Client",
             Email = "test@example.com",
             IsActive = true
         };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         await _context.SaveChangesAsync();
 
         var invoice = new Invoice
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             InvoiceNumber = "INV-001",
             InvoiceDate = DateTime.Today,
             DueDate = DateTime.Today.AddDays(30),
@@ -110,46 +110,46 @@ public class InvoiceRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task SearchAsync_WithPatientIdFilter_ReturnsMatchingInvoices()
+    public async Task SearchAsync_WithClientIdFilter_ReturnsMatchingInvoices()
     {
         // Arrange
-        var patient1 = new Patient { FirstName = "Patient", LastName = "One", Email = "p1@example.com", IsActive = true };
-        var patient2 = new Patient { FirstName = "Patient", LastName = "Two", Email = "p2@example.com", IsActive = true };
-        _context.Patients.AddRange(patient1, patient2);
+        var client1 = new Client { FirstName = "Client", LastName = "One", Email = "p1@example.com", IsActive = true };
+        var client2 = new Client { FirstName = "Client", LastName = "Two", Email = "p2@example.com", IsActive = true };
+        _context.Clients.AddRange(client1, client2);
         await _context.SaveChangesAsync();
 
         var invoices = new[]
         {
-            new Invoice { PatientId = patient1.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 100.00m },
-            new Invoice { PatientId = patient2.Id, InvoiceNumber = "INV-002", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 200.00m },
-            new Invoice { PatientId = patient1.Id, InvoiceNumber = "INV-003", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 150.00m }
+            new Invoice { ClientId = client1.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 100.00m },
+            new Invoice { ClientId = client2.Id, InvoiceNumber = "INV-002", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 200.00m },
+            new Invoice { ClientId = client1.Id, InvoiceNumber = "INV-003", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 150.00m }
         };
         _context.Invoices.AddRange(invoices);
         await _context.SaveChangesAsync();
 
-        var search = new InvoiceSearchDto { PatientId = patient1.Id };
+        var search = new InvoiceSearchDto { ClientId = client1.Id };
 
         // Act
         var result = (await _repository.SearchAsync(search)).ToList();
 
         // Assert
         result.Should().HaveCount(2);
-        result.Should().OnlyContain(i => i.PatientId == patient1.Id);
+        result.Should().OnlyContain(i => i.ClientId == client1.Id);
     }
 
     [Fact]
     public async Task SearchAsync_WithStatusFilter_ReturnsMatchingInvoices()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
         await _context.SaveChangesAsync();
 
         var invoices = new[]
         {
-            new Invoice { PatientId = patient.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 100.00m },
-            new Invoice { PatientId = patient.Id, InvoiceNumber = "INV-002", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Paid, TotalAmount = 200.00m },
-            new Invoice { PatientId = patient.Id, InvoiceNumber = "INV-003", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Overdue, TotalAmount = 150.00m }
+            new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 100.00m },
+            new Invoice { ClientId = client.Id, InvoiceNumber = "INV-002", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Paid, TotalAmount = 200.00m },
+            new Invoice { ClientId = client.Id, InvoiceNumber = "INV-003", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Overdue, TotalAmount = 150.00m }
         };
         _context.Invoices.AddRange(invoices);
         await _context.SaveChangesAsync();
@@ -168,15 +168,15 @@ public class InvoiceRepositoryTests : IDisposable
     public async Task SearchAsync_WithDateRange_ReturnsInvoicesInRange()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
         await _context.SaveChangesAsync();
 
         var invoices = new[]
         {
-            new Invoice { PatientId = patient.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today.AddDays(-10), DueDate = DateTime.Today.AddDays(20), Status = InvoiceStatus.Draft, TotalAmount = 100.00m },
-            new Invoice { PatientId = patient.Id, InvoiceNumber = "INV-002", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 200.00m },
-            new Invoice { PatientId = patient.Id, InvoiceNumber = "INV-003", InvoiceDate = DateTime.Today.AddDays(10), DueDate = DateTime.Today.AddDays(40), Status = InvoiceStatus.Draft, TotalAmount = 150.00m }
+            new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today.AddDays(-10), DueDate = DateTime.Today.AddDays(20), Status = InvoiceStatus.Draft, TotalAmount = 100.00m },
+            new Invoice { ClientId = client.Id, InvoiceNumber = "INV-002", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 200.00m },
+            new Invoice { ClientId = client.Id, InvoiceNumber = "INV-003", InvoiceDate = DateTime.Today.AddDays(10), DueDate = DateTime.Today.AddDays(40), Status = InvoiceStatus.Draft, TotalAmount = 150.00m }
         };
         _context.Invoices.AddRange(invoices);
         await _context.SaveChangesAsync();
@@ -199,15 +199,15 @@ public class InvoiceRepositoryTests : IDisposable
     public async Task GetPagedAsync_ReturnsCorrectPage()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
         await _context.SaveChangesAsync();
 
         for (int i = 1; i <= 25; i++)
         {
             _context.Invoices.Add(new Invoice
             {
-                PatientId = patient.Id,
+                ClientId = client.Id,
                 InvoiceNumber = $"INV-{i:D3}",
                 InvoiceDate = DateTime.Today,
                 DueDate = DateTime.Today.AddDays(30),
@@ -231,13 +231,13 @@ public class InvoiceRepositoryTests : IDisposable
     public async Task AddPaymentAsync_UpdatesInvoiceAmount()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
         await _context.SaveChangesAsync();
 
         var invoice = new Invoice
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             InvoiceNumber = "INV-001",
             InvoiceDate = DateTime.Today,
             DueDate = DateTime.Today.AddDays(30),
@@ -269,13 +269,13 @@ public class InvoiceRepositoryTests : IDisposable
     public async Task AddPaymentAsync_FullPayment_UpdatesStatusToPaid()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
         await _context.SaveChangesAsync();
 
         var invoice = new Invoice
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             InvoiceNumber = "INV-001",
             InvoiceDate = DateTime.Today,
             DueDate = DateTime.Today.AddDays(30),
@@ -307,13 +307,13 @@ public class InvoiceRepositoryTests : IDisposable
     public async Task DeleteAsync_RemovesInvoice()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
         await _context.SaveChangesAsync();
 
         var invoice = new Invoice
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             InvoiceNumber = "INV-001",
             InvoiceDate = DateTime.Today,
             DueDate = DateTime.Today.AddDays(30),
@@ -336,13 +336,13 @@ public class InvoiceRepositoryTests : IDisposable
     public async Task ExistsAsync_WithExistingInvoice_ReturnsTrue()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
         await _context.SaveChangesAsync();
 
         var invoice = new Invoice
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             InvoiceNumber = "INV-001",
             InvoiceDate = DateTime.Today,
             DueDate = DateTime.Today.AddDays(30),

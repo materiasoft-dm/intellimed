@@ -29,15 +29,15 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 // Front-end error logging service
 builder.Services.AddScoped<ILoggerService, LoggerService>();
-// Patient management service
-builder.Services.AddScoped<IPatientService, PatientService>();
-// Patient child-resource services (Referrals/WC-TAC/Occupations/Family/Addresses/UDF tabs)
-builder.Services.AddScoped<IPatientReferralService, PatientReferralService>();
-builder.Services.AddScoped<IPatientCompensationClaimService, PatientCompensationClaimService>();
-builder.Services.AddScoped<IPatientOccupationService, PatientOccupationService>();
-builder.Services.AddScoped<IPatientFamilyService, PatientFamilyService>();
-builder.Services.AddScoped<IPatientAddressService, PatientAddressService>();
-builder.Services.AddScoped<IPatientUdfValueService, PatientUdfValueService>();
+// Client management service
+builder.Services.AddScoped<IClientService, ClientService>();
+// Client child-resource services (Referrals/WC-TAC/Occupations/Family/Addresses/UDF tabs)
+builder.Services.AddScoped<IClientReferralService, ClientReferralService>();
+builder.Services.AddScoped<IClientCompensationClaimService, ClientCompensationClaimService>();
+builder.Services.AddScoped<IClientOccupationService, ClientOccupationService>();
+builder.Services.AddScoped<IClientFamilyService, ClientFamilyService>();
+builder.Services.AddScoped<IClientAddressService, ClientAddressService>();
+builder.Services.AddScoped<IClientUdfValueService, ClientUdfValueService>();
 builder.Services.AddScoped<IUdfDefinitionService, UdfDefinitionService>();
 builder.Services.AddScoped<IHealthFundService, HealthFundService>();
 builder.Services.AddScoped<IProviderGroupService, ProviderGroupService>();

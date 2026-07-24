@@ -5,7 +5,7 @@
 @using IntelliMed.Web.Services
 @inject IAuthService AuthService
 @inject IAdminService AdminService
-@inject IPatientService PatientService
+@inject IClientService ClientService
 @inject ILoggerService Logger
 @inject IJSRuntime JS
 
@@ -30,8 +30,8 @@ else
                 <div class="card-body d-flex align-items-center gap-3">
                     <span class="stat-icon-badge stat-icon-badge--blue"><i class="bi bi-people"></i></span>
                     <div>
-                        <div class="stat-tile-value">@_totalPatients</div>
-                        <div class="text-muted small">Total Patients</div>
+                        <div class="stat-tile-value">@_totalClients</div>
+                        <div class="text-muted small">Total Clients</div>
                     </div>
                 </div>
             </div>
@@ -41,8 +41,8 @@ else
                 <div class="card-body d-flex align-items-center gap-3">
                     <span class="stat-icon-badge stat-icon-badge--green"><i class="bi bi-person-check"></i></span>
                     <div>
-                        <div class="stat-tile-value">@_activePatients</div>
-                        <div class="text-muted small">Active Patients</div>
+                        <div class="stat-tile-value">@_activeClients</div>
+                        <div class="text-muted small">Active Clients</div>
                     </div>
                 </div>
             </div>
@@ -63,7 +63,7 @@ else
                 <div class="card-body d-flex align-items-center gap-3">
                     <span class="stat-icon-badge stat-icon-badge--purple"><i class="bi bi-archive"></i></span>
                     <div>
-                        <div class="stat-tile-value">@_archivedPatients</div>
+                        <div class="stat-tile-value">@_archivedClients</div>
                         <div class="text-muted small">Archived</div>
                     </div>
                 </div>
@@ -75,16 +75,16 @@ else
         <div class="col-lg-7">
             <div class="card h-100">
                 <div class="card-body">
-                    <h6 class="mb-1">Patients by Account Type</h6>
-                    <p class="text-muted small mb-3">Distribution across all registered patients.</p>
-                    @if (_totalPatients == 0)
+                    <h6 class="mb-1">Clients by Account Type</h6>
+                    <p class="text-muted small mb-3">Distribution across all registered clients.</p>
+                    @if (_totalClients == 0)
                     {
-                        <p class="text-muted small">No patients yet — add one to see this chart.</p>
+                        <p class="text-muted small">No clients yet — add one to see this chart.</p>
                     }
                     else
                     {
                         <div style="height: 260px;">
-                            <canvas id="patientsByAccountTypeChart"></canvas>
+                            <canvas id="clientsByAccountTypeChart"></canvas>
                         </div>
                     }
                 </div>
@@ -94,22 +94,22 @@ else
             <div class="card h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <h6 class="mb-0">Recent Patients</h6>
-                        <a href="/patients/search" class="small text-decoration-none">View all</a>
+                        <h6 class="mb-0">Recent Clients</h6>
+                        <a href="/clients/search" class="small text-decoration-none">View all</a>
                     </div>
                     <p class="text-muted small mb-3">Most recently registered.</p>
-                    @if (_recentPatients.Count == 0)
+                    @if (_recentClients.Count == 0)
                     {
-                        <p class="text-muted small">No patients yet.</p>
+                        <p class="text-muted small">No clients yet.</p>
                     }
                     else
                     {
                         <ul class="list-group list-group-flush">
-                            @foreach (var p in _recentPatients)
+                            @foreach (var c in _recentClients)
                             {
                                 <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                                    <span>@p.FullName</span>
-                                    <span class="text-muted small">@p.CreatedAt.ToString("dd/MM/yyyy")</span>
+                                    <span>@c.FullName</span>
+                                    <span class="text-muted small">@c.CreatedAt.ToString("dd/MM/yyyy")</span>
                                 </li>
                             }
                         </ul>
@@ -122,26 +122,26 @@ else
     @* Quick links *@
     <div class="row g-3">
         <div class="col-sm-6 col-lg-3">
-            <a href="/patients/search" class="text-decoration-none">
+            <a href="/clients/search" class="text-decoration-none">
                 <div class="card h-100">
                     <div class="card-body d-flex align-items-center gap-3">
                         <span class="stat-icon-badge stat-icon-badge--blue"><i class="bi bi-search"></i></span>
                         <div>
-                            <div class="fw-semibold">Find Patient</div>
-                            <div class="text-muted small">Search and manage patients</div>
+                            <div class="fw-semibold">Find Client</div>
+                            <div class="text-muted small">Search and manage clients</div>
                         </div>
                     </div>
                 </div>
             </a>
         </div>
         <div class="col-sm-6 col-lg-3">
-            <a href="/patients/add" class="text-decoration-none">
+            <a href="/clients/add" class="text-decoration-none">
                 <div class="card h-100">
                     <div class="card-body d-flex align-items-center gap-3">
                         <span class="stat-icon-badge stat-icon-badge--green"><i class="bi bi-plus-lg"></i></span>
                         <div>
-                            <div class="fw-semibold">Add Patient</div>
-                            <div class="text-muted small">Register a new patient</div>
+                            <div class="fw-semibold">Add Client</div>
+                            <div class="text-muted small">Register a new client</div>
                         </div>
                     </div>
                 </div>
@@ -197,11 +197,11 @@ else
     private bool _showAdminCard;
     private bool _isLoading = true;
 
-    private int _totalPatients;
-    private int _activePatients;
-    private int _archivedPatients;
+    private int _totalClients;
+    private int _activeClients;
+    private int _archivedClients;
     private int _newThisWeek;
-    private List<PatientDto> _recentPatients = new();
+    private List<ClientDto> _recentClients = new();
     private List<(string Label, int Count)> _accountTypeCounts = new();
 
     protected override async Task OnInitializedAsync()
@@ -231,53 +231,53 @@ else
             await Logger.LogErrorAsync(ex, "Home.OnInitializedAsync");
         }
 
-        await LoadPatientStatsAsync();
+        await LoadClientStatsAsync();
         _isLoading = false;
     }
 
-    private async Task LoadPatientStatsAsync()
+    private async Task LoadClientStatsAsync()
     {
         try
         {
-            var result = await PatientService.SearchPatientsAsync(new PatientSearchDto
+            var result = await ClientService.SearchClientsAsync(new ClientSearchDto
             {
                 Page = 1,
                 PageSize = 1000,
                 IncludeArchived = true
             });
 
-            var patients = result.Items.ToList();
-            _totalPatients = patients.Count;
-            _activePatients = patients.Count(p => p.IsActive);
-            _archivedPatients = patients.Count(p => !p.IsActive);
+            var clients = result.Items.ToList();
+            _totalClients = clients.Count;
+            _activeClients = clients.Count(c => c.IsActive);
+            _archivedClients = clients.Count(c => !c.IsActive);
 
             var weekAgo = DateTime.UtcNow.AddDays(-7);
-            _newThisWeek = patients.Count(p => p.CreatedAt >= weekAgo);
+            _newThisWeek = clients.Count(c => c.CreatedAt >= weekAgo);
 
-            _recentPatients = patients
-                .OrderByDescending(p => p.CreatedAt)
+            _recentClients = clients
+                .OrderByDescending(c => c.CreatedAt)
                 .Take(5)
                 .ToList();
 
-            _accountTypeCounts = patients
-                .GroupBy(p => p.AccountType)
+            _accountTypeCounts = clients
+                .GroupBy(c => c.AccountType)
                 .Select(g => (Label: g.Key.ToString(), Count: g.Count()))
                 .OrderByDescending(x => x.Count)
                 .ToList();
         }
         catch (Exception ex)
         {
-            await Logger.LogErrorAsync(ex, "Home.LoadPatientStatsAsync");
+            await Logger.LogErrorAsync(ex, "Home.LoadClientStatsAsync");
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_isLoading && _totalPatients > 0)
+        if (!_isLoading && _totalClients > 0)
         {
             var labels = _accountTypeCounts.Select(x => x.Label).ToArray();
             var data = _accountTypeCounts.Select(x => x.Count).ToArray();
-            await JS.InvokeVoidAsync("IntelliMedRenderBarChart", "patientsByAccountTypeChart", labels, data, "#4272d7");
+            await JS.InvokeVoidAsync("IntelliMedRenderBarChart", "clientsByAccountTypeChart", labels, data, "#4272d7");
         }
     }
 }

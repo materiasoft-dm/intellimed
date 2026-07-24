@@ -29,10 +29,10 @@ public class AppointmentRepositoryTests : IDisposable
     public async Task CreateAsync_WithValidDto_ReturnsNewAppointmentId()
     {
         // Arrange
-        var patient = new Patient
+        var client = new Client
         {
             FirstName = "Test",
-            LastName = "Patient",
+            LastName = "Client",
             Email = "test@example.com",
             IsActive = true
         };
@@ -43,13 +43,13 @@ public class AppointmentRepositoryTests : IDisposable
             Email = "dr.smith@example.com",
             IsActive = true
         };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         _context.Practitioners.Add(practitioner);
         await _context.SaveChangesAsync();
 
         var dto = new CreateAppointmentDto
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             PractitionerId = practitioner.Id,
             AppointmentDate = DateTime.Today.AddDays(1),
             StartTime = TimeSpan.FromHours(9),
@@ -65,7 +65,7 @@ public class AppointmentRepositoryTests : IDisposable
         result.Should().BeGreaterThan(0);
         var appointment = await _context.Appointments.FindAsync(result);
         appointment.Should().NotBeNull();
-        appointment!.PatientId.Should().Be(patient.Id);
+        appointment!.ClientId.Should().Be(client.Id);
         appointment.PractitionerId.Should().Be(practitioner.Id);
     }
 
@@ -73,10 +73,10 @@ public class AppointmentRepositoryTests : IDisposable
     public async Task GetByIdAsync_WithExistingAppointment_ReturnsAppointmentDto()
     {
         // Arrange
-        var patient = new Patient
+        var client = new Client
         {
             FirstName = "Test",
-            LastName = "Patient",
+            LastName = "Client",
             Email = "test@example.com",
             IsActive = true
         };
@@ -87,13 +87,13 @@ public class AppointmentRepositoryTests : IDisposable
             Email = "dr.smith@example.com",
             IsActive = true
         };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         _context.Practitioners.Add(practitioner);
         await _context.SaveChangesAsync();
 
         var appointment = new Appointment
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             PractitionerId = practitioner.Id,
             AppointmentDate = DateTime.Today.AddDays(1),
             StartTime = TimeSpan.FromHours(10),
@@ -109,7 +109,7 @@ public class AppointmentRepositoryTests : IDisposable
 
         // Assert
         result.Should().NotBeNull();
-        result!.PatientName.Should().Contain("Test");
+        result!.ClientName.Should().Contain("Test");
         result.PractitionerName.Should().Contain("Smith");
     }
 
@@ -127,10 +127,10 @@ public class AppointmentRepositoryTests : IDisposable
     public async Task UpdateAsync_WithExistingAppointment_UpdatesAppointment()
     {
         // Arrange
-        var patient = new Patient
+        var client = new Client
         {
             FirstName = "Test",
-            LastName = "Patient",
+            LastName = "Client",
             Email = "test@example.com",
             IsActive = true
         };
@@ -141,13 +141,13 @@ public class AppointmentRepositoryTests : IDisposable
             Email = "dr.smith@example.com",
             IsActive = true
         };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         _context.Practitioners.Add(practitioner);
         await _context.SaveChangesAsync();
 
         var appointment = new Appointment
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             PractitionerId = practitioner.Id,
             AppointmentDate = DateTime.Today.AddDays(1),
             StartTime = TimeSpan.FromHours(9),
@@ -160,7 +160,7 @@ public class AppointmentRepositoryTests : IDisposable
 
         var updateDto = new UpdateAppointmentDto
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             PractitionerId = practitioner.Id,
             AppointmentDate = DateTime.Today.AddDays(2),
             StartTime = TimeSpan.FromHours(14),
@@ -184,7 +184,7 @@ public class AppointmentRepositoryTests : IDisposable
         // Arrange
         var updateDto = new UpdateAppointmentDto
         {
-            PatientId = 1,
+            ClientId = 1,
             PractitionerId = 1,
             AppointmentDate = DateTime.Today,
             StartTime = TimeSpan.FromHours(9),
@@ -199,50 +199,50 @@ public class AppointmentRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task SearchAsync_WithPatientIdFilter_ReturnsMatchingAppointments()
+    public async Task SearchAsync_WithClientIdFilter_ReturnsMatchingAppointments()
     {
         // Arrange
-        var patient1 = new Patient { FirstName = "Patient", LastName = "One", Email = "p1@example.com", IsActive = true };
-        var patient2 = new Patient { FirstName = "Patient", LastName = "Two", Email = "p2@example.com", IsActive = true };
+        var client1 = new Client { FirstName = "Client", LastName = "One", Email = "p1@example.com", IsActive = true };
+        var client2 = new Client { FirstName = "Client", LastName = "Two", Email = "p2@example.com", IsActive = true };
         var practitioner = new Practitioner { FirstName = "Dr", LastName = "Smith", Email = "dr@example.com", IsActive = true };
-        _context.Patients.AddRange(patient1, patient2);
+        _context.Clients.AddRange(client1, client2);
         _context.Practitioners.Add(practitioner);
         await _context.SaveChangesAsync();
 
         var appointments = new[]
         {
-            new Appointment { PatientId = patient1.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(10), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
-            new Appointment { PatientId = patient2.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(10), EndTime = TimeSpan.FromHours(11), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
-            new Appointment { PatientId = patient1.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today.AddDays(1), StartTime = TimeSpan.FromHours(11), EndTime = TimeSpan.FromHours(12), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard }
+            new Appointment { ClientId = client1.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(10), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
+            new Appointment { ClientId = client2.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(10), EndTime = TimeSpan.FromHours(11), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
+            new Appointment { ClientId = client1.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today.AddDays(1), StartTime = TimeSpan.FromHours(11), EndTime = TimeSpan.FromHours(12), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard }
         };
         _context.Appointments.AddRange(appointments);
         await _context.SaveChangesAsync();
 
-        var search = new AppointmentSearchDto { PatientId = patient1.Id };
+        var search = new AppointmentSearchDto { ClientId = client1.Id };
 
         // Act
         var result = (await _repository.SearchAsync(search)).ToList();
 
         // Assert
         result.Should().HaveCount(2);
-        result.Should().OnlyContain(a => a.PatientId == patient1.Id);
+        result.Should().OnlyContain(a => a.ClientId == client1.Id);
     }
 
     [Fact]
     public async Task SearchAsync_WithDateRange_ReturnsAppointmentsInRange()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
         var practitioner = new Practitioner { FirstName = "Dr", LastName = "Smith", Email = "dr@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         _context.Practitioners.Add(practitioner);
         await _context.SaveChangesAsync();
 
         var appointments = new[]
         {
-            new Appointment { PatientId = patient.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today.AddDays(-5), StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(10), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
-            new Appointment { PatientId = patient.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(10), EndTime = TimeSpan.FromHours(11), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
-            new Appointment { PatientId = patient.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today.AddDays(5), StartTime = TimeSpan.FromHours(11), EndTime = TimeSpan.FromHours(12), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard }
+            new Appointment { ClientId = client.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today.AddDays(-5), StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(10), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
+            new Appointment { ClientId = client.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(10), EndTime = TimeSpan.FromHours(11), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
+            new Appointment { ClientId = client.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today.AddDays(5), StartTime = TimeSpan.FromHours(11), EndTime = TimeSpan.FromHours(12), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard }
         };
         _context.Appointments.AddRange(appointments);
         await _context.SaveChangesAsync();
@@ -265,17 +265,17 @@ public class AppointmentRepositoryTests : IDisposable
     public async Task SearchAsync_WithStatusFilter_ReturnsMatchingAppointments()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
         var practitioner = new Practitioner { FirstName = "Dr", LastName = "Smith", Email = "dr@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         _context.Practitioners.Add(practitioner);
         await _context.SaveChangesAsync();
 
         var appointments = new[]
         {
-            new Appointment { PatientId = patient.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(10), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
-            new Appointment { PatientId = patient.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(10), EndTime = TimeSpan.FromHours(11), Status = AppointmentStatus.Completed, Type = AppointmentType.Standard },
-            new Appointment { PatientId = patient.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(11), EndTime = TimeSpan.FromHours(12), Status = AppointmentStatus.Cancelled, Type = AppointmentType.Standard }
+            new Appointment { ClientId = client.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(10), Status = AppointmentStatus.Scheduled, Type = AppointmentType.Standard },
+            new Appointment { ClientId = client.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(10), EndTime = TimeSpan.FromHours(11), Status = AppointmentStatus.Completed, Type = AppointmentType.Standard },
+            new Appointment { ClientId = client.Id, PractitionerId = practitioner.Id, AppointmentDate = DateTime.Today, StartTime = TimeSpan.FromHours(11), EndTime = TimeSpan.FromHours(12), Status = AppointmentStatus.Cancelled, Type = AppointmentType.Standard }
         };
         _context.Appointments.AddRange(appointments);
         await _context.SaveChangesAsync();
@@ -294,9 +294,9 @@ public class AppointmentRepositoryTests : IDisposable
     public async Task GetPagedAsync_ReturnsCorrectPage()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
         var practitioner = new Practitioner { FirstName = "Dr", LastName = "Smith", Email = "dr@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         _context.Practitioners.Add(practitioner);
         await _context.SaveChangesAsync();
 
@@ -304,7 +304,7 @@ public class AppointmentRepositoryTests : IDisposable
         {
             _context.Appointments.Add(new Appointment
             {
-                PatientId = patient.Id,
+                ClientId = client.Id,
                 PractitionerId = practitioner.Id,
                 AppointmentDate = DateTime.Today.AddDays(i),
                 StartTime = TimeSpan.FromHours(9),
@@ -329,15 +329,15 @@ public class AppointmentRepositoryTests : IDisposable
     public async Task DeleteAsync_RemovesAppointment()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
         var practitioner = new Practitioner { FirstName = "Dr", LastName = "Smith", Email = "dr@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         _context.Practitioners.Add(practitioner);
         await _context.SaveChangesAsync();
 
         var appointment = new Appointment
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             PractitionerId = practitioner.Id,
             AppointmentDate = DateTime.Today,
             StartTime = TimeSpan.FromHours(9),
@@ -361,15 +361,15 @@ public class AppointmentRepositoryTests : IDisposable
     public async Task ExistsAsync_WithExistingAppointment_ReturnsTrue()
     {
         // Arrange
-        var patient = new Patient { FirstName = "Test", LastName = "Patient", Email = "test@example.com", IsActive = true };
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
         var practitioner = new Practitioner { FirstName = "Dr", LastName = "Smith", Email = "dr@example.com", IsActive = true };
-        _context.Patients.Add(patient);
+        _context.Clients.Add(client);
         _context.Practitioners.Add(practitioner);
         await _context.SaveChangesAsync();
 
         var appointment = new Appointment
         {
-            PatientId = patient.Id,
+            ClientId = client.Id,
             PractitionerId = practitioner.Id,
             AppointmentDate = DateTime.Today,
             StartTime = TimeSpan.FromHours(9),

@@ -1,0 +1,1859 @@
+@page "/clients/add"
+@page "/clients/edit/{Id:int}"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IClientService ClientService
+@inject IClientAddressService AddressService
+@inject IClientReferralService ReferralService
+@inject IClientCompensationClaimService CompensationClaimService
+@inject IClientOccupationService OccupationService
+@inject IClientFamilyService FamilyService
+@inject IClientUdfValueService UdfValueService
+@inject IUdfDefinitionService UdfDefinitionService
+@inject IHealthFundService HealthFundService
+@inject NavigationManager NavManager
+
+<PageTitle>@(Id.HasValue ? "Edit Client" : "Add Client") - IntelliMed</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-3">
+        <div class="card-body py-2">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading client...
+        </div>
+    </div>
+}
+else
+{
+    <div class="client-edit-page">
+    <div class="d-flex align-items-center justify-content-between mb-1">
+        <h5 class="mb-0 small">🩺 @(Id.HasValue ? $"Edit Client — {_model.FirstName} {_model.LastName}" : "New Client")</h5>
+        @if (!string.IsNullOrEmpty(_statusMessage))
+        {
+            <span class="small @(_statusIsError ? "text-danger" : "text-success")">@_statusMessage</span>
+        }
+    </div>
+
+    <EditForm Model="_model" OnValidSubmit="HandleSaveAsync">
+        <DataAnnotationsValidator />
+
+        <div class="row g-1 mb-1">
+            @* ===================== PERSONAL ===================== *@
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header py-1"><strong>Personal</strong></div>
+                    <div class="card-body py-1">
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Type</label>
+                                <InputSelect @bind-Value="_model.Type" class="form-select form-select-sm">
+                                    <option value="@ClientTypeEnum.Person">Person</option>
+                                    <option value="@ClientTypeEnum.Organisation">Organisation</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-6"></div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">@(_model.Type == ClientTypeEnum.Organisation ? "Family/Org" : "Surname")</label>
+                                <InputText @bind-Value="_model.LastName" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Given</label>
+                                <InputText @bind-Value="_model.FirstName" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Middle</label>
+                                <InputText @bind-Value="_model.MiddleName" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Preferred</label>
+                                <InputText @bind-Value="_model.PreferredName" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Maiden</label>
+                                <InputText @bind-Value="_model.MaidenName" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Title</label>
+                                <InputText @bind-Value="_model.Title" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Gender</label>
+                                <InputSelect @bind-Value="_model.Gender" class="form-select form-select-sm">
+                                    <option value="@GenderEnum.Unspecified">Unspecified</option>
+                                    <option value="@GenderEnum.Male">Male</option>
+                                    <option value="@GenderEnum.Female">Female</option>
+                                    <option value="@GenderEnum.Other">Other</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">D.O.B</label>
+                                <InputDate @bind-Value="_model.DateOfBirth" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Accuracy</label>
+                                <InputSelect @bind-Value="_model.DobAccuracy" class="form-select form-select-sm">
+                                    <option value="@DobAccuracyEnum.Day">Day - Accurate</option>
+                                    <option value="@DobAccuracyEnum.Month">Month - Accurate</option>
+                                    <option value="@DobAccuracyEnum.Year">Year - Accurate</option>
+                                    <option value="@DobAccuracyEnum.Estimated">Estimated</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Age</label>
+                                <input class="form-control form-control-sm" value="@CalculateAge(_model.DateOfBirth)" disabled />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">P.O.B</label>
+                                <InputText @bind-Value="_model.PlaceOfBirth" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6 d-flex align-items-end">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.InterpreterRequired" class="form-check-input" id="chkInterpreter" />
+                                    <label class="form-check-label small" for="chkInterpreter">Interpreter?</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Language</label>
+                                <InputText @bind-Value="_model.InterpreterLanguage" class="form-control form-control-sm" disabled="@(!_model.InterpreterRequired)" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Marital Status</label>
+                                <InputSelect @bind-Value="_model.MaritalStatus" class="form-select form-select-sm">
+                                    <option value="">-</option>
+                                    <option value="@MaritalStatusEnum.Single">Single</option>
+                                    <option value="@MaritalStatusEnum.Married">Married</option>
+                                    <option value="@MaritalStatusEnum.DeFacto">De Facto</option>
+                                    <option value="@MaritalStatusEnum.Divorced">Divorced</option>
+                                    <option value="@MaritalStatusEnum.Widowed">Widowed</option>
+                                    <option value="@MaritalStatusEnum.Separated">Separated</option>
+                                    <option value="@MaritalStatusEnum.Unknown">Unknown</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Ethnicity</label>
+                                <InputText @bind-Value="_model.Ethnicity" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* ===================== ENTITLEMENT ===================== *@
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header py-1"><strong>Entitlement</strong></div>
+                    <div class="card-body py-1">
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Medicare#</label>
+                                <InputText @bind-Value="_model.MedicareNumber" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-3">
+                                <label class="form-label small mb-0">Ref</label>
+                                <InputText @bind-Value="_model.MedicarePosition" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-3">
+                                <label class="form-label small mb-0">EXP</label>
+                                <InputDate @bind-Value="_model.MedicareExpiryDate" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-9">
+                                <label class="form-label small mb-0">Veteran#</label>
+                                <InputText @bind-Value="_model.DvaNumber" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-3">
+                                <label class="form-label small mb-0">EXP</label>
+                                <InputDate @bind-Value="_model.DvaExpiryDate" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-9">
+                                <label class="form-label small mb-0">Pension/HCC</label>
+                                <InputText @bind-Value="_model.PensionNumber" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-3">
+                                <label class="form-label small mb-0">EXP</label>
+                                <InputDate @bind-Value="_model.PensionExpiryDate" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Status</label>
+                                <InputText @bind-Value="_model.EntitlementStatus" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Safety Net</label>
+                                <InputText @bind-Value="_model.SafetyNetNumber" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">ATSI</label>
+                                <InputSelect @bind-Value="_model.AtsiStatus" class="form-select form-select-sm">
+                                    <option value="@AtsiStatusEnum.NotAsked">Not Asked</option>
+                                    <option value="@AtsiStatusEnum.AboriginalOnly">Aboriginal</option>
+                                    <option value="@AtsiStatusEnum.TorresStraitIslanderOnly">Torres Strait Islander</option>
+                                    <option value="@AtsiStatusEnum.Both">Both</option>
+                                    <option value="@AtsiStatusEnum.NeitherAboriginalNorTorresStraitIslander">Neither</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-6 d-flex flex-column justify-content-end">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.MedicareIncentiveEligible" class="form-check-input" id="chkIncentive" />
+                                    <label class="form-check-label small" for="chkIncentive">Medicare+ Incentive</label>
+                                </div>
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.CtgCoPaymentRelief" class="form-check-input" id="chkCtg" />
+                                    <label class="form-check-label small" for="chkCtg">CTG CoPayment Relief</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-1 mb-1">
+            @* ===================== ADDRESSES ===================== *@
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header py-1">
+                        <ul class="nav nav-tabs card-header-tabs">
+                            <li class="nav-item"><a class="nav-link @(_addressTab == "Residential" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _addressTab = "Residential")">Residential</a></li>
+                            <li class="nav-item"><a class="nav-link @(_addressTab == "Postal" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _addressTab = "Postal")">Postal</a></li>
+                            <li class="nav-item"><a class="nav-link @(_addressTab == "Other" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _addressTab = "Other")">Other Addresses</a></li>
+                        </ul>
+                    </div>
+                    <div class="card-body py-1">
+                        @if (_addressTab == "Residential")
+                        {
+                            <div class="row g-1">
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Address</label>
+                                    <InputText @bind-Value="_model.Address" class="form-control form-control-sm" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Suburb</label>
+                                    <InputText @bind-Value="_model.Suburb" class="form-control form-control-sm" />
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label small mb-0">Postcode</label>
+                                    <InputText @bind-Value="_model.Postcode" class="form-control form-control-sm" />
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label small mb-0">State</label>
+                                    <InputText @bind-Value="_model.State" class="form-control form-control-sm" />
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            var addrType = _addressTab == "Postal" ? ClientAddressType.Postal : ClientAddressType.Other;
+                            var addr = GetOrCreateAddress(addrType);
+                            <div class="row g-1">
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Address</label>
+                                    <input class="form-control form-control-sm" @bind="addr.AddressLine1" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Suburb</label>
+                                    <input class="form-control form-control-sm" @bind="addr.Suburb" />
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label small mb-0">Postcode</label>
+                                    <input class="form-control form-control-sm" @bind="addr.Postcode" />
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label small mb-0">State</label>
+                                    <input class="form-control form-control-sm" @bind="addr.State" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Type</label>
+                                    <input class="form-control form-control-sm" @bind="addr.AddressSubType" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Community</label>
+                                    <input class="form-control form-control-sm" @bind="addr.Community" />
+                                </div>
+                                <div class="col-6 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="chkSendMedicare" @bind="addr.SendToMedicare" />
+                                        <label class="form-check-label small" for="chkSendMedicare">Send To Medicare</label>
+                                    </div>
+                                </div>
+                                <div class="col-6 text-end align-self-end">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="@(() => SaveAddressAsync(addr))" disabled="@(!Id.HasValue)">Save Address</button>
+                                </div>
+                                @if (!Id.HasValue)
+                                {
+                                    <div class="col-12"><span class="text-muted small">Save the client first to add this address.</span></div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* ===================== CONTACT DETAILS ===================== *@
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header py-1"><strong>Contact Details</strong></div>
+                    <div class="card-body py-1">
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Home Phone</label>
+                                <InputText @bind-Value="_model.Phone" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">B.H</label>
+                                <InputText @bind-Value="_model.BusinessHoursPhone" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Mobile Phone</label>
+                                <InputText @bind-Value="_model.MobilePhone" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Fax</label>
+                                <InputText @bind-Value="_model.FaxNumber" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small mb-0">Email</label>
+                                <InputText @bind-Value="_model.Email" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-12 d-flex gap-3">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.AcceptSms" class="form-check-input" id="chkSms" />
+                                    <label class="form-check-label small" for="chkSms">Accept SMS</label>
+                                </div>
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.AcceptEmail" class="form-check-input" id="chkEmail" />
+                                    <label class="form-check-label small" for="chkEmail">Accept Email</label>
+                                </div>
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.AcceptOnlineAppointments" class="form-check-input" id="chkOnlineAppt" />
+                                    <label class="form-check-label small" for="chkOnlineAppt">Accept Online Appt.</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Note</label>
+                                <InputTextArea @bind-Value="_model.Notes" class="form-control form-control-sm" rows="2" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Warnings</label>
+                                <InputTextArea @bind-Value="_model.Warnings" class="form-control form-control-sm" rows="2" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Next of Kin</label>
+                                <InputText @bind-Value="_model.NextOfKinName" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">N.O.K Phone</label>
+                                <InputText @bind-Value="_model.NextOfKinPhone" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Emergency</label>
+                                <InputText @bind-Value="_model.EmergencyContactName" class="form-control form-control-sm" disabled="@_model.SameAsNextOfKin" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Emergency Phone</label>
+                                <InputText @bind-Value="_model.EmergencyContactPhone" class="form-control form-control-sm" disabled="@_model.SameAsNextOfKin" />
+                            </div>
+                            <div class="col-6 d-flex align-items-end">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.SameAsNextOfKin" class="form-check-input" id="chkSameAsNok" />
+                                    <label class="form-check-label small" for="chkSameAsNok">Same as Next of Kin</label>
+                                </div>
+                            </div>
+                            <div class="col-6 d-flex align-items-end">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.AcceptSmsMarketing" class="form-check-input" id="chkSmsMkt" />
+                                    <label class="form-check-label small" for="chkSmsMkt">Accept SMS Marketing</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-1 mb-1">
+            @* ===================== HEALTH FUND ===================== *@
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header py-1"><strong>Health Fund</strong></div>
+                    <div class="card-body py-1">
+                        <div class="row g-1">
+                            <div class="col-12">
+                                <label class="form-label small mb-0">Fund Id</label>
+                                <InputSelect @bind-Value="_model.HealthFundId" class="form-select form-select-sm">
+                                    <option value="">-- None --</option>
+                                    @foreach (var fund in _healthFunds)
+                                    {
+                                        <option value="@fund.Id">@fund.Code - @fund.Name</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Member#</label>
+                                <InputText @bind-Value="_model.HealthFundNumber" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Ref</label>
+                                <InputText @bind-Value="_model.HealthFundRef" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Alias Family</label>
+                                <InputText @bind-Value="_model.HealthFundAliasFamily" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Alias First</label>
+                                <InputText @bind-Value="_model.HealthFundAliasFirst" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Joined</label>
+                                <InputDate @bind-Value="_model.HealthFundJoinDate" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* ===================== ACCOUNT ===================== *@
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header py-1"><strong>Account</strong></div>
+                    <div class="card-body py-1">
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Acc. Type</label>
+                                <InputSelect @bind-Value="_model.AccountType" class="form-select form-select-sm">
+                                    <option value="@AccountTypeEnum.PrivatePatient">Private Patient</option>
+                                    <option value="@AccountTypeEnum.Concession">Concession</option>
+                                    <option value="@AccountTypeEnum.Pensioner">Pensioner</option>
+                                    <option value="@AccountTypeEnum.Veteran">Veteran</option>
+                                    <option value="@AccountTypeEnum.WorkCover">WorkCover</option>
+                                    <option value="@AccountTypeEnum.Tac">TAC</option>
+                                    <option value="@AccountTypeEnum.BulkBill">Bulk Bill</option>
+                                    <option value="@AccountTypeEnum.Other">Other</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Fee Rate</label>
+                                <InputText @bind-Value="_model.FeeRateCode" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small mb-0">Payer</label>
+                                <div class="input-group input-group-sm">
+                                    <input class="form-control form-control-sm" value="@_model.PayerName" readonly placeholder="No payer selected" />
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="OpenPayerPicker">Find</button>
+                                    @if (_model.PayerClientId.HasValue)
+                                    {
+                                        <button type="button" class="btn btn-outline-secondary" @onclick="ClearPayer">x</button>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small mb-0">Acc. Name</label>
+                                <InputText @bind-Value="_model.AccountName" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">BSB</label>
+                                <InputText @bind-Value="_model.AccountBsb" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Acc#</label>
+                                <InputText @bind-Value="_model.AccountNumber" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.UseMedicareRegisteredBankAccount" class="form-check-input" id="chkBankMedicare" />
+                                    <label class="form-check-label small" for="chkBankMedicare">Use bank account registered with Medicare</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* ===================== FILE ===================== *@
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header py-1"><strong>File</strong></div>
+                    <div class="card-body py-1">
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <label class="form-label small mb-0">File#</label>
+                                <InputText @bind-Value="_model.FileNumber" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">UR No</label>
+                                <InputText @bind-Value="_model.UrNumber" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Created</label>
+                                <input class="form-control form-control-sm" value="@_model.CreatedAtDisplay" disabled />
+                            </div>
+                            <div class="col-6 d-flex align-items-end">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="chkDeceased" checked="@_model.Deceased" @onchange="@(e => _model.Deceased = (bool)(e.Value ?? false))" />
+                                    <label class="form-check-label small" for="chkDeceased">Deceased</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Provider (Practitioner ID)</label>
+                                <InputNumber @bind-Value="_model.ProviderId" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0">Last Seen Date</label>
+                                <InputDate @bind-Value="_model.LastSeenDate" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ===================== BOTTOM TAB STRIP ===================== *@
+        <div class="card mb-1">
+            <div class="card-header py-1">
+                <ul class="nav nav-tabs card-header-tabs">
+                    @foreach (var tab in _bottomTabs)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(_activeBottomTab == tab ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _activeBottomTab = tab)">@tab</a>
+                        </li>
+                    }
+                </ul>
+            </div>
+            <div class="card-body py-1" style="min-height: 150px;">
+                @if (!Id.HasValue)
+                {
+                    <div class="text-muted small">Save the client first to manage @_activeBottomTab.</div>
+                }
+                else if (_activeBottomTab == "Referrals")
+                {
+                    @RenderReferralsTab()
+                }
+                else if (_activeBottomTab == "WC/TAC")
+                {
+                    @RenderCompensationClaimsTab()
+                }
+                else if (_activeBottomTab == "Family")
+                {
+                    @RenderFamilyTab()
+                }
+                else if (_activeBottomTab == "Occupations")
+                {
+                    @RenderOccupationsTab()
+                }
+                else if (_activeBottomTab == "eHealth")
+                {
+                    @RenderEHealthTab()
+                }
+                else if (_activeBottomTab == "Lifecard")
+                {
+                    @RenderLifecardTab()
+                }
+                else if (_activeBottomTab == "UDF")
+                {
+                    @RenderUdfTab()
+                }
+            </div>
+        </div>
+
+        @* ===================== BOTTOM ACTION BAR ===================== *@
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ShowPatientVerification">Patient Verification</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ShowPrintLabel">Print Label</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="StartNewFamily" disabled="@(!Id.HasValue)">New Family</button>
+            </div>
+            <div class="d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-primary" disabled="@_isSaving">💾 Save</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="GoToList">Close</button>
+            </div>
+        </div>
+    </EditForm>
+
+    @if (_underConstructionMessage != null)
+    {
+        <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title">@_underConstructionMessage</h6>
+                        <button type="button" class="btn-close" @onclick="@(() => _underConstructionMessage = null)"></button>
+                    </div>
+                    <div class="modal-body py-2 small text-muted">
+                        This feature is under construction and will be available in a future update.
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-sm btn-primary" @onclick="@(() => _underConstructionMessage = null)">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_showNewFamilyModal)
+    {
+        <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title">New Family Member</h6>
+                        <button type="button" class="btn-close" @onclick="@(() => _showNewFamilyModal = false)"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="nav nav-pills mb-2">
+                            <li class="nav-item">
+                                <a class="nav-link @(_familyLinkExistingMode ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _familyLinkExistingMode = true)">Link Existing</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(!_familyLinkExistingMode ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _familyLinkExistingMode = false)">Create New</a>
+                            </li>
+                        </ul>
+
+                        <div class="mb-2">
+                            <label class="form-label small mb-0">Relationship</label>
+                            <input class="form-control form-control-sm" placeholder="e.g. Spouse, Child, Parent" @bind="_newFamilyRelationship" />
+                        </div>
+
+                        @if (_familyLinkExistingMode)
+                        {
+                            <input class="form-control form-control-sm mb-2" placeholder="Search by name..."
+                                   @bind="_familySearchTerm" @bind:event="oninput" @bind:after="SearchFamilyCandidatesAsync" />
+                            <div style="max-height: 260px; overflow-y: auto;">
+                                @if (_familySearchResults.Count == 0)
+                                {
+                                    <div class="text-muted small">No matches.</div>
+                                }
+                                else
+                                {
+                                    <ul class="list-group">
+                                        @foreach (var candidate in _familySearchResults)
+                                        {
+                                            <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => LinkExistingFamilyMemberAsync(candidate))">
+                                                @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Surname</label>
+                                    <input class="form-control form-control-sm" @bind="_newFamilyLastName" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Given</label>
+                                    <input class="form-control form-control-sm" @bind="_newFamilyFirstName" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Date of Birth</label>
+                                    <input type="date" class="form-control form-control-sm" @bind="_newFamilyDateOfBirth" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showNewFamilyModal = false)">Cancel</button>
+                        @if (!_familyLinkExistingMode)
+                        {
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="CreateNewFamilyMemberAsync">Create</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_showPayerPickerModal)
+    {
+        <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title">Find Payer</h6>
+                        <button type="button" class="btn-close" @onclick="@(() => _showPayerPickerModal = false)"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input class="form-control form-control-sm mb-2" placeholder="Search by name..."
+                               @bind="_payerSearchTerm" @bind:event="oninput" @bind:after="SearchPayerCandidatesAsync" />
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            @if (_payerSearchResults.Count == 0)
+                            {
+                                <div class="text-muted small">No matches.</div>
+                            }
+                            else
+                            {
+                                <ul class="list-group">
+                                    @foreach (var candidate in _payerSearchResults)
+                                    {
+                                        <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectPayer(candidate))">
+                                            @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showPayerPickerModal = false)">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    [SupplyParameterFromQuery] public string? Type { get; set; }
+
+    private class ClientFormModel : UpdateClientDto
+    {
+        public DateTime CreatedAt { get; set; }
+        public string CreatedAtDisplay => CreatedAt == default ? "-" : CreatedAt.ToString("dd/MM/yyyy");
+    }
+
+    private ClientFormModel _model = new();
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _statusMessage;
+    private bool _statusIsError;
+    private string? _underConstructionMessage;
+    private List<HealthFundDto> _healthFunds = new();
+
+    private string _addressTab = "Residential";
+    private Dictionary<ClientAddressType, ClientAddressDto> _addressCache = new();
+
+    private static readonly string[] _bottomTabs = { "Referrals", "WC/TAC", "Family", "Occupations", "eHealth", "Lifecard", "UDF" };
+    private string _activeBottomTab = "Referrals";
+
+    // Referrals
+    private List<ClientReferralDto> _referrals = new();
+    private bool _includeArchivedReferrals;
+    private bool _showReferralModal;
+    private CreateClientReferralDto _referralForm = new();
+    private int? _editingReferralId;
+
+    // Compensation claims (WC/TAC)
+    private List<ClientCompensationClaimDto> _claims = new();
+    private bool _includeArchivedClaims;
+    private bool _showClaimModal;
+    private CreateClientCompensationClaimDto _claimForm = new();
+    private int? _editingClaimId;
+
+    // Occupations
+    private List<ClientOccupationDto> _occupations = new();
+    private bool _includeArchivedOccupations;
+    private bool _showOccupationModal;
+    private CreateClientOccupationDto _occupationForm = new();
+    private int? _editingOccupationId;
+
+    // Family
+    private List<ClientFamilyRelationshipDto> _familyRelationships = new();
+    private bool _showNewFamilyModal;
+    private bool _familyLinkExistingMode = true;
+    private string _familySearchTerm = string.Empty;
+    private List<ClientDto> _familySearchResults = new();
+    private string _newFamilyFirstName = string.Empty;
+    private string _newFamilyLastName = string.Empty;
+    private DateTime? _newFamilyDateOfBirth;
+    private string _newFamilyRelationship = string.Empty;
+
+    // Payer picker
+    private bool _showPayerPickerModal;
+    private string _payerSearchTerm = string.Empty;
+    private List<ClientDto> _payerSearchResults = new();
+
+    // UDF
+    private List<ClientUserDefinedFieldValueDto> _udfValues = new();
+    private List<UserDefinedFieldTypeDto> _udfDefinitions = new();
+    private bool _showUdfModal;
+    private int? _udfFieldTypeId;
+    private string? _udfValueText;
+    private string? _udfNoteText;
+    private int? _editingUdfValueId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _healthFunds = (await HealthFundService.GetAllActiveAsync()).ToList();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        if (Id.HasValue)
+        {
+            var client = await ClientService.GetClientByIdAsync(Id.Value);
+            if (client != null)
+            {
+                _model = MapToFormModel(client);
+                await LoadAddressesAsync();
+                await LoadTabDataAsync();
+            }
+        }
+        else
+        {
+            var type = string.Equals(Type, "Organisation", StringComparison.OrdinalIgnoreCase)
+                ? ClientTypeEnum.Organisation
+                : ClientTypeEnum.Person;
+            _model = new ClientFormModel { DateOfBirth = DateTime.Today.AddYears(-30), Type = type };
+        }
+        _isLoading = false;
+    }
+
+    private async Task LoadAddressesAsync()
+    {
+        if (!Id.HasValue) return;
+        var addresses = await AddressService.GetByClientIdAsync(Id.Value);
+        _addressCache = addresses.ToDictionary(a => a.AddressType);
+    }
+
+    private async Task LoadTabDataAsync()
+    {
+        if (!Id.HasValue) return;
+        _referrals = (await ReferralService.GetByClientIdAsync(Id.Value)).ToList();
+        _claims = (await CompensationClaimService.GetByClientIdAsync(Id.Value)).ToList();
+        _occupations = (await OccupationService.GetByClientIdAsync(Id.Value)).ToList();
+        _familyRelationships = (await FamilyService.GetByClientIdAsync(Id.Value)).ToList();
+        _udfValues = (await UdfValueService.GetByClientIdAsync(Id.Value)).ToList();
+        _udfDefinitions = (await UdfDefinitionService.GetAllActiveAsync()).ToList();
+    }
+
+    private static int CalculateAge(DateTime dateOfBirth)
+    {
+        var today = DateTime.Today;
+        var age = today.Year - dateOfBirth.Year;
+        if (dateOfBirth.Date > today.AddYears(-age)) age--;
+        return age;
+    }
+
+    private void SetStatus(string message, bool isError)
+    {
+        _statusMessage = message;
+        _statusIsError = isError;
+    }
+
+    private void GoToList() => NavManager.NavigateTo("/clients");
+    private void ShowPatientVerification() => _underConstructionMessage = "Patient Verification";
+    private void ShowPrintLabel() => _underConstructionMessage = "Print Label";
+    private void StartNewFamily()
+    {
+        _newFamilyFirstName = string.Empty;
+        _newFamilyLastName = string.Empty;
+        _newFamilyDateOfBirth = null;
+        _newFamilyRelationship = string.Empty;
+        _familyLinkExistingMode = true;
+        _familySearchTerm = string.Empty;
+        _familySearchResults = new();
+        _showNewFamilyModal = true;
+    }
+
+    private async Task SearchFamilyCandidatesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_familySearchTerm))
+        {
+            _familySearchResults = new();
+            return;
+        }
+        var result = await ClientService.SearchClientsAsync(new ClientSearchDto { Query = _familySearchTerm, PageSize = 10 });
+        _familySearchResults = result.Items.Where(c => c.Id != Id).ToList();
+    }
+
+    private async Task LinkExistingFamilyMemberAsync(ClientDto candidate)
+    {
+        if (!Id.HasValue) return;
+        await FamilyService.CreateAsync(new CreateClientFamilyRelationshipDto
+        {
+            ClientId = Id.Value,
+            RelativeClientId = candidate.Id,
+            RelationshipType = _newFamilyRelationship
+        });
+        _familyRelationships = (await FamilyService.GetByClientIdAsync(Id.Value)).ToList();
+        _showNewFamilyModal = false;
+    }
+
+    private async Task CreateNewFamilyMemberAsync()
+    {
+        if (!Id.HasValue) return;
+        var createDto = new CreateClientDto
+        {
+            FirstName = _newFamilyFirstName,
+            LastName = _newFamilyLastName,
+            DateOfBirth = _newFamilyDateOfBirth ?? DateTime.Today
+        };
+        var newId = await ClientService.CreateClientAsync(createDto);
+        if (newId.HasValue)
+        {
+            await FamilyService.CreateAsync(new CreateClientFamilyRelationshipDto
+            {
+                ClientId = Id.Value,
+                RelativeClientId = newId.Value,
+                RelationshipType = _newFamilyRelationship
+            });
+            _familyRelationships = (await FamilyService.GetByClientIdAsync(Id.Value)).ToList();
+            _showNewFamilyModal = false;
+        }
+        else
+        {
+            SetStatus("Failed to create family member.", true);
+        }
+    }
+
+    private void OpenPayerPicker()
+    {
+        _payerSearchTerm = string.Empty;
+        _payerSearchResults = new();
+        _showPayerPickerModal = true;
+    }
+
+    private async Task SearchPayerCandidatesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_payerSearchTerm))
+        {
+            _payerSearchResults = new();
+            return;
+        }
+        var result = await ClientService.SearchClientsAsync(new ClientSearchDto { Query = _payerSearchTerm, PageSize = 10 });
+        _payerSearchResults = result.Items.ToList();
+    }
+
+    private void SelectPayer(ClientDto candidate)
+    {
+        _model.PayerClientId = candidate.Id;
+        _model.PayerName = candidate.FullName;
+        _showPayerPickerModal = false;
+    }
+
+    private void ClearPayer()
+    {
+        _model.PayerClientId = null;
+        _model.PayerName = null;
+    }
+
+    private ClientAddressDto GetOrCreateAddress(ClientAddressType type)
+    {
+        if (!_addressCache.TryGetValue(type, out var addr))
+        {
+            addr = new ClientAddressDto { ClientId = Id ?? 0, AddressType = type, AddressSubType = "Not Specified" };
+            _addressCache[type] = addr;
+        }
+        return addr;
+    }
+
+    private async Task SaveAddressAsync(ClientAddressDto addr)
+    {
+        if (!Id.HasValue) return;
+        bool ok;
+        if (addr.Id == 0)
+        {
+            var createDto = new CreateClientAddressDto
+            {
+                ClientId = Id.Value,
+                AddressType = addr.AddressType,
+                AddressLine1 = addr.AddressLine1,
+                AddressLine2 = addr.AddressLine2,
+                Suburb = addr.Suburb,
+                Postcode = addr.Postcode,
+                State = addr.State,
+                AddressSubType = addr.AddressSubType,
+                Community = addr.Community,
+                SendToMedicare = addr.SendToMedicare
+            };
+            ok = await AddressService.CreateAsync(createDto);
+            if (ok) await LoadAddressesAsync();
+        }
+        else
+        {
+            var updateDto = new UpdateClientAddressDto
+            {
+                AddressType = addr.AddressType,
+                AddressLine1 = addr.AddressLine1,
+                AddressLine2 = addr.AddressLine2,
+                Suburb = addr.Suburb,
+                Postcode = addr.Postcode,
+                State = addr.State,
+                AddressSubType = addr.AddressSubType,
+                Community = addr.Community,
+                SendToMedicare = addr.SendToMedicare
+            };
+            ok = await AddressService.UpdateAsync(Id.Value, addr.Id, updateDto);
+        }
+        SetStatus(ok ? "Address saved." : "Failed to save address.", !ok);
+    }
+
+    private async Task HandleSaveAsync()
+    {
+        _isSaving = true;
+        _statusMessage = null;
+        try
+        {
+            if (Id.HasValue)
+            {
+                var ok = await ClientService.UpdateClientAsync(Id.Value, _model);
+                SetStatus(ok ? "Saved." : "Failed to save.", !ok);
+            }
+            else
+            {
+                var createDto = MapToCreateDto(_model);
+                var newId = await ClientService.CreateClientAsync(createDto);
+                if (newId.HasValue)
+                {
+                    NavManager.NavigateTo($"/clients/edit/{newId.Value}");
+                }
+                else
+                {
+                    SetStatus("Failed to create client.", true);
+                }
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private static ClientFormModel MapToFormModel(ClientDto dto) => new()
+    {
+        Type = dto.Type,
+        FirstName = dto.FirstName,
+        LastName = dto.LastName,
+        MiddleName = dto.MiddleName,
+        PreferredName = dto.PreferredName,
+        MaidenName = dto.MaidenName,
+        Title = dto.Title,
+        Gender = dto.Gender,
+        DateOfBirth = dto.DateOfBirth,
+        DobAccuracy = dto.DobAccuracy,
+        PlaceOfBirth = dto.PlaceOfBirth,
+        InterpreterRequired = dto.InterpreterRequired,
+        InterpreterLanguage = dto.InterpreterLanguage,
+        MaritalStatus = dto.MaritalStatus,
+        Ethnicity = dto.Ethnicity,
+        MedicareNumber = dto.MedicareNumber,
+        MedicarePosition = dto.MedicarePosition,
+        MedicareExpiryDate = dto.MedicareExpiryDate,
+        DvaNumber = dto.DvaNumber,
+        DvaExpiryDate = dto.DvaExpiryDate,
+        PensionNumber = dto.PensionNumber,
+        PensionExpiryDate = dto.PensionExpiryDate,
+        EntitlementStatus = dto.EntitlementStatus,
+        SafetyNetNumber = dto.SafetyNetNumber,
+        AtsiStatus = dto.AtsiStatus,
+        MedicareIncentiveEligible = dto.MedicareIncentiveEligible,
+        CtgCoPaymentRelief = dto.CtgCoPaymentRelief,
+        Address = dto.Address,
+        Suburb = dto.Suburb,
+        State = dto.State,
+        Postcode = dto.Postcode,
+        Email = dto.Email,
+        Phone = dto.Phone,
+        BusinessHoursPhone = dto.BusinessHoursPhone,
+        MobilePhone = dto.MobilePhone,
+        FaxNumber = dto.FaxNumber,
+        AcceptSms = dto.AcceptSms,
+        AcceptEmail = dto.AcceptEmail,
+        AcceptOnlineAppointments = dto.AcceptOnlineAppointments,
+        AcceptSmsMarketing = dto.AcceptSmsMarketing,
+        Notes = dto.Notes,
+        Warnings = dto.Warnings,
+        NextOfKinClientId = dto.NextOfKinClientId,
+        NextOfKinName = dto.NextOfKinName,
+        NextOfKinPhone = dto.NextOfKinPhone,
+        EmergencyContactClientId = dto.EmergencyContactClientId,
+        EmergencyContactName = dto.EmergencyContactName,
+        EmergencyContactPhone = dto.EmergencyContactPhone,
+        SameAsNextOfKin = dto.SameAsNextOfKin,
+        HealthFundId = dto.HealthFundId,
+        HealthFundNumber = dto.HealthFundNumber,
+        HealthFundRef = dto.HealthFundRef,
+        HealthFundAliasFamily = dto.HealthFundAliasFamily,
+        HealthFundAliasFirst = dto.HealthFundAliasFirst,
+        HealthFundJoinDate = dto.HealthFundJoinDate,
+        AccountType = dto.AccountType,
+        FeeRateCode = dto.FeeRateCode,
+        PayerClientId = dto.PayerClientId,
+        PayerName = dto.PayerName,
+        AccountName = dto.AccountName,
+        AccountBsb = dto.AccountBsb,
+        AccountNumber = dto.AccountNumber,
+        UseMedicareRegisteredBankAccount = dto.UseMedicareRegisteredBankAccount,
+        FileNumber = dto.FileNumber,
+        UrNumber = dto.UrNumber,
+        Deceased = dto.Deceased,
+        ProviderId = dto.ProviderId,
+        LastSeenDate = dto.LastSeenDate,
+        IhiNumber = dto.IhiNumber,
+        IhiRecordStatus = dto.IhiRecordStatus,
+        IhiAssignedDate = dto.IhiAssignedDate,
+        IhiNumberStatus = dto.IhiNumberStatus,
+        IhiUnresolvedDate = dto.IhiUnresolvedDate,
+        LifeCardNum = dto.LifeCardNum,
+        IsActive = dto.IsActive,
+        CreatedAt = dto.CreatedAt
+    };
+
+    private static CreateClientDto MapToCreateDto(ClientFormModel m) => new()
+    {
+        FirstName = m.FirstName,
+        LastName = m.LastName,
+        MiddleName = m.MiddleName,
+        PreferredName = m.PreferredName,
+        MaidenName = m.MaidenName,
+        Title = m.Title,
+        Gender = m.Gender,
+        DateOfBirth = m.DateOfBirth,
+        DobAccuracy = m.DobAccuracy,
+        PlaceOfBirth = m.PlaceOfBirth,
+        InterpreterRequired = m.InterpreterRequired,
+        InterpreterLanguage = m.InterpreterLanguage,
+        MaritalStatus = m.MaritalStatus,
+        Ethnicity = m.Ethnicity,
+        MedicareNumber = m.MedicareNumber,
+        MedicarePosition = m.MedicarePosition,
+        MedicareExpiryDate = m.MedicareExpiryDate,
+        DvaNumber = m.DvaNumber,
+        DvaExpiryDate = m.DvaExpiryDate,
+        PensionNumber = m.PensionNumber,
+        PensionExpiryDate = m.PensionExpiryDate,
+        EntitlementStatus = m.EntitlementStatus,
+        SafetyNetNumber = m.SafetyNetNumber,
+        AtsiStatus = m.AtsiStatus,
+        MedicareIncentiveEligible = m.MedicareIncentiveEligible,
+        CtgCoPaymentRelief = m.CtgCoPaymentRelief,
+        Address = m.Address,
+        Suburb = m.Suburb,
+        State = m.State,
+        Postcode = m.Postcode,
+        Email = m.Email,
+        Phone = m.Phone,
+        BusinessHoursPhone = m.BusinessHoursPhone,
+        MobilePhone = m.MobilePhone,
+        FaxNumber = m.FaxNumber,
+        AcceptSms = m.AcceptSms,
+        AcceptEmail = m.AcceptEmail,
+        AcceptOnlineAppointments = m.AcceptOnlineAppointments,
+        AcceptSmsMarketing = m.AcceptSmsMarketing,
+        Notes = m.Notes,
+        Warnings = m.Warnings,
+        NextOfKinClientId = m.NextOfKinClientId,
+        NextOfKinName = m.NextOfKinName,
+        NextOfKinPhone = m.NextOfKinPhone,
+        EmergencyContactClientId = m.EmergencyContactClientId,
+        EmergencyContactName = m.EmergencyContactName,
+        EmergencyContactPhone = m.EmergencyContactPhone,
+        SameAsNextOfKin = m.SameAsNextOfKin,
+        HealthFundId = m.HealthFundId,
+        HealthFundNumber = m.HealthFundNumber,
+        HealthFundRef = m.HealthFundRef,
+        HealthFundAliasFamily = m.HealthFundAliasFamily,
+        HealthFundAliasFirst = m.HealthFundAliasFirst,
+        HealthFundJoinDate = m.HealthFundJoinDate,
+        AccountType = m.AccountType,
+        FeeRateCode = m.FeeRateCode,
+        PayerClientId = m.PayerClientId,
+        PayerName = m.PayerName,
+        AccountName = m.AccountName,
+        AccountBsb = m.AccountBsb,
+        AccountNumber = m.AccountNumber,
+        UseMedicareRegisteredBankAccount = m.UseMedicareRegisteredBankAccount,
+        FileNumber = m.FileNumber,
+        UrNumber = m.UrNumber,
+        Deceased = m.Deceased,
+        ProviderId = m.ProviderId,
+        LastSeenDate = m.LastSeenDate,
+        IhiNumber = m.IhiNumber,
+        IhiRecordStatus = m.IhiRecordStatus,
+        IhiAssignedDate = m.IhiAssignedDate,
+        IhiNumberStatus = m.IhiNumberStatus,
+        IhiUnresolvedDate = m.IhiUnresolvedDate,
+        LifeCardNum = m.LifeCardNum
+    };
+
+    // ===================== Referrals =====================
+    private void OpenNewReferralModal()
+    {
+        _referralForm = new CreateClientReferralDto { ClientId = Id ?? 0, ReferralDate = DateTime.Today };
+        _editingReferralId = null;
+        _showReferralModal = true;
+    }
+
+    private void OpenEditReferralModal(ClientReferralDto r)
+    {
+        _referralForm = new CreateClientReferralDto
+        {
+            ClientId = r.ClientId,
+            ReferralDate = r.ReferralDate,
+            ReferralPeriod = r.ReferralPeriod,
+            IsDefault = r.IsDefault,
+            IsGP = r.IsGP,
+            ReferringProviderName = r.ReferringProviderName,
+            ReferringProviderNumber = r.ReferringProviderNumber,
+            RequestTypeCde = r.RequestTypeCde,
+            FirstVisitDate = r.FirstVisitDate,
+            Note = r.Note
+        };
+        _editingReferralId = r.Id;
+        _showReferralModal = true;
+    }
+
+    private async Task SaveReferralAsync()
+    {
+        if (!Id.HasValue) return;
+        bool ok;
+        if (_editingReferralId.HasValue)
+        {
+            var update = new UpdateClientReferralDto
+            {
+                ReferralDate = _referralForm.ReferralDate,
+                ReferralPeriod = _referralForm.ReferralPeriod,
+                IsDefault = _referralForm.IsDefault,
+                IsGP = _referralForm.IsGP,
+                ReferringProviderName = _referralForm.ReferringProviderName,
+                ReferringProviderNumber = _referralForm.ReferringProviderNumber,
+                RequestTypeCde = _referralForm.RequestTypeCde,
+                FirstVisitDate = _referralForm.FirstVisitDate,
+                Note = _referralForm.Note,
+                IsArchived = false
+            };
+            ok = await ReferralService.UpdateAsync(Id.Value, _editingReferralId.Value, update);
+        }
+        else
+        {
+            ok = await ReferralService.CreateAsync(_referralForm);
+        }
+        if (ok)
+        {
+            _showReferralModal = false;
+            _referrals = (await ReferralService.GetByClientIdAsync(Id.Value)).ToList();
+        }
+    }
+
+    private async Task ArchiveReferralAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        await ReferralService.ArchiveAsync(Id.Value, id);
+        _referrals = (await ReferralService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    private async Task DeleteReferralAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        await ReferralService.DeleteAsync(Id.Value, id);
+        _referrals = (await ReferralService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    private RenderFragment RenderReferralsTab() => @<div>
+        <div class="d-flex justify-content-between mb-1">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="chkInclArchivedRef" @bind="_includeArchivedReferrals" />
+                <label class="form-check-label small" for="chkInclArchivedRef">Include archived</label>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewReferralModal">+ New</button>
+        </div>
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Provider</th><th>GP</th><th>Issue</th><th>Period</th><th>1st Visit</th><th>Type</th><th>Default</th><th>Note</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var r in _referrals.Where(x => _includeArchivedReferrals || !x.IsArchived))
+                {
+                    <tr class="@(r.IsArchived ? "text-muted" : "")">
+                        <td>@r.ReferringProviderName</td>
+                        <td>@(r.IsGP ? "✓" : "")</td>
+                        <td>@r.ReferralDate.ToString("d/M/yy")</td>
+                        <td>@r.ReferralPeriod</td>
+                        <td>@(r.FirstVisitDate?.ToString("d/M/yy"))</td>
+                        <td>@r.RequestTypeCde</td>
+                        <td>@(r.IsDefault ? "✓" : "")</td>
+                        <td>@r.Note</td>
+                        <td class="text-end text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => OpenEditReferralModal(r))">Edit</button>
+                            @if (!r.IsArchived)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-warning" @onclick="@(() => ArchiveReferralAsync(r.Id))">Archive</button>
+                            }
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => DeleteReferralAsync(r.Id))">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (_showReferralModal)
+        {
+            <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header py-2">
+                            <h6 class="modal-title">@(_editingReferralId.HasValue ? "Edit Referral" : "New Referral")</h6>
+                            <button type="button" class="btn-close" @onclick="@(() => _showReferralModal = false)"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Referring Provider</label>
+                                    <input class="form-control form-control-sm" @bind="_referralForm.ReferringProviderName" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Provider#</label>
+                                    <input class="form-control form-control-sm" @bind="_referralForm.ReferringProviderNumber" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-0">Issue Date</label>
+                                    <input type="date" class="form-control form-control-sm" @bind="_referralForm.ReferralDate" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-0">Period</label>
+                                    <input class="form-control form-control-sm" maxlength="2" @bind="_referralForm.ReferralPeriod" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-0">1st Visit</label>
+                                    <input type="date" class="form-control form-control-sm" @bind="_referralForm.FirstVisitDate" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Type</label>
+                                    <input class="form-control form-control-sm" maxlength="1" @bind="_referralForm.RequestTypeCde" />
+                                </div>
+                                <div class="col-6 d-flex align-items-end gap-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="chkRefGp" @bind="_referralForm.IsGP" />
+                                        <label class="form-check-label small" for="chkRefGp">GP</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="chkRefDefault" @bind="_referralForm.IsDefault" />
+                                        <label class="form-check-label small" for="chkRefDefault">Default</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Note</label>
+                                    <textarea class="form-control form-control-sm" rows="2" @bind="_referralForm.Note"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-2">
+                            <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showReferralModal = false)">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="SaveReferralAsync">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>;
+
+    // ===================== WC/TAC (Compensation Claims) =====================
+    private void OpenNewClaimModal()
+    {
+        _claimForm = new CreateClientCompensationClaimDto { ClientId = Id ?? 0 };
+        _editingClaimId = null;
+        _showClaimModal = true;
+    }
+
+    private void OpenEditClaimModal(ClientCompensationClaimDto c)
+    {
+        _claimForm = new CreateClientCompensationClaimDto
+        {
+            ClientId = c.ClientId,
+            ClaimNum = c.ClaimNum,
+            DateOfInjury = c.DateOfInjury,
+            EmployerName = c.EmployerName,
+            CaseManagerName = c.CaseManagerName,
+            PayerName = c.PayerName,
+            IsDefault = c.IsDefault,
+            PublicNote = c.PublicNote,
+            PrivateNote = c.PrivateNote
+        };
+        _editingClaimId = c.Id;
+        _showClaimModal = true;
+    }
+
+    private async Task SaveClaimAsync()
+    {
+        if (!Id.HasValue) return;
+        bool ok;
+        if (_editingClaimId.HasValue)
+        {
+            var update = new UpdateClientCompensationClaimDto
+            {
+                ClaimNum = _claimForm.ClaimNum,
+                DateOfInjury = _claimForm.DateOfInjury,
+                EmployerName = _claimForm.EmployerName,
+                CaseManagerName = _claimForm.CaseManagerName,
+                PayerName = _claimForm.PayerName,
+                IsDefault = _claimForm.IsDefault,
+                PublicNote = _claimForm.PublicNote,
+                PrivateNote = _claimForm.PrivateNote,
+                IsArchived = false
+            };
+            ok = await CompensationClaimService.UpdateAsync(Id.Value, _editingClaimId.Value, update);
+        }
+        else
+        {
+            ok = await CompensationClaimService.CreateAsync(_claimForm);
+        }
+        if (ok)
+        {
+            _showClaimModal = false;
+            _claims = (await CompensationClaimService.GetByClientIdAsync(Id.Value)).ToList();
+        }
+    }
+
+    private async Task ArchiveClaimAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        await CompensationClaimService.ArchiveAsync(Id.Value, id);
+        _claims = (await CompensationClaimService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    private RenderFragment RenderCompensationClaimsTab() => @<div>
+        <div class="d-flex justify-content-between mb-1">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="chkInclArchivedClaim" @bind="_includeArchivedClaims" />
+                <label class="form-check-label small" for="chkInclArchivedClaim">Include archived</label>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewClaimModal">+ New</button>
+        </div>
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Claim#</th><th>Date of Injury</th><th>Employer</th><th>Case Manager</th><th>Payer</th><th>Default</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var c in _claims.Where(x => _includeArchivedClaims || !x.IsArchived))
+                {
+                    <tr class="@(c.IsArchived ? "text-muted" : "")">
+                        <td>@c.ClaimNum</td>
+                        <td>@(c.DateOfInjury?.ToString("d/M/yy"))</td>
+                        <td>@c.EmployerName</td>
+                        <td>@c.CaseManagerName</td>
+                        <td>@c.PayerName</td>
+                        <td>@(c.IsDefault ? "✓" : "")</td>
+                        <td class="text-end text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => OpenEditClaimModal(c))">Edit</button>
+                            @if (!c.IsArchived)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => ArchiveClaimAsync(c.Id))">Archive</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (_showClaimModal)
+        {
+            <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header py-2">
+                            <h6 class="modal-title">@(_editingClaimId.HasValue ? "Edit Claim" : "New Claim")</h6>
+                            <button type="button" class="btn-close" @onclick="@(() => _showClaimModal = false)"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Claim#</label>
+                                    <input class="form-control form-control-sm" maxlength="30" @bind="_claimForm.ClaimNum" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Date of Injury</label>
+                                    <input type="date" class="form-control form-control-sm" @bind="_claimForm.DateOfInjury" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Employer</label>
+                                    <input class="form-control form-control-sm" @bind="_claimForm.EmployerName" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Case Manager</label>
+                                    <input class="form-control form-control-sm" @bind="_claimForm.CaseManagerName" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Payer</label>
+                                    <input class="form-control form-control-sm" @bind="_claimForm.PayerName" />
+                                </div>
+                                <div class="col-6 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="chkClaimDefault" @bind="_claimForm.IsDefault" />
+                                        <label class="form-check-label small" for="chkClaimDefault">Default</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Public Note (printed)</label>
+                                    <textarea class="form-control form-control-sm" rows="2" @bind="_claimForm.PublicNote"></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Private Note (not printed)</label>
+                                    <textarea class="form-control form-control-sm" rows="2" @bind="_claimForm.PrivateNote"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-2">
+                            <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showClaimModal = false)">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="SaveClaimAsync">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>;
+
+    // ===================== Family =====================
+    private async Task RemoveFamilyRelationshipAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        await FamilyService.DeleteAsync(Id.Value, id);
+        _familyRelationships = (await FamilyService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    private RenderFragment RenderFamilyTab() => @<div>
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Name</th><th>Address</th><th>Relationship</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var f in _familyRelationships)
+                {
+                    <tr>
+                        <td>@f.RelativeName</td>
+                        <td>@f.RelativeAddress</td>
+                        <td>@f.RelationshipType</td>
+                        <td class="text-end text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => NavManager.NavigateTo($"/clients/edit/{f.RelativeClientId}"))">Open</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveFamilyRelationshipAsync(f.Id))">Remove</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (!_familyRelationships.Any())
+        {
+            <div class="text-muted small">No family members linked. Use "New Family" below to add one.</div>
+        }
+    </div>;
+
+    // ===================== Occupations =====================
+    private void OpenNewOccupationModal()
+    {
+        _occupationForm = new CreateClientOccupationDto { ClientId = Id ?? 0 };
+        _editingOccupationId = null;
+        _showOccupationModal = true;
+    }
+
+    private void OpenEditOccupationModal(ClientOccupationDto o)
+    {
+        _occupationForm = new CreateClientOccupationDto
+        {
+            ClientId = o.ClientId,
+            Occupation = o.Occupation,
+            Employer = o.Employer,
+            StartedYear = o.StartedYear,
+            StoppedYear = o.StoppedYear,
+            HasAsbestos = o.HasAsbestos,
+            HasDust = o.HasDust,
+            HasRadiation = o.HasRadiation,
+            HasAnimals = o.HasAnimals,
+            Comment = o.Comment
+        };
+        _editingOccupationId = o.Id;
+        _showOccupationModal = true;
+    }
+
+    private async Task SaveOccupationAsync()
+    {
+        if (!Id.HasValue) return;
+        bool ok;
+        if (_editingOccupationId.HasValue)
+        {
+            var update = new UpdateClientOccupationDto
+            {
+                Occupation = _occupationForm.Occupation,
+                Employer = _occupationForm.Employer,
+                StartedYear = _occupationForm.StartedYear,
+                StoppedYear = _occupationForm.StoppedYear,
+                HasAsbestos = _occupationForm.HasAsbestos,
+                HasDust = _occupationForm.HasDust,
+                HasRadiation = _occupationForm.HasRadiation,
+                HasAnimals = _occupationForm.HasAnimals,
+                Comment = _occupationForm.Comment,
+                IsArchived = false
+            };
+            ok = await OccupationService.UpdateAsync(Id.Value, _editingOccupationId.Value, update);
+        }
+        else
+        {
+            ok = await OccupationService.CreateAsync(_occupationForm);
+        }
+        if (ok)
+        {
+            _showOccupationModal = false;
+            _occupations = (await OccupationService.GetByClientIdAsync(Id.Value)).ToList();
+        }
+    }
+
+    private async Task ArchiveOccupationAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        await OccupationService.ArchiveAsync(Id.Value, id);
+        _occupations = (await OccupationService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    private RenderFragment RenderOccupationsTab() => @<div>
+        <div class="d-flex justify-content-between mb-1">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="chkInclArchivedOcc" @bind="_includeArchivedOccupations" />
+                <label class="form-check-label small" for="chkInclArchivedOcc">Include archived</label>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewOccupationModal">+ New</button>
+        </div>
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Occupation</th><th>Employer</th><th>Started</th><th>Ended</th><th>Hazards</th><th>Comment</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var o in _occupations.Where(x => _includeArchivedOccupations || !x.IsArchived))
+                {
+                    <tr class="@(o.IsArchived ? "text-muted" : "")">
+                        <td>@o.Occupation</td>
+                        <td>@o.Employer</td>
+                        <td>@o.StartedYear</td>
+                        <td>@o.StoppedYear</td>
+                        <td>@HazardSummary(o)</td>
+                        <td>@o.Comment</td>
+                        <td class="text-end text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => OpenEditOccupationModal(o))">Edit</button>
+                            @if (!o.IsArchived)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => ArchiveOccupationAsync(o.Id))">Archive</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (_showOccupationModal)
+        {
+            <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header py-2">
+                            <h6 class="modal-title">@(_editingOccupationId.HasValue ? "Edit Occupation" : "New Occupation")</h6>
+                            <button type="button" class="btn-close" @onclick="@(() => _showOccupationModal = false)"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Occupation</label>
+                                    <input class="form-control form-control-sm" @bind="_occupationForm.Occupation" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Employer</label>
+                                    <input class="form-control form-control-sm" @bind="_occupationForm.Employer" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Started (year)</label>
+                                    <input type="number" class="form-control form-control-sm" @bind="_occupationForm.StartedYear" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Ended (year)</label>
+                                    <input type="number" class="form-control form-control-sm" @bind="_occupationForm.StoppedYear" />
+                                </div>
+                                <div class="col-12 d-flex gap-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="chkAsbestos" @bind="_occupationForm.HasAsbestos" />
+                                        <label class="form-check-label small" for="chkAsbestos">Asbestos</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="chkDust" @bind="_occupationForm.HasDust" />
+                                        <label class="form-check-label small" for="chkDust">Dust</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="chkRadiation" @bind="_occupationForm.HasRadiation" />
+                                        <label class="form-check-label small" for="chkRadiation">Radiation</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="chkAnimals" @bind="_occupationForm.HasAnimals" />
+                                        <label class="form-check-label small" for="chkAnimals">Animals</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Comment</label>
+                                    <textarea class="form-control form-control-sm" rows="2" @bind="_occupationForm.Comment"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-2">
+                            <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showOccupationModal = false)">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="SaveOccupationAsync">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>;
+
+    private static string HazardSummary(ClientOccupationDto o)
+    {
+        var hazards = new List<string>();
+        if (o.HasAsbestos) hazards.Add("Asbestos");
+        if (o.HasDust) hazards.Add("Dust");
+        if (o.HasRadiation) hazards.Add("Radiation");
+        if (o.HasAnimals) hazards.Add("Animals");
+        return string.Join(", ", hazards);
+    }
+
+    // ===================== eHealth =====================
+    private RenderFragment RenderEHealthTab() => @<div>
+        <div class="row g-2">
+            <div class="col-4">
+                <label class="form-label small mb-0">IHI Number</label>
+                <InputText @bind-Value="_model.IhiNumber" class="form-control form-control-sm" maxlength="16" />
+            </div>
+            <div class="col-4">
+                <label class="form-label small mb-0">IHI Status</label>
+                <input class="form-control form-control-sm" value="@_model.IhiNumberStatus" disabled />
+            </div>
+            <div class="col-4">
+                <label class="form-label small mb-0">Record Status</label>
+                <input class="form-control form-control-sm" value="@_model.IhiRecordStatus" disabled />
+            </div>
+            <div class="col-4">
+                <label class="form-label small mb-0">Assigned Date</label>
+                <input class="form-control form-control-sm" value="@(_model.IhiAssignedDate?.ToString("d/M/yyyy"))" disabled />
+            </div>
+            <div class="col-4">
+                <label class="form-label small mb-0">Unresolved Date</label>
+                <input class="form-control form-control-sm" value="@(_model.IhiUnresolvedDate?.ToString("d/M/yyyy"))" disabled />
+            </div>
+            <div class="col-4 d-flex align-items-end gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => _underConstructionMessage = "IHI Lookup / Validate")">Lookup</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => _underConstructionMessage = "IHI History")">History</button>
+            </div>
+        </div>
+    </div>;
+
+    // ===================== Lifecard =====================
+    private RenderFragment RenderLifecardTab() => @<div>
+        <div class="row g-2">
+            <div class="col-4">
+                <label class="form-label small mb-0">Lifecard#</label>
+                <InputText @bind-Value="_model.LifeCardNum" class="form-control form-control-sm" maxlength="50" placeholder="0000-0000-0000-0000" />
+            </div>
+        </div>
+    </div>;
+
+    // ===================== UDF =====================
+    private void OpenNewUdfModal()
+    {
+        _udfFieldTypeId = _udfDefinitions.FirstOrDefault()?.Id;
+        _udfValueText = null;
+        _udfNoteText = null;
+        _editingUdfValueId = null;
+        _showUdfModal = true;
+    }
+
+    private void OpenEditUdfModal(ClientUserDefinedFieldValueDto v)
+    {
+        _udfFieldTypeId = v.UserDefinedFieldTypeId;
+        _udfValueText = v.Value;
+        _udfNoteText = v.Note;
+        _editingUdfValueId = v.Id;
+        _showUdfModal = true;
+    }
+
+    private async Task SaveUdfValueAsync()
+    {
+        if (!Id.HasValue || !_udfFieldTypeId.HasValue) return;
+        bool ok;
+        if (_editingUdfValueId.HasValue)
+        {
+            var update = new UpdateClientUserDefinedFieldValueDto { Value = _udfValueText, Note = _udfNoteText };
+            ok = await UdfValueService.UpdateAsync(Id.Value, _editingUdfValueId.Value, update);
+        }
+        else
+        {
+            var create = new CreateClientUserDefinedFieldValueDto
+            {
+                ClientId = Id.Value,
+                UserDefinedFieldTypeId = _udfFieldTypeId.Value,
+                Value = _udfValueText,
+                Note = _udfNoteText
+            };
+            ok = await UdfValueService.CreateAsync(create);
+        }
+        if (ok)
+        {
+            _showUdfModal = false;
+            _udfValues = (await UdfValueService.GetByClientIdAsync(Id.Value)).ToList();
+        }
+    }
+
+    private async Task DeleteUdfValueAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        await UdfValueService.DeleteAsync(Id.Value, id);
+        _udfValues = (await UdfValueService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    private RenderFragment RenderUdfTab() => @<div>
+        <div class="d-flex justify-content-end mb-1">
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewUdfModal" disabled="@(!_udfDefinitions.Any())">+ New</button>
+        </div>
+        @if (!_udfDefinitions.Any())
+        {
+            <div class="text-muted small">No user-defined fields configured yet.</div>
+        }
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Field Name</th><th>Value</th><th>Note</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var v in _udfValues)
+                {
+                    <tr>
+                        <td>@v.FieldName</td>
+                        <td>@v.Value</td>
+                        <td>@v.Note</td>
+                        <td class="text-end text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => OpenEditUdfModal(v))">Edit</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => DeleteUdfValueAsync(v.Id))">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (_showUdfModal)
+        {
+            <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header py-2">
+                            <h6 class="modal-title">@(_editingUdfValueId.HasValue ? "Edit Field Value" : "New Field Value")</h6>
+                            <button type="button" class="btn-close" @onclick="@(() => _showUdfModal = false)"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Field Name</label>
+                                    <select class="form-select form-select-sm" @bind="_udfFieldTypeId" disabled="@_editingUdfValueId.HasValue">
+                                        @foreach (var d in _udfDefinitions)
+                                        {
+                                            <option value="@d.Id">@d.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Value</label>
+                                    <input class="form-control form-control-sm" @bind="_udfValueText" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Note</label>
+                                    <textarea class="form-control form-control-sm" rows="2" @bind="_udfNoteText"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-2">
+                            <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showUdfModal = false)">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="SaveUdfValueAsync">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>;
+}

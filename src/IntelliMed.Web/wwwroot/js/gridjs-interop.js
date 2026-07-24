@@ -11,13 +11,13 @@ window.IntelliMedSetDotNetRef = function (dotNetRef) {
 // Global navigation callback for View buttons
 window.IntelliMedNavigate = function (id) {
     // Navigate using Blazor NavigationManager via history push
-    window.location.hash = '#/patients/search?focus=' + id;
+    window.location.hash = '#/clients/search?focus=' + id;
     // Also try the dotnet callback
     if (window._intelliMedDotNet) {
         try {
-            window._intelliMedDotNet.invokeMethodAsync('NavigateToPatient', id);
+            window._intelliMedDotNet.invokeMethodAsync('NavigateToClient', id);
         } catch (e) {
-            console.log('NavigateToPatient fallback:', e);
+            console.log('NavigateToClient fallback:', e);
         }
     }
 };

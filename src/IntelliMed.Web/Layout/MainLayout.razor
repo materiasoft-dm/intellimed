@@ -88,10 +88,10 @@
 
                 <hr class="my-2" />
 
-                @* Patients Section *@
-                <small class="text-muted px-4 text-uppercase">Patients</small>
-                <a href="/patients/search" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-search me-2"></i> <span class="mdi-nav-label">Find Patient</span>
+                @* Clients Section *@
+                <small class="text-muted px-4 text-uppercase">Clients</small>
+                <a href="/clients/search" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                    <i class="bi bi-search me-2"></i> <span class="mdi-nav-label">Find Client</span>
                 </a>
 
                 <hr class="my-2" />
@@ -226,7 +226,7 @@
                     <button type="button" class="btn-close" @onclick="CancelSwitchClinic" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Switch to <strong>@_switchTargetClinic.Name</strong>? Patient, appointment, and invoice lists will reload for this clinic.</p>
+                    <p>Switch to <strong>@_switchTargetClinic.Name</strong>? Client, appointment, and invoice lists will reload for this clinic.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="CancelSwitchClinic">Cancel</button>
@@ -410,7 +410,7 @@
     }
 
     void NavigateToHome() { Navigation.NavigateTo("/"); }
-    void NavigateToPatients() { Navigation.NavigateTo("/patients"); }
+    void NavigateToClients() { Navigation.NavigateTo("/clients"); }
     void NavigateToAppointments() { Navigation.NavigateTo("/appointments"); }
     void NavigateToInvoices() { Navigation.NavigateTo("/invoices"); }
     void NavigateToUserManagement() { Navigation.NavigateTo("/admin/users"); }

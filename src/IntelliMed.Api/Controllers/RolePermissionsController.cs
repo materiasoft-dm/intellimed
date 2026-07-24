@@ -162,7 +162,7 @@ public class RolePermissionsController : ControllerBase
         return pageKey switch
         {
             "clinic-settings" or "clinic-manager" => "Practice",
-            string p when p.StartsWith("patients") || p.StartsWith("appointments") || p.StartsWith("practitioners") => "Clinical",
+            string p when p.StartsWith("clients") || p.StartsWith("appointments") || p.StartsWith("practitioners") => "Clinical",
             string p when p.StartsWith("invoices") || p.StartsWith("payments") => "Financial",
             string p when p.StartsWith("admin") => "Admin",
             string p when p.StartsWith("reports") => "Reports",
@@ -179,10 +179,10 @@ public class RolePermissionsController : ControllerBase
         return new List<PageDefinitionDto>
         {
             // Clinical
-            new() { PageKey = "patients", PageName = "Patient Records", Category = "Clinical", Description = "View and manage patient records" },
-            new() { PageKey = "patients/create", PageName = "Add Patient", Category = "Clinical", Description = "Create new patient records" },
-            new() { PageKey = "patients/edit", PageName = "Edit Patient", Category = "Clinical", Description = "Edit existing patient records" },
-            new() { PageKey = "patients/delete", PageName = "Delete Patient", Category = "Clinical", Description = "Remove patient records" },
+            new() { PageKey = "clients", PageName = "Client Records", Category = "Clinical", Description = "View and manage client records" },
+            new() { PageKey = "clients/create", PageName = "Add Client", Category = "Clinical", Description = "Create new client records" },
+            new() { PageKey = "clients/edit", PageName = "Edit Client", Category = "Clinical", Description = "Edit existing client records" },
+            new() { PageKey = "clients/delete", PageName = "Delete Client", Category = "Clinical", Description = "Remove client records" },
             new() { PageKey = "appointments", PageName = "Appointments", Category = "Clinical", Description = "View appointment schedule" },
             new() { PageKey = "appointments/create", PageName = "New Appointment", Category = "Clinical", Description = "Schedule new appointments" },
             new() { PageKey = "appointments/edit", PageName = "Edit Appointment", Category = "Clinical", Description = "Modify existing appointments" },
@@ -211,7 +211,7 @@ public class RolePermissionsController : ControllerBase
             // Reports
             new() { PageKey = "reports", PageName = "Reports Dashboard", Category = "Reports", Description = "View practice reports" },
             new() { PageKey = "reports/financial", PageName = "Financial Reports", Category = "Reports", Description = "Revenue and billing reports" },
-            new() { PageKey = "reports/clinical", PageName = "Clinical Reports", Category = "Reports", Description = "Patient and appointment analytics" },
+            new() { PageKey = "reports/clinical", PageName = "Clinical Reports", Category = "Reports", Description = "Client and appointment analytics" },
         };
     }
 }

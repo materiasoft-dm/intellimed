@@ -254,10 +254,10 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         // SuperAdmin — ALL pages
         // =====================================================================
         // Clinical
-        new() { RoleName = "SuperAdmin", PageKey = "patients", Category = "Clinical" },
-        new() { RoleName = "SuperAdmin", PageKey = "patients/create", Category = "Clinical" },
-        new() { RoleName = "SuperAdmin", PageKey = "patients/edit", Category = "Clinical" },
-        new() { RoleName = "SuperAdmin", PageKey = "patients/delete", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "clients", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "clients/create", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "clients/edit", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "clients/delete", Category = "Clinical" },
         new() { RoleName = "SuperAdmin", PageKey = "appointments", Category = "Clinical" },
         new() { RoleName = "SuperAdmin", PageKey = "appointments/create", Category = "Clinical" },
         new() { RoleName = "SuperAdmin", PageKey = "appointments/edit", Category = "Clinical" },
@@ -284,10 +284,10 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         // =====================================================================
         // Admin — most pages except some SuperAdmin-only
         // =====================================================================
-        new() { RoleName = "Admin", PageKey = "patients", Category = "Clinical" },
-        new() { RoleName = "Admin", PageKey = "patients/create", Category = "Clinical" },
-        new() { RoleName = "Admin", PageKey = "patients/edit", Category = "Clinical" },
-        new() { RoleName = "Admin", PageKey = "patients/delete", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "clients", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "clients/create", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "clients/edit", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "clients/delete", Category = "Clinical" },
         new() { RoleName = "Admin", PageKey = "appointments", Category = "Clinical" },
         new() { RoleName = "Admin", PageKey = "appointments/create", Category = "Clinical" },
         new() { RoleName = "Admin", PageKey = "appointments/edit", Category = "Clinical" },
@@ -311,9 +311,9 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         // =====================================================================
         // Doctor — clinical + read-only financial
         // =====================================================================
-        new() { RoleName = "Doctor", PageKey = "patients", Category = "Clinical" },
-        new() { RoleName = "Doctor", PageKey = "patients/create", Category = "Clinical" },
-        new() { RoleName = "Doctor", PageKey = "patients/edit", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "clients", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "clients/create", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "clients/edit", Category = "Clinical" },
         new() { RoleName = "Doctor", PageKey = "appointments", Category = "Clinical" },
         new() { RoleName = "Doctor", PageKey = "appointments/create", Category = "Clinical" },
         new() { RoleName = "Doctor", PageKey = "appointments/edit", Category = "Clinical" },
@@ -323,22 +323,22 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "Doctor", PageKey = "reports/clinical", Category = "Reports" },
 
         // =====================================================================
-        // Nurse — patients + appointments (no delete)
+        // Nurse — clients + appointments (no delete)
         // =====================================================================
-        new() { RoleName = "Nurse", PageKey = "patients", Category = "Clinical" },
-        new() { RoleName = "Nurse", PageKey = "patients/create", Category = "Clinical" },
-        new() { RoleName = "Nurse", PageKey = "patients/edit", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "clients", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "clients/create", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "clients/edit", Category = "Clinical" },
         new() { RoleName = "Nurse", PageKey = "appointments", Category = "Clinical" },
         new() { RoleName = "Nurse", PageKey = "appointments/create", Category = "Clinical" },
         new() { RoleName = "Nurse", PageKey = "appointments/edit", Category = "Clinical" },
         new() { RoleName = "Nurse", PageKey = "practitioners", Category = "Clinical" },
 
         // =====================================================================
-        // Receptionist — patients, appointments, invoices
+        // Receptionist — clients, appointments, invoices
         // =====================================================================
-        new() { RoleName = "Receptionist", PageKey = "patients", Category = "Clinical" },
-        new() { RoleName = "Receptionist", PageKey = "patients/create", Category = "Clinical" },
-        new() { RoleName = "Receptionist", PageKey = "patients/edit", Category = "Clinical" },
+        new() { RoleName = "Receptionist", PageKey = "clients", Category = "Clinical" },
+        new() { RoleName = "Receptionist", PageKey = "clients/create", Category = "Clinical" },
+        new() { RoleName = "Receptionist", PageKey = "clients/edit", Category = "Clinical" },
         new() { RoleName = "Receptionist", PageKey = "appointments", Category = "Clinical" },
         new() { RoleName = "Receptionist", PageKey = "appointments/create", Category = "Clinical" },
         new() { RoleName = "Receptionist", PageKey = "appointments/edit", Category = "Clinical" },
