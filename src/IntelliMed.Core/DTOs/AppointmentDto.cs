@@ -5,8 +5,8 @@ namespace IntelliMed.Core.DTOs;
 public class AppointmentDto
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
-    public string PatientName { get; set; } = string.Empty;
+    public int ClientId { get; set; }
+    public string ClientName { get; set; } = string.Empty;
     public int PractitionerId { get; set; }
     public string PractitionerName { get; set; } = string.Empty;
     public DateTime AppointmentDate { get; set; }
@@ -28,7 +28,7 @@ public class AppointmentDto
 
 public class CreateAppointmentDto
 {
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public int PractitionerId { get; set; }
     public DateTime AppointmentDate { get; set; }
     public TimeSpan StartTime { get; set; }
@@ -41,7 +41,7 @@ public class CreateAppointmentDto
 
 public class UpdateAppointmentDto
 {
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public int PractitionerId { get; set; }
     public DateTime AppointmentDate { get; set; }
     public TimeSpan StartTime { get; set; }
@@ -55,7 +55,7 @@ public class UpdateAppointmentDto
 
 public class AppointmentSearchDto
 {
-    public int? PatientId { get; set; }
+    public int? ClientId { get; set; }
     public int? PractitionerId { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }

@@ -4,7 +4,7 @@ public class Appointment
 {
     public int Id { get; set; }
     public int ClinicId { get; set; }
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public int PractitionerId { get; set; }
     public DateTime AppointmentDate { get; set; }
     public TimeSpan StartTime { get; set; }
@@ -18,7 +18,7 @@ public class Appointment
     public DateTime? UpdatedAt { get; set; }
 
     // Navigation properties
-    public Patient? Patient { get; set; }
+    public Client? Client { get; set; }
     public Practitioner? Practitioner { get; set; }
 }
 

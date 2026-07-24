@@ -5,8 +5,8 @@ namespace IntelliMed.Core.DTOs;
 public class InvoiceDto
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
-    public string PatientName { get; set; } = string.Empty;
+    public int ClientId { get; set; }
+    public string ClientName { get; set; } = string.Empty;
     public int? AppointmentId { get; set; }
     public string InvoiceNumber { get; set; } = string.Empty;
     public DateTime InvoiceDate { get; set; }
@@ -46,7 +46,7 @@ public class PaymentDto
 
 public class CreateInvoiceDto
 {
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public int? AppointmentId { get; set; }
     public DateTime DueDate { get; set; }
     public string? Notes { get; set; }
@@ -71,7 +71,7 @@ public class CreatePaymentDto
 
 public class InvoiceSearchDto
 {
-    public int? PatientId { get; set; }
+    public int? ClientId { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
     public InvoiceStatus? Status { get; set; }

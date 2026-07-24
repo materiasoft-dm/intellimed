@@ -5,8 +5,8 @@ namespace IntelliMed.Infrastructure.Mappers;
 
 public static class EntityMapper
 {
-    // Patient mappings
-    public static PatientDto ToDto(Patient entity) => new()
+    // Client mappings
+    public static ClientDto ToDto(Client entity) => new()
     {
         Id = entity.Id,
         ClinicId = entity.ClinicId,
@@ -52,10 +52,10 @@ public static class EntityMapper
         AcceptSmsMarketing = entity.AcceptSmsMarketing,
         Notes = entity.Notes,
         Warnings = entity.Warnings,
-        NextOfKinPatientId = entity.NextOfKinPatientId,
+        NextOfKinClientId = entity.NextOfKinClientId,
         NextOfKinName = entity.NextOfKinName,
         NextOfKinPhone = entity.NextOfKinPhone,
-        EmergencyContactPatientId = entity.EmergencyContactPatientId,
+        EmergencyContactClientId = entity.EmergencyContactClientId,
         EmergencyContactName = entity.EmergencyContactName,
         EmergencyContactPhone = entity.EmergencyContactPhone,
         SameAsNextOfKin = entity.SameAsNextOfKin,
@@ -69,7 +69,7 @@ public static class EntityMapper
         HealthFundJoinDate = entity.HealthFundJoinDate,
         AccountType = entity.AccountType,
         FeeRateCode = entity.FeeRateCode,
-        PayerPatientId = entity.PayerPatientId,
+        PayerClientId = entity.PayerClientId,
         PayerName = entity.PayerName,
         AccountName = entity.AccountName,
         AccountBsb = entity.AccountBsb,
@@ -91,7 +91,7 @@ public static class EntityMapper
         UpdatedAt = entity.UpdatedAt
     };
 
-    public static Patient ToEntity(CreatePatientDto dto) => new()
+    public static Client ToEntity(CreateClientDto dto) => new()
     {
         ClinicId = dto.ClinicId,
         Type = dto.Type,
@@ -136,10 +136,10 @@ public static class EntityMapper
         AcceptSmsMarketing = dto.AcceptSmsMarketing,
         Notes = dto.Notes,
         Warnings = dto.Warnings,
-        NextOfKinPatientId = dto.NextOfKinPatientId,
+        NextOfKinClientId = dto.NextOfKinClientId,
         NextOfKinName = dto.NextOfKinName,
         NextOfKinPhone = dto.NextOfKinPhone,
-        EmergencyContactPatientId = dto.EmergencyContactPatientId,
+        EmergencyContactClientId = dto.EmergencyContactClientId,
         EmergencyContactName = dto.EmergencyContactName,
         EmergencyContactPhone = dto.EmergencyContactPhone,
         SameAsNextOfKin = dto.SameAsNextOfKin,
@@ -151,7 +151,7 @@ public static class EntityMapper
         HealthFundJoinDate = dto.HealthFundJoinDate,
         AccountType = dto.AccountType,
         FeeRateCode = dto.FeeRateCode,
-        PayerPatientId = dto.PayerPatientId,
+        PayerClientId = dto.PayerClientId,
         PayerName = dto.PayerName,
         AccountName = dto.AccountName,
         AccountBsb = dto.AccountBsb,
@@ -172,7 +172,7 @@ public static class EntityMapper
         CreatedAt = DateTime.UtcNow
     };
 
-    public static void UpdateEntity(Patient entity, UpdatePatientDto dto)
+    public static void UpdateEntity(Client entity, UpdateClientDto dto)
     {
         entity.Type = dto.Type;
         entity.FirstName = dto.FirstName;
@@ -216,10 +216,10 @@ public static class EntityMapper
         entity.AcceptSmsMarketing = dto.AcceptSmsMarketing;
         entity.Notes = dto.Notes;
         entity.Warnings = dto.Warnings;
-        entity.NextOfKinPatientId = dto.NextOfKinPatientId;
+        entity.NextOfKinClientId = dto.NextOfKinClientId;
         entity.NextOfKinName = dto.NextOfKinName;
         entity.NextOfKinPhone = dto.NextOfKinPhone;
-        entity.EmergencyContactPatientId = dto.EmergencyContactPatientId;
+        entity.EmergencyContactClientId = dto.EmergencyContactClientId;
         entity.EmergencyContactName = dto.EmergencyContactName;
         entity.EmergencyContactPhone = dto.EmergencyContactPhone;
         entity.SameAsNextOfKin = dto.SameAsNextOfKin;
@@ -231,7 +231,7 @@ public static class EntityMapper
         entity.HealthFundJoinDate = dto.HealthFundJoinDate;
         entity.AccountType = dto.AccountType;
         entity.FeeRateCode = dto.FeeRateCode;
-        entity.PayerPatientId = dto.PayerPatientId;
+        entity.PayerClientId = dto.PayerClientId;
         entity.PayerName = dto.PayerName;
         entity.AccountName = dto.AccountName;
         entity.AccountBsb = dto.AccountBsb;
@@ -252,11 +252,11 @@ public static class EntityMapper
         entity.UpdatedAt = DateTime.UtcNow;
     }
 
-    // PatientReferral mappings
-    public static PatientReferralDto ToDto(PatientReferral entity) => new()
+    // ClientReferral mappings
+    public static ClientReferralDto ToDto(ClientReferral entity) => new()
     {
         Id = entity.Id,
-        PatientId = entity.PatientId,
+        ClientId = entity.ClientId,
         ReferralDate = entity.ReferralDate,
         ReferralPeriod = entity.ReferralPeriod,
         IsDefault = entity.IsDefault,
@@ -271,9 +271,9 @@ public static class EntityMapper
         UpdatedAt = entity.UpdatedAt
     };
 
-    public static PatientReferral ToEntity(CreatePatientReferralDto dto) => new()
+    public static ClientReferral ToEntity(CreateClientReferralDto dto) => new()
     {
-        PatientId = dto.PatientId,
+        ClientId = dto.ClientId,
         ReferralDate = dto.ReferralDate,
         ReferralPeriod = dto.ReferralPeriod,
         IsDefault = dto.IsDefault,
@@ -286,7 +286,7 @@ public static class EntityMapper
         CreatedAt = DateTime.UtcNow
     };
 
-    public static void UpdateEntity(PatientReferral entity, UpdatePatientReferralDto dto)
+    public static void UpdateEntity(ClientReferral entity, UpdateClientReferralDto dto)
     {
         entity.ReferralDate = dto.ReferralDate;
         entity.ReferralPeriod = dto.ReferralPeriod;
@@ -301,11 +301,11 @@ public static class EntityMapper
         entity.UpdatedAt = DateTime.UtcNow;
     }
 
-    // PatientAddress mappings
-    public static PatientAddressDto ToDto(PatientAddress entity) => new()
+    // ClientAddress mappings
+    public static ClientAddressDto ToDto(ClientAddress entity) => new()
     {
         Id = entity.Id,
-        PatientId = entity.PatientId,
+        ClientId = entity.ClientId,
         AddressType = entity.AddressType,
         AddressLine1 = entity.AddressLine1,
         AddressLine2 = entity.AddressLine2,
@@ -317,9 +317,9 @@ public static class EntityMapper
         SendToMedicare = entity.SendToMedicare
     };
 
-    public static PatientAddress ToEntity(CreatePatientAddressDto dto) => new()
+    public static ClientAddress ToEntity(CreateClientAddressDto dto) => new()
     {
-        PatientId = dto.PatientId,
+        ClientId = dto.ClientId,
         AddressType = dto.AddressType,
         AddressLine1 = dto.AddressLine1,
         AddressLine2 = dto.AddressLine2,
@@ -331,7 +331,7 @@ public static class EntityMapper
         SendToMedicare = dto.SendToMedicare
     };
 
-    public static void UpdateEntity(PatientAddress entity, UpdatePatientAddressDto dto)
+    public static void UpdateEntity(ClientAddress entity, UpdateClientAddressDto dto)
     {
         entity.AddressType = dto.AddressType;
         entity.AddressLine1 = dto.AddressLine1;
@@ -344,11 +344,11 @@ public static class EntityMapper
         entity.SendToMedicare = dto.SendToMedicare;
     }
 
-    // PatientCompensationClaim mappings
-    public static PatientCompensationClaimDto ToDto(PatientCompensationClaim entity) => new()
+    // ClientCompensationClaim mappings
+    public static ClientCompensationClaimDto ToDto(ClientCompensationClaim entity) => new()
     {
         Id = entity.Id,
-        PatientId = entity.PatientId,
+        ClientId = entity.ClientId,
         ClaimNum = entity.ClaimNum,
         DateOfInjury = entity.DateOfInjury,
         EmployerName = entity.EmployerName,
@@ -362,9 +362,9 @@ public static class EntityMapper
         UpdatedAt = entity.UpdatedAt
     };
 
-    public static PatientCompensationClaim ToEntity(CreatePatientCompensationClaimDto dto) => new()
+    public static ClientCompensationClaim ToEntity(CreateClientCompensationClaimDto dto) => new()
     {
-        PatientId = dto.PatientId,
+        ClientId = dto.ClientId,
         ClaimNum = dto.ClaimNum,
         DateOfInjury = dto.DateOfInjury,
         EmployerName = dto.EmployerName,
@@ -376,7 +376,7 @@ public static class EntityMapper
         CreatedAt = DateTime.UtcNow
     };
 
-    public static void UpdateEntity(PatientCompensationClaim entity, UpdatePatientCompensationClaimDto dto)
+    public static void UpdateEntity(ClientCompensationClaim entity, UpdateClientCompensationClaimDto dto)
     {
         entity.ClaimNum = dto.ClaimNum;
         entity.DateOfInjury = dto.DateOfInjury;
@@ -390,11 +390,11 @@ public static class EntityMapper
         entity.UpdatedAt = DateTime.UtcNow;
     }
 
-    // PatientOccupation mappings
-    public static PatientOccupationDto ToDto(PatientOccupation entity) => new()
+    // ClientOccupation mappings
+    public static ClientOccupationDto ToDto(ClientOccupation entity) => new()
     {
         Id = entity.Id,
-        PatientId = entity.PatientId,
+        ClientId = entity.ClientId,
         Occupation = entity.Occupation,
         Employer = entity.Employer,
         StartedYear = entity.StartedYear,
@@ -409,9 +409,9 @@ public static class EntityMapper
         UpdatedAt = entity.UpdatedAt
     };
 
-    public static PatientOccupation ToEntity(CreatePatientOccupationDto dto) => new()
+    public static ClientOccupation ToEntity(CreateClientOccupationDto dto) => new()
     {
-        PatientId = dto.PatientId,
+        ClientId = dto.ClientId,
         Occupation = dto.Occupation,
         Employer = dto.Employer,
         StartedYear = dto.StartedYear,
@@ -424,7 +424,7 @@ public static class EntityMapper
         CreatedAt = DateTime.UtcNow
     };
 
-    public static void UpdateEntity(PatientOccupation entity, UpdatePatientOccupationDto dto)
+    public static void UpdateEntity(ClientOccupation entity, UpdateClientOccupationDto dto)
     {
         entity.Occupation = dto.Occupation;
         entity.Employer = dto.Employer;
@@ -517,8 +517,8 @@ public static class EntityMapper
     public static AppointmentDto ToDto(Appointment entity) => new()
     {
         Id = entity.Id,
-        PatientId = entity.PatientId,
-        PatientName = entity.Patient != null ? $"{entity.Patient.FirstName} {entity.Patient.LastName}" : string.Empty,
+        ClientId = entity.ClientId,
+        ClientName = entity.Client != null ? $"{entity.Client.FirstName} {entity.Client.LastName}" : string.Empty,
         PractitionerId = entity.PractitionerId,
         PractitionerName = entity.Practitioner != null ? $"{entity.Practitioner.Title} {entity.Practitioner.FirstName} {entity.Practitioner.LastName}".Trim() : string.Empty,
         AppointmentDate = entity.AppointmentDate,
@@ -535,7 +535,7 @@ public static class EntityMapper
 
     public static Appointment ToEntity(CreateAppointmentDto dto) => new()
     {
-        PatientId = dto.PatientId,
+        ClientId = dto.ClientId,
         PractitionerId = dto.PractitionerId,
         AppointmentDate = dto.AppointmentDate,
         StartTime = dto.StartTime,
@@ -550,7 +550,7 @@ public static class EntityMapper
 
     public static void UpdateEntity(Appointment entity, UpdateAppointmentDto dto)
     {
-        entity.PatientId = dto.PatientId;
+        entity.ClientId = dto.ClientId;
         entity.PractitionerId = dto.PractitionerId;
         entity.AppointmentDate = dto.AppointmentDate;
         entity.StartTime = dto.StartTime;
@@ -567,8 +567,8 @@ public static class EntityMapper
     public static InvoiceDto ToDto(Invoice entity) => new()
     {
         Id = entity.Id,
-        PatientId = entity.PatientId,
-        PatientName = entity.Patient != null ? $"{entity.Patient.FirstName} {entity.Patient.LastName}" : string.Empty,
+        ClientId = entity.ClientId,
+        ClientName = entity.Client != null ? $"{entity.Client.FirstName} {entity.Client.LastName}" : string.Empty,
         AppointmentId = entity.AppointmentId,
         InvoiceNumber = entity.InvoiceNumber,
         InvoiceDate = entity.InvoiceDate,
@@ -604,7 +604,7 @@ public static class EntityMapper
 
     public static Invoice ToEntity(CreateInvoiceDto dto, string invoiceNumber) => new()
     {
-        PatientId = dto.PatientId,
+        ClientId = dto.ClientId,
         AppointmentId = dto.AppointmentId,
         InvoiceNumber = invoiceNumber,
         InvoiceDate = DateTime.UtcNow,

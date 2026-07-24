@@ -2,11 +2,11 @@ using IntelliMed.Core.Entities;
 
 namespace IntelliMed.Core.DTOs;
 
-public class PatientAddressDto
+public class ClientAddressDto
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
-    public PatientAddressType AddressType { get; set; }
+    public int ClientId { get; set; }
+    public ClientAddressType AddressType { get; set; }
     public string AddressLine1 { get; set; } = string.Empty;
     public string? AddressLine2 { get; set; }
     public string Suburb { get; set; } = string.Empty;
@@ -17,10 +17,10 @@ public class PatientAddressDto
     public bool SendToMedicare { get; set; }
 }
 
-public class CreatePatientAddressDto
+public class CreateClientAddressDto
 {
-    public int PatientId { get; set; }
-    public PatientAddressType AddressType { get; set; }
+    public int ClientId { get; set; }
+    public ClientAddressType AddressType { get; set; }
     public string AddressLine1 { get; set; } = string.Empty;
     public string? AddressLine2 { get; set; }
     public string Suburb { get; set; } = string.Empty;
@@ -31,9 +31,9 @@ public class CreatePatientAddressDto
     public bool SendToMedicare { get; set; }
 }
 
-public class UpdatePatientAddressDto
+public class UpdateClientAddressDto
 {
-    public PatientAddressType AddressType { get; set; }
+    public ClientAddressType AddressType { get; set; }
     public string AddressLine1 { get; set; } = string.Empty;
     public string? AddressLine2 { get; set; }
     public string Suburb { get; set; } = string.Empty;

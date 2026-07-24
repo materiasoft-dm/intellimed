@@ -7,28 +7,28 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IntelliMed.Infrastructure.Repositories;
 
-public class PatientReferralRepository : Repository<PatientReferral>, IPatientReferralRepository
+public class ClientReferralRepository : Repository<ClientReferral>, IClientReferralRepository
 {
-    public PatientReferralRepository(AppDbContext context) : base(context)
+    public ClientReferralRepository(AppDbContext context) : base(context)
     {
     }
 
-    public async Task<PatientReferralDto?> GetByIdAsync(int id)
+    public async Task<ClientReferralDto?> GetByIdAsync(int id)
     {
         var referral = await _dbSet.FindAsync(id);
         return referral == null ? null : EntityMapper.ToDto(referral);
     }
 
-    public async Task<IEnumerable<PatientReferralDto>> GetByPatientIdAsync(int patientId)
+    public async Task<IEnumerable<ClientReferralDto>> GetByClientIdAsync(int clientId)
     {
         var referrals = await _dbSet
-            .Where(r => r.PatientId == patientId)
+            .Where(r => r.ClientId == clientId)
             .OrderByDescending(r => r.ReferralDate)
             .ToListAsync();
         return referrals.Select(EntityMapper.ToDto);
     }
 
-    public async Task<int> CreateAsync(CreatePatientReferralDto dto)
+    public async Task<int> CreateAsync(CreateClientReferralDto dto)
     {
         var referral = EntityMapper.ToEntity(dto);
         await _dbSet.AddAsync(referral);
@@ -36,11 +36,11 @@ public class PatientReferralRepository : Repository<PatientReferral>, IPatientRe
         return referral.Id;
     }
 
-    public async Task UpdateAsync(int id, UpdatePatientReferralDto dto)
+    public async Task UpdateAsync(int id, UpdateClientReferralDto dto)
     {
         var referral = await _dbSet.FindAsync(id);
         if (referral == null)
-            throw new InvalidOperationException($"PatientReferral with ID {id} not found");
+            throw new InvalidOperationException($"ClientReferral with ID {id} not found");
 
         EntityMapper.UpdateEntity(referral, dto);
         await _context.SaveChangesAsync();
@@ -50,7 +50,7 @@ public class PatientReferralRepository : Repository<PatientReferral>, IPatientRe
     {
         var referral = await _dbSet.FindAsync(id);
         if (referral == null)
-            throw new InvalidOperationException($"PatientReferral with ID {id} not found");
+            throw new InvalidOperationException($"ClientReferral with ID {id} not found");
 
         referral.IsArchived = true;
         referral.UpdatedAt = DateTime.UtcNow;

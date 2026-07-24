@@ -1,6 +1,6 @@
 namespace IntelliMed.Core.Entities;
 
-public enum PatientTypeEnum
+public enum ClientTypeEnum
 {
     Person,
     Organisation

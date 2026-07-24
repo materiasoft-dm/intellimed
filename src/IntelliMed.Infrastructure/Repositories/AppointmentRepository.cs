@@ -16,7 +16,7 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
     public async Task<AppointmentDto?> GetByIdAsync(int id)
     {
         var appointment = await _dbSet
-            .Include(a => a.Patient)
+            .Include(a => a.Client)
             .Include(a => a.Practitioner)
             .FirstOrDefaultAsync(a => a.Id == id);
         return appointment == null ? null : EntityMapper.ToDto(appointment);
@@ -26,7 +26,7 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
     {
         var query = BuildSearchQuery(search);
         var appointments = await query
-            .Include(a => a.Patient)
+            .Include(a => a.Client)
             .Include(a => a.Practitioner)
             .ToListAsync();
         return appointments.Select(EntityMapper.ToDto);
@@ -38,7 +38,7 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
         var totalCount = await query.CountAsync();
 
         var appointments = await query
-            .Include(a => a.Patient)
+            .Include(a => a.Client)
             .Include(a => a.Practitioner)
             .OrderBy(a => a.AppointmentDate)
             .ThenBy(a => a.StartTime)
@@ -52,7 +52,7 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
     public async Task<IEnumerable<AppointmentDto>> GetByDateAsync(DateTime date)
     {
         var appointments = await _dbSet
-            .Include(a => a.Patient)
+            .Include(a => a.Client)
             .Include(a => a.Practitioner)
             .Where(a => a.AppointmentDate.Date == date.Date)
             .OrderBy(a => a.StartTime)
@@ -60,12 +60,12 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
         return appointments.Select(EntityMapper.ToDto);
     }
 
-    public async Task<IEnumerable<AppointmentDto>> GetByPatientIdAsync(int patientId)
+    public async Task<IEnumerable<AppointmentDto>> GetByClientIdAsync(int clientId)
     {
         var appointments = await _dbSet
-            .Include(a => a.Patient)
+            .Include(a => a.Client)
             .Include(a => a.Practitioner)
-            .Where(a => a.PatientId == patientId)
+            .Where(a => a.ClientId == clientId)
             .OrderByDescending(a => a.AppointmentDate)
             .ToListAsync();
         return appointments.Select(EntityMapper.ToDto);
@@ -74,7 +74,7 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
     public async Task<IEnumerable<AppointmentDto>> GetByPractitionerIdAsync(int practitionerId, DateTime? fromDate = null, DateTime? toDate = null)
     {
         var query = _dbSet
-            .Include(a => a.Patient)
+            .Include(a => a.Client)
             .Include(a => a.Practitioner)
             .Where(a => a.PractitionerId == practitionerId);
 
@@ -129,8 +129,8 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
     {
         var query = _dbSet.AsQueryable();
 
-        if (search.PatientId.HasValue)
-            query = query.Where(a => a.PatientId == search.PatientId.Value);
+        if (search.ClientId.HasValue)
+            query = query.Where(a => a.ClientId == search.ClientId.Value);
 
         if (search.PractitionerId.HasValue)
             query = query.Where(a => a.PractitionerId == search.PractitionerId.Value);

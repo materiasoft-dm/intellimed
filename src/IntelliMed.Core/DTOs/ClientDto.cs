@@ -2,11 +2,11 @@ using IntelliMed.Core.Entities;
 
 namespace IntelliMed.Core.DTOs;
 
-public class PatientDto
+public class ClientDto
 {
     public int Id { get; set; }
     public int ClinicId { get; set; }
-    public PatientTypeEnum Type { get; set; }
+    public ClientTypeEnum Type { get; set; }
 
     // Personal
     public string FirstName { get; set; } = string.Empty;
@@ -61,10 +61,10 @@ public class PatientDto
     public bool AcceptSmsMarketing { get; set; }
     public string? Notes { get; set; }
     public string? Warnings { get; set; }
-    public int? NextOfKinPatientId { get; set; }
+    public int? NextOfKinClientId { get; set; }
     public string? NextOfKinName { get; set; }
     public string? NextOfKinPhone { get; set; }
-    public int? EmergencyContactPatientId { get; set; }
+    public int? EmergencyContactClientId { get; set; }
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public bool SameAsNextOfKin { get; set; }
@@ -82,7 +82,7 @@ public class PatientDto
     // Account
     public AccountTypeEnum AccountType { get; set; }
     public string? FeeRateCode { get; set; }
-    public int? PayerPatientId { get; set; }
+    public int? PayerClientId { get; set; }
     public string? PayerName { get; set; }
     public string? AccountName { get; set; }
     public string? AccountBsb { get; set; }
@@ -119,12 +119,12 @@ public class PatientDto
     }
 }
 
-public class CreatePatientDto
+public class CreateClientDto
 {
     /// <summary>Set server-side from the caller's current clinic context (X-Clinic-Id header), not client-supplied.</summary>
     public int ClinicId { get; set; }
 
-    public PatientTypeEnum Type { get; set; } = PatientTypeEnum.Person;
+    public ClientTypeEnum Type { get; set; } = ClientTypeEnum.Person;
 
     // Personal
     public string FirstName { get; set; } = string.Empty;
@@ -174,10 +174,10 @@ public class CreatePatientDto
     public bool AcceptSmsMarketing { get; set; }
     public string? Notes { get; set; }
     public string? Warnings { get; set; }
-    public int? NextOfKinPatientId { get; set; }
+    public int? NextOfKinClientId { get; set; }
     public string? NextOfKinName { get; set; }
     public string? NextOfKinPhone { get; set; }
-    public int? EmergencyContactPatientId { get; set; }
+    public int? EmergencyContactClientId { get; set; }
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public bool SameAsNextOfKin { get; set; }
@@ -193,7 +193,7 @@ public class CreatePatientDto
     // Account
     public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.PrivatePatient;
     public string? FeeRateCode { get; set; }
-    public int? PayerPatientId { get; set; }
+    public int? PayerClientId { get; set; }
     public string? PayerName { get; set; }
     public string? AccountName { get; set; }
     public string? AccountBsb { get; set; }
@@ -218,9 +218,9 @@ public class CreatePatientDto
     public string? LifeCardNum { get; set; }
 }
 
-public class UpdatePatientDto
+public class UpdateClientDto
 {
-    public PatientTypeEnum Type { get; set; } = PatientTypeEnum.Person;
+    public ClientTypeEnum Type { get; set; } = ClientTypeEnum.Person;
 
     // Personal
     public string FirstName { get; set; } = string.Empty;
@@ -270,10 +270,10 @@ public class UpdatePatientDto
     public bool AcceptSmsMarketing { get; set; }
     public string? Notes { get; set; }
     public string? Warnings { get; set; }
-    public int? NextOfKinPatientId { get; set; }
+    public int? NextOfKinClientId { get; set; }
     public string? NextOfKinName { get; set; }
     public string? NextOfKinPhone { get; set; }
-    public int? EmergencyContactPatientId { get; set; }
+    public int? EmergencyContactClientId { get; set; }
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public bool SameAsNextOfKin { get; set; }
@@ -289,7 +289,7 @@ public class UpdatePatientDto
     // Account
     public AccountTypeEnum AccountType { get; set; }
     public string? FeeRateCode { get; set; }
-    public int? PayerPatientId { get; set; }
+    public int? PayerClientId { get; set; }
     public string? PayerName { get; set; }
     public string? AccountName { get; set; }
     public string? AccountBsb { get; set; }
@@ -316,7 +316,7 @@ public class UpdatePatientDto
     public bool IsActive { get; set; } = true;
 }
 
-public class PatientSearchDto
+public class ClientSearchDto
 {
     public string? Query { get; set; }
     public bool? IsActive { get; set; }
@@ -345,7 +345,7 @@ public class PatientSearchDto
     public string? Postcode { get; set; }
     public string? State { get; set; }
 
-    // Postal address (matched against PatientAddress rows of type Postal)
+    // Postal address (matched against ClientAddress rows of type Postal)
     public string? PostalAddress { get; set; }
     public string? PostalSuburb { get; set; }
     public string? PostalPostcode { get; set; }
@@ -370,10 +370,10 @@ public class PatientSearchDto
     public string? Warnings { get; set; }
     public string? Notes { get; set; }
     public string? ReferredBy { get; set; }
-    public PatientTypeEnum? PatientType { get; set; }
+    public ClientTypeEnum? ClientType { get; set; }
     public string? UrNumber { get; set; }
     public int? HealthFundId { get; set; }
-    public int? PayerPatientId { get; set; }
+    public int? PayerClientId { get; set; }
     public List<AccountTypeEnum>? AccountTypes { get; set; }
 
     // Flags

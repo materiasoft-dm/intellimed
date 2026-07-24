@@ -9,7 +9,7 @@ public interface IInvoiceRepository : IRepository<Invoice>
     Task<InvoiceDto?> GetByIdWithDetailsAsync(int id);
     Task<IEnumerable<InvoiceDto>> SearchAsync(InvoiceSearchDto search);
     Task<(IEnumerable<InvoiceDto> Items, int TotalCount)> GetPagedAsync(InvoiceSearchDto search);
-    Task<IEnumerable<InvoiceDto>> GetByPatientIdAsync(int patientId);
+    Task<IEnumerable<InvoiceDto>> GetByClientIdAsync(int clientId);
     Task<IEnumerable<InvoiceDto>> GetOverdueInvoicesAsync();
     Task<string> GenerateInvoiceNumberAsync();
     Task<int> CreateAsync(CreateInvoiceDto dto);

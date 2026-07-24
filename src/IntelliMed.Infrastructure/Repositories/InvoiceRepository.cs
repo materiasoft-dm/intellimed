@@ -22,7 +22,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
     public async Task<InvoiceDto?> GetByIdWithDetailsAsync(int id)
     {
         var invoice = await _dbSet
-            .Include(i => i.Patient)
+            .Include(i => i.Client)
             .Include(i => i.Appointment)
             .Include(i => i.Items)
             .Include(i => i.Payments)
@@ -34,7 +34,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
     {
         var query = BuildSearchQuery(search);
         var invoices = await query
-            .Include(i => i.Patient)
+            .Include(i => i.Client)
             .ToListAsync();
         return invoices.Select(EntityMapper.ToDto);
     }
@@ -45,7 +45,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         var totalCount = await query.CountAsync();
 
         var invoices = await query
-            .Include(i => i.Patient)
+            .Include(i => i.Client)
             .OrderByDescending(i => i.InvoiceDate)
             .Skip((search.Page - 1) * search.PageSize)
             .Take(search.PageSize)
@@ -54,11 +54,11 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         return (invoices.Select(EntityMapper.ToDto), totalCount);
     }
 
-    public async Task<IEnumerable<InvoiceDto>> GetByPatientIdAsync(int patientId)
+    public async Task<IEnumerable<InvoiceDto>> GetByClientIdAsync(int clientId)
     {
         var invoices = await _dbSet
-            .Include(i => i.Patient)
-            .Where(i => i.PatientId == patientId)
+            .Include(i => i.Client)
+            .Where(i => i.ClientId == clientId)
             .OrderByDescending(i => i.InvoiceDate)
             .ToListAsync();
         return invoices.Select(EntityMapper.ToDto);
@@ -68,7 +68,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
     {
         var today = DateTime.UtcNow.Date;
         var invoices = await _dbSet
-            .Include(i => i.Patient)
+            .Include(i => i.Client)
             .Where(i => i.DueDate < today && i.Status != InvoiceStatus.Paid && i.Status != InvoiceStatus.Cancelled)
             .OrderBy(i => i.DueDate)
             .ToListAsync();
@@ -79,7 +79,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
     {
         var year = DateTime.UtcNow.Year;
         var prefix = $"INV-{year}-";
-        
+
         var lastInvoice = await _dbSet
             .Where(i => i.InvoiceNumber.StartsWith(prefix))
             .OrderByDescending(i => i.InvoiceNumber)
@@ -102,7 +102,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
     {
         var invoiceNumber = await GenerateInvoiceNumberAsync();
         var invoice = EntityMapper.ToEntity(dto, invoiceNumber);
-        
+
         await _dbSet.AddAsync(invoice);
         await _context.SaveChangesAsync();
         return invoice.Id;
@@ -128,10 +128,10 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         };
 
         await _context.Payments.AddAsync(payment);
-        
+
         // Update invoice total paid
         invoice.AmountPaid += dto.Amount;
-        
+
         // Check if fully paid
         if (invoice.AmountPaid >= invoice.TotalAmount)
         {
@@ -160,8 +160,8 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
     {
         var query = _dbSet.AsQueryable();
 
-        if (search.PatientId.HasValue)
-            query = query.Where(i => i.PatientId == search.PatientId.Value);
+        if (search.ClientId.HasValue)
+            query = query.Where(i => i.ClientId == search.ClientId.Value);
 
         if (search.Status.HasValue)
             query = query.Where(i => i.Status == search.Status.Value);

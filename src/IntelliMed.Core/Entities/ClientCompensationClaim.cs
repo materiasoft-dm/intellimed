@@ -1,9 +1,9 @@
 namespace IntelliMed.Core.Entities;
 
-public class PatientCompensationClaim
+public class ClientCompensationClaim
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public string ClaimNum { get; set; } = string.Empty;
     public DateTime? DateOfInjury { get; set; }
     public string? EmployerName { get; set; }
@@ -16,5 +16,5 @@ public class PatientCompensationClaim
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
-    public Patient? Patient { get; set; }
+    public Client? Client { get; set; }
 }

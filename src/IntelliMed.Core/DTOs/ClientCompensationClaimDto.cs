@@ -1,9 +1,9 @@
 namespace IntelliMed.Core.DTOs;
 
-public class PatientCompensationClaimDto
+public class ClientCompensationClaimDto
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public string ClaimNum { get; set; } = string.Empty;
     public DateTime? DateOfInjury { get; set; }
     public string? EmployerName { get; set; }
@@ -17,9 +17,9 @@ public class PatientCompensationClaimDto
     public DateTime? UpdatedAt { get; set; }
 }
 
-public class CreatePatientCompensationClaimDto
+public class CreateClientCompensationClaimDto
 {
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public string ClaimNum { get; set; } = string.Empty;
     public DateTime? DateOfInjury { get; set; }
     public string? EmployerName { get; set; }
@@ -30,7 +30,7 @@ public class CreatePatientCompensationClaimDto
     public string? PrivateNote { get; set; }
 }
 
-public class UpdatePatientCompensationClaimDto
+public class UpdateClientCompensationClaimDto
 {
     public string ClaimNum { get; set; } = string.Empty;
     public DateTime? DateOfInjury { get; set; }

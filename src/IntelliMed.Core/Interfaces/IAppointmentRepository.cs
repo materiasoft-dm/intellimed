@@ -9,7 +9,7 @@ public interface IAppointmentRepository : IRepository<Appointment>
     Task<IEnumerable<AppointmentDto>> SearchAsync(AppointmentSearchDto search);
     Task<(IEnumerable<AppointmentDto> Items, int TotalCount)> GetPagedAsync(AppointmentSearchDto search);
     Task<IEnumerable<AppointmentDto>> GetByDateAsync(DateTime date);
-    Task<IEnumerable<AppointmentDto>> GetByPatientIdAsync(int patientId);
+    Task<IEnumerable<AppointmentDto>> GetByClientIdAsync(int clientId);
     Task<IEnumerable<AppointmentDto>> GetByPractitionerIdAsync(int practitionerId, DateTime? fromDate = null, DateTime? toDate = null);
     Task<int> CreateAsync(CreateAppointmentDto dto);
     Task UpdateAsync(int id, UpdateAppointmentDto dto);

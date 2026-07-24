@@ -7,27 +7,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IntelliMed.Infrastructure.Repositories;
 
-public class PatientAddressRepository : Repository<PatientAddress>, IPatientAddressRepository
+public class ClientAddressRepository : Repository<ClientAddress>, IClientAddressRepository
 {
-    public PatientAddressRepository(AppDbContext context) : base(context)
+    public ClientAddressRepository(AppDbContext context) : base(context)
     {
     }
 
-    public async Task<PatientAddressDto?> GetByIdAsync(int id)
+    public async Task<ClientAddressDto?> GetByIdAsync(int id)
     {
         var address = await _dbSet.FindAsync(id);
         return address == null ? null : EntityMapper.ToDto(address);
     }
 
-    public async Task<IEnumerable<PatientAddressDto>> GetByPatientIdAsync(int patientId)
+    public async Task<IEnumerable<ClientAddressDto>> GetByClientIdAsync(int clientId)
     {
         var addresses = await _dbSet
-            .Where(a => a.PatientId == patientId)
+            .Where(a => a.ClientId == clientId)
             .ToListAsync();
         return addresses.Select(EntityMapper.ToDto);
     }
 
-    public async Task<int> CreateAsync(CreatePatientAddressDto dto)
+    public async Task<int> CreateAsync(CreateClientAddressDto dto)
     {
         var address = EntityMapper.ToEntity(dto);
         await _dbSet.AddAsync(address);
@@ -35,11 +35,11 @@ public class PatientAddressRepository : Repository<PatientAddress>, IPatientAddr
         return address.Id;
     }
 
-    public async Task UpdateAsync(int id, UpdatePatientAddressDto dto)
+    public async Task UpdateAsync(int id, UpdateClientAddressDto dto)
     {
         var address = await _dbSet.FindAsync(id);
         if (address == null)
-            throw new InvalidOperationException($"PatientAddress with ID {id} not found");
+            throw new InvalidOperationException($"ClientAddress with ID {id} not found");
 
         EntityMapper.UpdateEntity(address, dto);
         await _context.SaveChangesAsync();

@@ -1,9 +1,9 @@
 namespace IntelliMed.Core.DTOs;
 
-public class PatientReferralDto
+public class ClientReferralDto
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public DateTime ReferralDate { get; set; }
     public string? ReferralPeriod { get; set; }
     public bool IsDefault { get; set; }
@@ -18,9 +18,9 @@ public class PatientReferralDto
     public DateTime? UpdatedAt { get; set; }
 }
 
-public class CreatePatientReferralDto
+public class CreateClientReferralDto
 {
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public DateTime ReferralDate { get; set; }
     public string? ReferralPeriod { get; set; }
     public bool IsDefault { get; set; }
@@ -32,7 +32,7 @@ public class CreatePatientReferralDto
     public string? Note { get; set; }
 }
 
-public class UpdatePatientReferralDto
+public class UpdateClientReferralDto
 {
     public DateTime ReferralDate { get; set; }
     public string? ReferralPeriod { get; set; }

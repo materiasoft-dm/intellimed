@@ -2,10 +2,10 @@ using IntelliMed.Core.Entities;
 
 namespace IntelliMed.Core.DTOs;
 
-public class PatientUserDefinedFieldValueDto
+public class ClientUserDefinedFieldValueDto
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public int UserDefinedFieldTypeId { get; set; }
     public string FieldName { get; set; } = string.Empty;
     public UdfFieldTypeEnum FieldType { get; set; }
@@ -16,16 +16,16 @@ public class PatientUserDefinedFieldValueDto
     public DateTime? UpdatedAt { get; set; }
 }
 
-public class CreatePatientUserDefinedFieldValueDto
+public class CreateClientUserDefinedFieldValueDto
 {
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public int UserDefinedFieldTypeId { get; set; }
     public string? Value { get; set; }
     public string? Note { get; set; }
     public bool IsDefault { get; set; }
 }
 
-public class UpdatePatientUserDefinedFieldValueDto
+public class UpdateClientUserDefinedFieldValueDto
 {
     public string? Value { get; set; }
     public string? Note { get; set; }

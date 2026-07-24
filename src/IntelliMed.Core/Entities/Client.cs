@@ -1,13 +1,13 @@
 namespace IntelliMed.Core.Entities;
 
-public class Patient
+public class Client
 {
     public int Id { get; set; }
 
     public int ClinicId { get; set; }
     public Clinic? Clinic { get; set; }
 
-    public PatientTypeEnum Type { get; set; } = PatientTypeEnum.Person;
+    public ClientTypeEnum Type { get; set; } = ClientTypeEnum.Person;
 
     // Personal
     public string FirstName { get; set; } = string.Empty;
@@ -39,7 +39,7 @@ public class Patient
     public bool MedicareIncentiveEligible { get; set; }
     public bool CtgCoPaymentRelief { get; set; }
 
-    // Residential address (Postal/Other addresses live in PatientAddress)
+    // Residential address (Postal/Other addresses live in ClientAddress)
     public string Address { get; set; } = string.Empty;
     public string Suburb { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
@@ -57,10 +57,10 @@ public class Patient
     public bool AcceptSmsMarketing { get; set; }
     public string? Notes { get; set; }
     public string? Warnings { get; set; }
-    public int? NextOfKinPatientId { get; set; }
+    public int? NextOfKinClientId { get; set; }
     public string? NextOfKinName { get; set; }
     public string? NextOfKinPhone { get; set; }
-    public int? EmergencyContactPatientId { get; set; }
+    public int? EmergencyContactClientId { get; set; }
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public bool SameAsNextOfKin { get; set; }
@@ -76,7 +76,7 @@ public class Patient
     // Account
     public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.PrivatePatient;
     public string? FeeRateCode { get; set; }
-    public int? PayerPatientId { get; set; }
+    public int? PayerClientId { get; set; }
     public string? PayerName { get; set; }
     public string? AccountName { get; set; }
     public string? AccountBsb { get; set; }
@@ -105,9 +105,9 @@ public class Patient
     public DateTime? UpdatedAt { get; set; }
 
     // Navigation properties
-    public Patient? NextOfKinPatient { get; set; }
-    public Patient? EmergencyContactPatient { get; set; }
-    public Patient? PayerPatient { get; set; }
+    public Client? NextOfKinClient { get; set; }
+    public Client? EmergencyContactClient { get; set; }
+    public Client? PayerClient { get; set; }
     public Practitioner? Provider { get; set; }
     public HealthFund? HealthFund { get; set; }
 }

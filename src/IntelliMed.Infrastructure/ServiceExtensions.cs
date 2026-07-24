@@ -15,17 +15,17 @@ public static class ServiceExtensions
             options.UseSqlite(connectionString));
 
         // Register repositories
-        services.AddScoped<IPatientRepository, PatientRepository>();
+        services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IPractitionerRepository, PractitionerRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
-        services.AddScoped<IPatientAddressRepository, PatientAddressRepository>();
-        services.AddScoped<IPatientReferralRepository, PatientReferralRepository>();
-        services.AddScoped<IPatientCompensationClaimRepository, PatientCompensationClaimRepository>();
-        services.AddScoped<IPatientOccupationRepository, PatientOccupationRepository>();
-        services.AddScoped<IPatientFamilyRelationshipRepository, PatientFamilyRelationshipRepository>();
+        services.AddScoped<IClientAddressRepository, ClientAddressRepository>();
+        services.AddScoped<IClientReferralRepository, ClientReferralRepository>();
+        services.AddScoped<IClientCompensationClaimRepository, ClientCompensationClaimRepository>();
+        services.AddScoped<IClientOccupationRepository, ClientOccupationRepository>();
+        services.AddScoped<IClientFamilyRelationshipRepository, ClientFamilyRelationshipRepository>();
         services.AddScoped<IUserDefinedFieldTypeRepository, UserDefinedFieldTypeRepository>();
-        services.AddScoped<IPatientUserDefinedFieldValueRepository, PatientUserDefinedFieldValueRepository>();
+        services.AddScoped<IClientUserDefinedFieldValueRepository, ClientUserDefinedFieldValueRepository>();
         services.AddScoped<IHealthFundRepository, HealthFundRepository>();
         services.AddScoped<IProviderGroupRepository, ProviderGroupRepository>();
         services.AddScoped<IClinicSettingsRepository, ClinicSettingsRepository>();

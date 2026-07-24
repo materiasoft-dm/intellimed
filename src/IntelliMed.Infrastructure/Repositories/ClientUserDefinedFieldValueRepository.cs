@@ -6,32 +6,32 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IntelliMed.Infrastructure.Repositories;
 
-public class PatientUserDefinedFieldValueRepository : Repository<PatientUserDefinedFieldValue>, IPatientUserDefinedFieldValueRepository
+public class ClientUserDefinedFieldValueRepository : Repository<ClientUserDefinedFieldValue>, IClientUserDefinedFieldValueRepository
 {
-    public PatientUserDefinedFieldValueRepository(AppDbContext context) : base(context)
+    public ClientUserDefinedFieldValueRepository(AppDbContext context) : base(context)
     {
     }
 
-    public async Task<PatientUserDefinedFieldValueDto?> GetByIdAsync(int id)
+    public async Task<ClientUserDefinedFieldValueDto?> GetByIdAsync(int id)
     {
         var value = await _dbSet.Include(v => v.UserDefinedFieldType).FirstOrDefaultAsync(v => v.Id == id);
         return value == null ? null : ToDto(value);
     }
 
-    public async Task<IEnumerable<PatientUserDefinedFieldValueDto>> GetByPatientIdAsync(int patientId)
+    public async Task<IEnumerable<ClientUserDefinedFieldValueDto>> GetByClientIdAsync(int clientId)
     {
         var values = await _dbSet
-            .Where(v => v.PatientId == patientId)
+            .Where(v => v.ClientId == clientId)
             .Include(v => v.UserDefinedFieldType)
             .ToListAsync();
         return values.Select(ToDto);
     }
 
-    public async Task<int> CreateAsync(CreatePatientUserDefinedFieldValueDto dto)
+    public async Task<int> CreateAsync(CreateClientUserDefinedFieldValueDto dto)
     {
-        var value = new PatientUserDefinedFieldValue
+        var value = new ClientUserDefinedFieldValue
         {
-            PatientId = dto.PatientId,
+            ClientId = dto.ClientId,
             UserDefinedFieldTypeId = dto.UserDefinedFieldTypeId,
             Value = dto.Value,
             Note = dto.Note,
@@ -43,11 +43,11 @@ public class PatientUserDefinedFieldValueRepository : Repository<PatientUserDefi
         return value.Id;
     }
 
-    public async Task UpdateAsync(int id, UpdatePatientUserDefinedFieldValueDto dto)
+    public async Task UpdateAsync(int id, UpdateClientUserDefinedFieldValueDto dto)
     {
         var value = await _dbSet.FindAsync(id);
         if (value == null)
-            throw new InvalidOperationException($"PatientUserDefinedFieldValue with ID {id} not found");
+            throw new InvalidOperationException($"ClientUserDefinedFieldValue with ID {id} not found");
 
         value.Value = dto.Value;
         value.Note = dto.Note;
@@ -56,10 +56,10 @@ public class PatientUserDefinedFieldValueRepository : Repository<PatientUserDefi
         await _context.SaveChangesAsync();
     }
 
-    private static PatientUserDefinedFieldValueDto ToDto(PatientUserDefinedFieldValue entity) => new()
+    private static ClientUserDefinedFieldValueDto ToDto(ClientUserDefinedFieldValue entity) => new()
     {
         Id = entity.Id,
-        PatientId = entity.PatientId,
+        ClientId = entity.ClientId,
         UserDefinedFieldTypeId = entity.UserDefinedFieldTypeId,
         FieldName = entity.UserDefinedFieldType?.Name ?? string.Empty,
         FieldType = entity.UserDefinedFieldType?.FieldType ?? Core.Entities.UdfFieldTypeEnum.Text,

@@ -121,12 +121,12 @@ public class UserManagementResponse
 public class PageDefinitionDto
 {
     /// <summary>
-    /// Unique key for the page (e.g., "patients", "admin/users").
+    /// Unique key for the page (e.g., "clients", "admin/users").
     /// </summary>
     public string PageKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Display name of the page (e.g., "Patient Records", "User Management").
+    /// Display name of the page (e.g., "Client Records", "User Management").
     /// </summary>
     public string PageName { get; set; } = string.Empty;
 

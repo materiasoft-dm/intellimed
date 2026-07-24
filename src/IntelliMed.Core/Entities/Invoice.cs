@@ -4,7 +4,7 @@ public class Invoice
 {
     public int Id { get; set; }
     public int ClinicId { get; set; }
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public int? AppointmentId { get; set; }
     public string InvoiceNumber { get; set; } = string.Empty;
     public DateTime InvoiceDate { get; set; }
@@ -18,7 +18,7 @@ public class Invoice
     public DateTime? UpdatedAt { get; set; }
 
     // Navigation properties
-    public Patient? Patient { get; set; }
+    public Client? Client { get; set; }
     public Appointment? Appointment { get; set; }
     public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();

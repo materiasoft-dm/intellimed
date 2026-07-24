@@ -7,70 +7,70 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IntelliMed.Infrastructure.Repositories;
 
-public class PatientRepository : Repository<Patient>, IPatientRepository
+public class ClientRepository : Repository<Client>, IClientRepository
 {
-    public PatientRepository(AppDbContext context) : base(context)
+    public ClientRepository(AppDbContext context) : base(context)
     {
     }
 
-    public async Task<PatientDto?> GetByIdAsync(int id)
+    public async Task<ClientDto?> GetByIdAsync(int id)
     {
-        var patient = await _dbSet.Include(p => p.HealthFund).FirstOrDefaultAsync(p => p.Id == id);
-        return patient == null ? null : EntityMapper.ToDto(patient);
+        var client = await _dbSet.Include(p => p.HealthFund).FirstOrDefaultAsync(p => p.Id == id);
+        return client == null ? null : EntityMapper.ToDto(client);
     }
 
-    public async Task<IEnumerable<PatientDto>> SearchAsync(PatientSearchDto search)
+    public async Task<IEnumerable<ClientDto>> SearchAsync(ClientSearchDto search)
     {
         var query = BuildSearchQuery(search);
-        var patients = await query.ToListAsync();
-        return patients.Select(EntityMapper.ToDto);
+        var clients = await query.ToListAsync();
+        return clients.Select(EntityMapper.ToDto);
     }
 
-    public async Task<(IEnumerable<PatientDto> Items, int TotalCount)> GetPagedAsync(PatientSearchDto search)
+    public async Task<(IEnumerable<ClientDto> Items, int TotalCount)> GetPagedAsync(ClientSearchDto search)
     {
         var query = BuildSearchQuery(search);
         var totalCount = await query.CountAsync();
 
-        var patients = await query
+        var clients = await query
             .OrderBy(p => p.LastName)
             .ThenBy(p => p.FirstName)
             .Skip((search.Page - 1) * search.PageSize)
             .Take(search.PageSize)
             .ToListAsync();
 
-        return (patients.Select(EntityMapper.ToDto), totalCount);
+        return (clients.Select(EntityMapper.ToDto), totalCount);
     }
 
-    public async Task<int> CreateAsync(CreatePatientDto dto)
+    public async Task<int> CreateAsync(CreateClientDto dto)
     {
-        var patient = EntityMapper.ToEntity(dto);
-        await _dbSet.AddAsync(patient);
+        var client = EntityMapper.ToEntity(dto);
+        await _dbSet.AddAsync(client);
         await _context.SaveChangesAsync();
-        return patient.Id;
+        return client.Id;
     }
 
-    public async Task UpdateAsync(int id, UpdatePatientDto dto)
+    public async Task UpdateAsync(int id, UpdateClientDto dto)
     {
-        var patient = await _dbSet.FindAsync(id);
-        if (patient == null)
-            throw new InvalidOperationException($"Patient with ID {id} not found");
+        var client = await _dbSet.FindAsync(id);
+        if (client == null)
+            throw new InvalidOperationException($"Client with ID {id} not found");
 
-        EntityMapper.UpdateEntity(patient, dto);
+        EntityMapper.UpdateEntity(client, dto);
         await _context.SaveChangesAsync();
     }
 
     public async Task ArchiveAsync(int id)
     {
-        var patient = await _dbSet.FindAsync(id);
-        if (patient == null)
-            throw new InvalidOperationException($"Patient with ID {id} not found");
+        var client = await _dbSet.FindAsync(id);
+        if (client == null)
+            throw new InvalidOperationException($"Client with ID {id} not found");
 
-        patient.IsActive = false;
-        patient.UpdatedAt = DateTime.UtcNow;
+        client.IsActive = false;
+        client.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
     }
 
-    private IQueryable<Patient> BuildSearchQuery(PatientSearchDto search)
+    private IQueryable<Client> BuildSearchQuery(ClientSearchDto search)
     {
         var query = _dbSet.Include(p => p.HealthFund).AsQueryable();
 
@@ -158,32 +158,32 @@ public class PatientRepository : Repository<Patient>, IPatientRepository
             query = query.Where(p => p.State.ToLower() == search.State.ToLower());
         }
 
-        // Postal address — matched against PatientAddress rows of type Postal
+        // Postal address — matched against ClientAddress rows of type Postal
         if (!string.IsNullOrWhiteSpace(search.PostalAddress))
         {
             var term = search.PostalAddress.ToLower();
-            query = query.Where(p => _context.PatientAddresses.Any(a =>
-                a.PatientId == p.Id && a.AddressType == PatientAddressType.Postal &&
+            query = query.Where(p => _context.ClientAddresses.Any(a =>
+                a.ClientId == p.Id && a.AddressType == ClientAddressType.Postal &&
                 a.AddressLine1.ToLower().Contains(term)));
         }
         if (!string.IsNullOrWhiteSpace(search.PostalSuburb))
         {
             var term = search.PostalSuburb.ToLower();
-            query = query.Where(p => _context.PatientAddresses.Any(a =>
-                a.PatientId == p.Id && a.AddressType == PatientAddressType.Postal &&
+            query = query.Where(p => _context.ClientAddresses.Any(a =>
+                a.ClientId == p.Id && a.AddressType == ClientAddressType.Postal &&
                 a.Suburb.ToLower().Contains(term)));
         }
         if (!string.IsNullOrWhiteSpace(search.PostalPostcode))
         {
-            query = query.Where(p => _context.PatientAddresses.Any(a =>
-                a.PatientId == p.Id && a.AddressType == PatientAddressType.Postal &&
+            query = query.Where(p => _context.ClientAddresses.Any(a =>
+                a.ClientId == p.Id && a.AddressType == ClientAddressType.Postal &&
                 a.Postcode.Contains(search.PostalPostcode)));
         }
         if (!string.IsNullOrWhiteSpace(search.PostalState))
         {
             var term = search.PostalState.ToLower();
-            query = query.Where(p => _context.PatientAddresses.Any(a =>
-                a.PatientId == p.Id && a.AddressType == PatientAddressType.Postal &&
+            query = query.Where(p => _context.ClientAddresses.Any(a =>
+                a.ClientId == p.Id && a.AddressType == ClientAddressType.Postal &&
                 a.State.ToLower() == term));
         }
 
@@ -250,12 +250,12 @@ public class PatientRepository : Repository<Patient>, IPatientRepository
         if (!string.IsNullOrWhiteSpace(search.ReferredBy))
         {
             var term = search.ReferredBy.ToLower();
-            query = query.Where(p => _context.PatientReferrals.Any(r =>
-                r.PatientId == p.Id && r.ReferringProviderName.ToLower().Contains(term)));
+            query = query.Where(p => _context.ClientReferrals.Any(r =>
+                r.ClientId == p.Id && r.ReferringProviderName.ToLower().Contains(term)));
         }
-        if (search.PatientType.HasValue)
+        if (search.ClientType.HasValue)
         {
-            query = query.Where(p => p.Type == search.PatientType.Value);
+            query = query.Where(p => p.Type == search.ClientType.Value);
         }
         if (!string.IsNullOrWhiteSpace(search.UrNumber))
         {
@@ -265,9 +265,9 @@ public class PatientRepository : Repository<Patient>, IPatientRepository
         {
             query = query.Where(p => p.HealthFundId == search.HealthFundId.Value);
         }
-        if (search.PayerPatientId.HasValue)
+        if (search.PayerClientId.HasValue)
         {
-            query = query.Where(p => p.PayerPatientId == search.PayerPatientId.Value);
+            query = query.Where(p => p.PayerClientId == search.PayerClientId.Value);
         }
         if (search.AccountTypes is { Count: > 0 })
         {

@@ -13,20 +13,20 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
     }
 
-    public DbSet<Patient> Patients => Set<Patient>();
+    public DbSet<Client> Clients => Set<Client>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Practitioner> Practitioners => Set<Practitioner>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
-    public DbSet<PatientAddress> PatientAddresses => Set<PatientAddress>();
-    public DbSet<PatientReferral> PatientReferrals => Set<PatientReferral>();
-    public DbSet<PatientCompensationClaim> PatientCompensationClaims => Set<PatientCompensationClaim>();
-    public DbSet<PatientOccupation> PatientOccupations => Set<PatientOccupation>();
-    public DbSet<PatientFamilyRelationship> PatientFamilyRelationships => Set<PatientFamilyRelationship>();
+    public DbSet<ClientAddress> ClientAddresses => Set<ClientAddress>();
+    public DbSet<ClientReferral> ClientReferrals => Set<ClientReferral>();
+    public DbSet<ClientCompensationClaim> ClientCompensationClaims => Set<ClientCompensationClaim>();
+    public DbSet<ClientOccupation> ClientOccupations => Set<ClientOccupation>();
+    public DbSet<ClientFamilyRelationship> ClientFamilyRelationships => Set<ClientFamilyRelationship>();
     public DbSet<UserDefinedFieldType> UserDefinedFieldTypes => Set<UserDefinedFieldType>();
-    public DbSet<PatientUserDefinedFieldValue> PatientUserDefinedFieldValues => Set<PatientUserDefinedFieldValue>();
+    public DbSet<ClientUserDefinedFieldValue> ClientUserDefinedFieldValues => Set<ClientUserDefinedFieldValue>();
     public DbSet<HealthFund> HealthFunds => Set<HealthFund>();
     public DbSet<ProviderGroup> ProviderGroups => Set<ProviderGroup>();
     public DbSet<ClinicSettings> ClinicSettings => Set<ClinicSettings>();
@@ -69,8 +69,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Patient configuration
-        modelBuilder.Entity<Patient>(entity =>
+        // Client configuration
+        modelBuilder.Entity<Client>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
@@ -112,17 +112,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => e.MedicareNumber);
             entity.HasIndex(e => new { e.LastName, e.FirstName });
 
-            entity.HasOne(e => e.NextOfKinPatient)
+            entity.HasOne(e => e.NextOfKinClient)
                 .WithMany()
-                .HasForeignKey(e => e.NextOfKinPatientId)
+                .HasForeignKey(e => e.NextOfKinClientId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.EmergencyContactPatient)
+            entity.HasOne(e => e.EmergencyContactClient)
                 .WithMany()
-                .HasForeignKey(e => e.EmergencyContactPatientId)
+                .HasForeignKey(e => e.EmergencyContactClientId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.PayerPatient)
+            entity.HasOne(e => e.PayerClient)
                 .WithMany()
-                .HasForeignKey(e => e.PayerPatientId)
+                .HasForeignKey(e => e.PayerClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Provider)
                 .WithMany()
@@ -234,8 +234,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // PatientAddress configuration
-        modelBuilder.Entity<PatientAddress>(entity =>
+        // ClientAddress configuration
+        modelBuilder.Entity<ClientAddress>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.AddressLine1).IsRequired().HasMaxLength(255);
@@ -245,15 +245,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.State).HasMaxLength(10);
             entity.Property(e => e.AddressSubType).HasMaxLength(50);
             entity.Property(e => e.Community).HasMaxLength(100);
-            entity.HasOne(e => e.Patient)
+            entity.HasOne(e => e.Client)
                 .WithMany()
-                .HasForeignKey(e => e.PatientId)
+                .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(e => new { e.PatientId, e.AddressType });
+            entity.HasIndex(e => new { e.ClientId, e.AddressType });
         });
 
-        // PatientReferral configuration
-        modelBuilder.Entity<PatientReferral>(entity =>
+        // ClientReferral configuration
+        modelBuilder.Entity<ClientReferral>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ReferralPeriod).HasMaxLength(2);
@@ -261,15 +261,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.ReferringProviderNumber).HasMaxLength(20);
             entity.Property(e => e.RequestTypeCde).HasMaxLength(1);
             entity.Property(e => e.Note).HasMaxLength(255);
-            entity.HasOne(e => e.Patient)
+            entity.HasOne(e => e.Client)
                 .WithMany()
-                .HasForeignKey(e => e.PatientId)
+                .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(e => e.PatientId);
+            entity.HasIndex(e => e.ClientId);
         });
 
-        // PatientCompensationClaim configuration
-        modelBuilder.Entity<PatientCompensationClaim>(entity =>
+        // ClientCompensationClaim configuration
+        modelBuilder.Entity<ClientCompensationClaim>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ClaimNum).IsRequired().HasMaxLength(30);
@@ -278,41 +278,41 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.PayerName).HasMaxLength(200);
             entity.Property(e => e.PublicNote).HasMaxLength(500);
             entity.Property(e => e.PrivateNote).HasMaxLength(500);
-            entity.HasOne(e => e.Patient)
+            entity.HasOne(e => e.Client)
                 .WithMany()
-                .HasForeignKey(e => e.PatientId)
+                .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(e => e.PatientId);
+            entity.HasIndex(e => e.ClientId);
         });
 
-        // PatientOccupation configuration
-        modelBuilder.Entity<PatientOccupation>(entity =>
+        // ClientOccupation configuration
+        modelBuilder.Entity<ClientOccupation>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Occupation).HasMaxLength(255);
             entity.Property(e => e.Employer).HasMaxLength(255);
             entity.Property(e => e.Comment).HasMaxLength(255);
-            entity.HasOne(e => e.Patient)
+            entity.HasOne(e => e.Client)
                 .WithMany()
-                .HasForeignKey(e => e.PatientId)
+                .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(e => e.PatientId);
+            entity.HasIndex(e => e.ClientId);
         });
 
-        // PatientFamilyRelationship configuration
-        modelBuilder.Entity<PatientFamilyRelationship>(entity =>
+        // ClientFamilyRelationship configuration
+        modelBuilder.Entity<ClientFamilyRelationship>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.RelationshipType).HasMaxLength(50);
-            entity.HasOne(e => e.Patient)
+            entity.HasOne(e => e.Client)
                 .WithMany()
-                .HasForeignKey(e => e.PatientId)
+                .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.RelativePatient)
+            entity.HasOne(e => e.RelativeClient)
                 .WithMany()
-                .HasForeignKey(e => e.RelativePatientId)
+                .HasForeignKey(e => e.RelativeClientId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(e => e.PatientId);
+            entity.HasIndex(e => e.ClientId);
         });
 
         // UserDefinedFieldType configuration
@@ -324,21 +324,21 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => e.Name).IsUnique();
         });
 
-        // PatientUserDefinedFieldValue configuration
-        modelBuilder.Entity<PatientUserDefinedFieldValue>(entity =>
+        // ClientUserDefinedFieldValue configuration
+        modelBuilder.Entity<ClientUserDefinedFieldValue>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Value).HasMaxLength(255);
             entity.Property(e => e.Note).HasMaxLength(255);
-            entity.HasOne(e => e.Patient)
+            entity.HasOne(e => e.Client)
                 .WithMany()
-                .HasForeignKey(e => e.PatientId)
+                .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.UserDefinedFieldType)
                 .WithMany()
                 .HasForeignKey(e => e.UserDefinedFieldTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(e => e.PatientId);
+            entity.HasIndex(e => e.ClientId);
         });
 
         // Practitioner configuration
@@ -357,9 +357,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Appointment>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasOne(e => e.Patient)
+            entity.HasOne(e => e.Client)
                 .WithMany()
-                .HasForeignKey(e => e.PatientId)
+                .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Practitioner)
                 .WithMany(p => p.Appointments)
@@ -380,9 +380,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasKey(e => e.Id);
             entity.Property(e => e.InvoiceNumber).IsRequired().HasMaxLength(50);
             entity.HasIndex(e => e.InvoiceNumber).IsUnique();
-            entity.HasOne(e => e.Patient)
+            entity.HasOne(e => e.Client)
                 .WithMany()
-                .HasForeignKey(e => e.PatientId)
+                .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Appointment)
                 .WithMany()

@@ -7,28 +7,28 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IntelliMed.Infrastructure.Repositories;
 
-public class PatientOccupationRepository : Repository<PatientOccupation>, IPatientOccupationRepository
+public class ClientOccupationRepository : Repository<ClientOccupation>, IClientOccupationRepository
 {
-    public PatientOccupationRepository(AppDbContext context) : base(context)
+    public ClientOccupationRepository(AppDbContext context) : base(context)
     {
     }
 
-    public async Task<PatientOccupationDto?> GetByIdAsync(int id)
+    public async Task<ClientOccupationDto?> GetByIdAsync(int id)
     {
         var occupation = await _dbSet.FindAsync(id);
         return occupation == null ? null : EntityMapper.ToDto(occupation);
     }
 
-    public async Task<IEnumerable<PatientOccupationDto>> GetByPatientIdAsync(int patientId)
+    public async Task<IEnumerable<ClientOccupationDto>> GetByClientIdAsync(int clientId)
     {
         var occupations = await _dbSet
-            .Where(o => o.PatientId == patientId)
+            .Where(o => o.ClientId == clientId)
             .OrderByDescending(o => o.StartedYear)
             .ToListAsync();
         return occupations.Select(EntityMapper.ToDto);
     }
 
-    public async Task<int> CreateAsync(CreatePatientOccupationDto dto)
+    public async Task<int> CreateAsync(CreateClientOccupationDto dto)
     {
         var occupation = EntityMapper.ToEntity(dto);
         await _dbSet.AddAsync(occupation);
@@ -36,11 +36,11 @@ public class PatientOccupationRepository : Repository<PatientOccupation>, IPatie
         return occupation.Id;
     }
 
-    public async Task UpdateAsync(int id, UpdatePatientOccupationDto dto)
+    public async Task UpdateAsync(int id, UpdateClientOccupationDto dto)
     {
         var occupation = await _dbSet.FindAsync(id);
         if (occupation == null)
-            throw new InvalidOperationException($"PatientOccupation with ID {id} not found");
+            throw new InvalidOperationException($"ClientOccupation with ID {id} not found");
 
         EntityMapper.UpdateEntity(occupation, dto);
         await _context.SaveChangesAsync();
@@ -50,7 +50,7 @@ public class PatientOccupationRepository : Repository<PatientOccupation>, IPatie
     {
         var occupation = await _dbSet.FindAsync(id);
         if (occupation == null)
-            throw new InvalidOperationException($"PatientOccupation with ID {id} not found");
+            throw new InvalidOperationException($"ClientOccupation with ID {id} not found");
 
         occupation.IsArchived = true;
         occupation.UpdatedAt = DateTime.UtcNow;

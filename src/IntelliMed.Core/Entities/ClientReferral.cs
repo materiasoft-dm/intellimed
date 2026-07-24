@@ -1,9 +1,9 @@
 namespace IntelliMed.Core.Entities;
 
-public class PatientReferral
+public class ClientReferral
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public DateTime ReferralDate { get; set; }
     public string? ReferralPeriod { get; set; }
     public bool IsDefault { get; set; }
@@ -17,5 +17,5 @@ public class PatientReferral
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
-    public Patient? Patient { get; set; }
+    public Client? Client { get; set; }
 }

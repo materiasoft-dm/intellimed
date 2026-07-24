@@ -1,9 +1,9 @@
 namespace IntelliMed.Core.DTOs;
 
-public class PatientOccupationDto
+public class ClientOccupationDto
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public string? Occupation { get; set; }
     public string? Employer { get; set; }
     public int? StartedYear { get; set; }
@@ -18,9 +18,9 @@ public class PatientOccupationDto
     public DateTime? UpdatedAt { get; set; }
 }
 
-public class CreatePatientOccupationDto
+public class CreateClientOccupationDto
 {
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public string? Occupation { get; set; }
     public string? Employer { get; set; }
     public int? StartedYear { get; set; }
@@ -32,7 +32,7 @@ public class CreatePatientOccupationDto
     public string? Comment { get; set; }
 }
 
-public class UpdatePatientOccupationDto
+public class UpdateClientOccupationDto
 {
     public string? Occupation { get; set; }
     public string? Employer { get; set; }

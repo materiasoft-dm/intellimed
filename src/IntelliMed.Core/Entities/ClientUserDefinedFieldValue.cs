@@ -1,9 +1,9 @@
 namespace IntelliMed.Core.Entities;
 
-public class PatientUserDefinedFieldValue
+public class ClientUserDefinedFieldValue
 {
     public int Id { get; set; }
-    public int PatientId { get; set; }
+    public int ClientId { get; set; }
     public int UserDefinedFieldTypeId { get; set; }
     public string? Value { get; set; }
     public string? Note { get; set; }
@@ -11,6 +11,6 @@ public class PatientUserDefinedFieldValue
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
-    public Patient? Patient { get; set; }
+    public Client? Client { get; set; }
     public UserDefinedFieldType? UserDefinedFieldType { get; set; }
 }
