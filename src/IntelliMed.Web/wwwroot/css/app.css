@@ -374,7 +374,10 @@ code {
 
     .patient-edit-page label.form-label {
         flex-shrink: 0;
-        width: 110px;
+        /* Narrow columns (e.g. col-3 Postcode/State) can't spare a fixed 110px for the label
+           without squeezing the input to nothing, so cap it at a share of the wrapper's width
+           instead of a flat pixel value. */
+        width: min(110px, 45%);
         padding-top: 0.25rem;
         margin-bottom: 0 !important;
     }
@@ -382,7 +385,7 @@ code {
     .patient-edit-page .form-control,
     .patient-edit-page .form-select {
         flex: 1 1 auto;
-        min-width: 0;
+        min-width: 40px;
     }
 }
 
