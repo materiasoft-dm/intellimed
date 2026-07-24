@@ -28,6 +28,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserDefinedFieldType> UserDefinedFieldTypes => Set<UserDefinedFieldType>();
     public DbSet<PatientUserDefinedFieldValue> PatientUserDefinedFieldValues => Set<PatientUserDefinedFieldValue>();
     public DbSet<HealthFund> HealthFunds => Set<HealthFund>();
+    public DbSet<ProviderGroup> ProviderGroups => Set<ProviderGroup>();
+    public DbSet<ClinicSettings> ClinicSettings => Set<ClinicSettings>();
+    public DbSet<Clinic> Clinics => Set<Clinic>();
+    public DbSet<UserClinic> UserClinics => Set<UserClinic>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,7 +42,31 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.Property(e => e.FirstName).HasMaxLength(100);
             entity.Property(e => e.LastName).HasMaxLength(100);
+            entity.Property(e => e.Title).HasMaxLength(20);
+            entity.Property(e => e.MiddleName).HasMaxLength(100);
+            entity.Property(e => e.MobilePhone).HasMaxLength(20);
+            entity.Property(e => e.BusinessHoursPhone).HasMaxLength(20);
+            entity.Property(e => e.Fax).HasMaxLength(20);
+            entity.Property(e => e.Qualifications).HasMaxLength(200);
+            entity.Property(e => e.Specialty).HasMaxLength(150);
+            entity.Property(e => e.ProviderNumber).HasMaxLength(20);
+            entity.Property(e => e.AhpraNumber).HasMaxLength(20);
+            entity.Property(e => e.HpiiNumber).HasMaxLength(20);
+            entity.Property(e => e.Note).HasMaxLength(4000);
+            entity.Property(e => e.ResidentialAddress).HasMaxLength(255);
+            entity.Property(e => e.ResidentialSuburb).HasMaxLength(100);
+            entity.Property(e => e.ResidentialPostcode).HasMaxLength(10);
+            entity.Property(e => e.ResidentialState).HasMaxLength(10);
+            entity.Property(e => e.PostalAddress).HasMaxLength(255);
+            entity.Property(e => e.PostalSuburb).HasMaxLength(100);
+            entity.Property(e => e.PostalPostcode).HasMaxLength(10);
+            entity.Property(e => e.PostalState).HasMaxLength(10);
             entity.HasIndex(e => e.Email).IsUnique();
+
+            entity.HasOne(e => e.Group)
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Patient configuration
@@ -104,6 +132,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.HealthFundId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Clinic)
+                .WithMany()
+                .HasForeignKey(e => e.ClinicId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.ClinicId);
         });
 
         // HealthFund configuration
@@ -126,6 +159,79 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 new HealthFund { Id = 9, Code = "DHF", Name = "Doctors' Health Fund" },
                 new HealthFund { Id = 10, Code = "FRK", Name = "Frank Health Insurance" }
             );
+        });
+
+        // ProviderGroup configuration
+        modelBuilder.Entity<ProviderGroup>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Name).IsUnique();
+
+            entity.HasData(
+                new ProviderGroup { Id = 1, Name = "General Practitioners" },
+                new ProviderGroup { Id = 2, Name = "Specialists" },
+                new ProviderGroup { Id = 3, Name = "Physiotherapists" },
+                new ProviderGroup { Id = 4, Name = "Dentists" },
+                new ProviderGroup { Id = 5, Name = "Nurse" },
+                new ProviderGroup { Id = 6, Name = "Allied Health Professional" }
+            );
+        });
+
+        // ClinicSettings configuration (single-row settings table)
+        modelBuilder.Entity<ClinicSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PracticeName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Abn).HasMaxLength(20);
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.Fax).HasMaxLength(20);
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.Website).HasMaxLength(255);
+            entity.Property(e => e.Address).HasMaxLength(255);
+            entity.Property(e => e.Suburb).HasMaxLength(100);
+            entity.Property(e => e.Postcode).HasMaxLength(10);
+            entity.Property(e => e.State).HasMaxLength(10);
+
+            entity.HasData(
+                new ClinicSettings { Id = 1, PracticeName = "IntelliMed Clinic" }
+            );
+        });
+
+        // Clinic configuration
+        modelBuilder.Entity<Clinic>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Abn).HasMaxLength(20);
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.Fax).HasMaxLength(20);
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.Address).HasMaxLength(255);
+            entity.Property(e => e.Suburb).HasMaxLength(100);
+            entity.Property(e => e.Postcode).HasMaxLength(10);
+            entity.Property(e => e.State).HasMaxLength(10);
+
+            entity.HasData(
+                new Clinic { Id = 1, Name = "Main Clinic" }
+            );
+        });
+
+        // UserClinic configuration (many-to-many join)
+        modelBuilder.Entity<UserClinic>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ApplicationUserId, e.ClinicId }).IsUnique();
+
+            entity.HasOne(e => e.ApplicationUser)
+                .WithMany()
+                .HasForeignKey(e => e.ApplicationUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Clinic)
+                .WithMany(c => c.UserClinics)
+                .HasForeignKey(e => e.ClinicId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // PatientAddress configuration
@@ -259,8 +365,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(p => p.Appointments)
                 .HasForeignKey(e => e.PractitionerId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Clinic>()
+                .WithMany()
+                .HasForeignKey(e => e.ClinicId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => e.AppointmentDate);
             entity.HasIndex(e => new { e.PractitionerId, e.AppointmentDate });
+            entity.HasIndex(e => e.ClinicId);
         });
 
         // Invoice configuration
@@ -277,6 +388,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.AppointmentId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<Clinic>()
+                .WithMany()
+                .HasForeignKey(e => e.ClinicId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.ClinicId);
         });
 
         // InvoiceItem configuration

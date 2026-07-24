@@ -16,6 +16,8 @@ public class UserDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public IList<int> ClinicIds { get; set; } = new List<int>();
+    public IList<string> ClinicNames { get; set; } = new List<string>();
 }
 
 /// <summary>
@@ -41,6 +43,11 @@ public class CreateUserRequest
     /// Roles to assign to the new user. Defaults to empty (no roles).
     /// </summary>
     public IList<string> Roles { get; set; } = new List<string>();
+
+    /// <summary>
+    /// Clinics to assign the new user to. Defaults to empty (no clinics).
+    /// </summary>
+    public IList<int> ClinicIds { get; set; } = new List<int>();
 }
 
 /// <summary>
@@ -61,6 +68,12 @@ public class UpdateUserRequest
     /// If null, roles are left unchanged.
     /// </summary>
     public IList<string>? Roles { get; set; }
+
+    /// <summary>
+    /// If provided, replaces the user's current clinic assignments entirely.
+    /// If null, clinic assignments are left unchanged.
+    /// </summary>
+    public IList<int>? ClinicIds { get; set; }
 }
 
 /// <summary>

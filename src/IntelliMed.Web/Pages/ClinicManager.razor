@@ -1,0 +1,451 @@
+@page "/clinic-manager"
+@layout MainLayout
+@using System.ComponentModel.DataAnnotations
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject IClinicService ClinicService
+
+<PageTitle>Clinic Manager - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Clinic Manager</h4>
+
+@* Toolbar *@
+<div class="card mb-4">
+    <div class="card-body d-flex align-items-center justify-content-between">
+        <span class="d-flex align-items-center">
+            <i class="bi bi-diagram-3 me-2"></i>
+            Total Clinics: @(_clinics?.Count ?? 0)
+        </span>
+        <button class="btn btn-primary" @onclick="OpenCreateDialog">
+            <i class="bi bi-plus-lg me-1"></i> Add Clinic
+        </button>
+    </div>
+</div>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading clinics...
+        </div>
+    </div>
+}
+else if (_forbidden)
+{
+    <div class="alert alert-danger">You don't have access to this page.</div>
+}
+else if (_clinics != null)
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Address</th>
+                        <th>Users</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var clinic in _clinics)
+                    {
+                        <tr>
+                            <td><i class="bi bi-building me-2 text-muted"></i>@clinic.Name</td>
+                            <td>@clinic.Phone</td>
+                            <td>@(string.IsNullOrWhiteSpace(clinic.Suburb) ? clinic.Address : $"{clinic.Address}, {clinic.Suburb}")</td>
+                            <td>@clinic.UserCount</td>
+                            <td>
+                                @if (clinic.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Inactive</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary me-1" title="Edit" @onclick="() => OpenEditDialog(clinic)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" title="Manage Users" @onclick="() => OpenUsersDialog(clinic)">
+                                    <i class="bi bi-people"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_clinics.Count == 0)
+        {
+            <div class="card-body text-center text-muted py-4">No clinics yet.</div>
+        }
+    </div>
+}
+
+@* Toast *@
+<div class="toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite" aria-atomic="true">
+    @if (_toastMessage != null)
+    {
+        <div class="toast show align-items-center @(_toastIsError ? "text-bg-danger" : "text-bg-success") border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@_toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => _toastMessage = null" aria-label="Close"></button>
+            </div>
+        </div>
+    }
+</div>
+
+@* =========================================================================
+   CREATE / EDIT CLINIC MODAL
+   ========================================================================= *@
+@if (_dialogVisible)
+{
+    <div class="modal-backdrop fade show" style="display:block;"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_isEditing ? "Edit Clinic" : "Add Clinic")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDialog" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@_dialogModel" OnValidSubmit="SaveClinic" FormName="clinicDialogForm">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-3" />
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Name <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="_dialogModel.Name" class="form-control" />
+                                <ValidationMessage For="() => _dialogModel.Name" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">ABN</label>
+                                <InputText @bind-Value="_dialogModel.Abn" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Phone</label>
+                                <InputText @bind-Value="_dialogModel.Phone" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Fax</label>
+                                <InputText @bind-Value="_dialogModel.Fax" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Email</label>
+                                <InputText @bind-Value="_dialogModel.Email" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-12">
+                                <label class="form-label small mb-0">Address</label>
+                                <InputText @bind-Value="_dialogModel.Address" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small mb-0">Suburb</label>
+                                <InputText @bind-Value="_dialogModel.Suburb" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">Postcode</label>
+                                <InputText @bind-Value="_dialogModel.Postcode" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">State</label>
+                                <InputText @bind-Value="_dialogModel.State" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+
+                        @if (_isEditing)
+                        {
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       checked="@_dialogModel.IsActive"
+                                       @onchange="(ChangeEventArgs e) => _dialogModel.IsActive = (bool)e.Value!"
+                                       id="clinicActiveSwitch" />
+                                <label class="form-check-label" for="clinicActiveSwitch">Active</label>
+                            </div>
+                        }
+                        <div class="modal-footer px-0 pb-0">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_dialogSaving">
+                                @if (_dialogSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <span>@(_isEditing ? "Save Changes" : "Create Clinic")</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* =========================================================================
+   MANAGE USERS MODAL
+   ========================================================================= *@
+@if (_usersDialogVisible)
+{
+    <div class="modal-backdrop fade show" style="display:block;"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manage Users — @_usersDialogClinic?.Name</h5>
+                    <button type="button" class="btn-close" @onclick="() => _usersDialogVisible = false" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_clinicUsers == null)
+                    {
+                        <span class="text-muted small">Loading users...</span>
+                    }
+                    else
+                    {
+                        <div class="card bg-light">
+                            <div class="card-body" style="max-height: 320px; overflow-y: auto;">
+                                @foreach (var user in _clinicUsers)
+                                {
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox"
+                                               checked="@_selectedUserIds.Contains(user.Id)"
+                                               @onchange="(ChangeEventArgs e) => ToggleUser(user.Id, (bool)e.Value!)"
+                                               id="user_@user.Id" />
+                                        <label class="form-check-label" for="user_@user.Id">
+                                            @user.FullName <span class="text-muted small">(@user.Email)</span>
+                                        </label>
+                                    </div>
+                                }
+                                @if (_clinicUsers.Count == 0)
+                                {
+                                    <span class="text-muted small">No users found.</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _usersDialogVisible = false">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveClinicUsers" disabled="@_usersDialogSaving">
+                        @if (_usersDialogSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ClinicDto>? _clinics;
+    private bool _isLoading = true;
+    private bool _forbidden;
+    private string? _toastMessage;
+    private bool _toastIsError;
+
+    // Create/Edit modal
+    private bool _dialogVisible;
+    private bool _isEditing;
+    private bool _dialogSaving;
+    private int _editingClinicId;
+    private ClinicDialogModel _dialogModel = new();
+
+    // Manage users modal
+    private bool _usersDialogVisible;
+    private bool _usersDialogSaving;
+    private ClinicDto? _usersDialogClinic;
+    private List<ClinicUserDto>? _clinicUsers;
+    private HashSet<string> _selectedUserIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClinics();
+    }
+
+    private async Task LoadClinics()
+    {
+        _isLoading = true;
+        _clinics = await ClinicService.GetAllAsync();
+        _forbidden = _clinics == null;
+        _isLoading = false;
+    }
+
+    private void OpenCreateDialog()
+    {
+        _isEditing = false;
+        _dialogModel = new ClinicDialogModel();
+        _dialogSaving = false;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ClinicDto clinic)
+    {
+        _isEditing = true;
+        _editingClinicId = clinic.Id;
+        _dialogModel = new ClinicDialogModel
+        {
+            Name = clinic.Name,
+            Abn = clinic.Abn,
+            Phone = clinic.Phone,
+            Fax = clinic.Fax,
+            Email = clinic.Email,
+            Address = clinic.Address,
+            Suburb = clinic.Suburb,
+            Postcode = clinic.Postcode,
+            State = clinic.State,
+            IsActive = clinic.IsActive
+        };
+        _dialogSaving = false;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task SaveClinic()
+    {
+        _dialogSaving = true;
+        try
+        {
+            bool success;
+            if (_isEditing)
+            {
+                success = await ClinicService.UpdateAsync(_editingClinicId, new UpdateClinicDto
+                {
+                    Name = _dialogModel.Name,
+                    Abn = _dialogModel.Abn,
+                    Phone = _dialogModel.Phone,
+                    Fax = _dialogModel.Fax,
+                    Email = _dialogModel.Email,
+                    Address = _dialogModel.Address,
+                    Suburb = _dialogModel.Suburb,
+                    Postcode = _dialogModel.Postcode,
+                    State = _dialogModel.State,
+                    IsActive = _dialogModel.IsActive
+                });
+            }
+            else
+            {
+                success = await ClinicService.CreateAsync(new CreateClinicDto
+                {
+                    Name = _dialogModel.Name,
+                    Abn = _dialogModel.Abn,
+                    Phone = _dialogModel.Phone,
+                    Fax = _dialogModel.Fax,
+                    Email = _dialogModel.Email,
+                    Address = _dialogModel.Address,
+                    Suburb = _dialogModel.Suburb,
+                    Postcode = _dialogModel.Postcode,
+                    State = _dialogModel.State
+                });
+            }
+
+            if (success)
+            {
+                _toastMessage = _isEditing ? "Clinic updated successfully." : "Clinic created successfully.";
+                _toastIsError = false;
+                _dialogVisible = false;
+                await LoadClinics();
+            }
+            else
+            {
+                _toastMessage = "Failed to save clinic.";
+                _toastIsError = true;
+            }
+        }
+        finally
+        {
+            _dialogSaving = false;
+        }
+    }
+
+    private async Task OpenUsersDialog(ClinicDto clinic)
+    {
+        _usersDialogClinic = clinic;
+        _clinicUsers = null;
+        _selectedUserIds = new HashSet<string>();
+        _usersDialogSaving = false;
+        _usersDialogVisible = true;
+
+        var users = await ClinicService.GetClinicUsersAsync(clinic.Id);
+        _clinicUsers = users ?? new List<ClinicUserDto>();
+        _selectedUserIds = _clinicUsers.Where(u => u.IsAssigned).Select(u => u.Id).ToHashSet();
+    }
+
+    private void ToggleUser(string userId, bool isChecked)
+    {
+        if (isChecked) _selectedUserIds.Add(userId);
+        else _selectedUserIds.Remove(userId);
+    }
+
+    private async Task SaveClinicUsers()
+    {
+        if (_usersDialogClinic == null) return;
+
+        _usersDialogSaving = true;
+        try
+        {
+            var success = await ClinicService.SetClinicUsersAsync(_usersDialogClinic.Id, new SetClinicUsersRequest
+            {
+                UserIds = _selectedUserIds.ToList()
+            });
+
+            if (success)
+            {
+                _toastMessage = "Clinic users updated successfully.";
+                _toastIsError = false;
+                _usersDialogVisible = false;
+                await LoadClinics();
+            }
+            else
+            {
+                _toastMessage = "Failed to update clinic users.";
+                _toastIsError = true;
+            }
+        }
+        finally
+        {
+            _usersDialogSaving = false;
+        }
+    }
+
+    private class ClinicDialogModel
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+        public string? Abn { get; set; }
+        public string? Phone { get; set; }
+        public string? Fax { get; set; }
+        public string? Email { get; set; }
+        public string? Address { get; set; }
+        public string? Suburb { get; set; }
+        public string? Postcode { get; set; }
+        public string? State { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}

@@ -3,6 +3,7 @@ namespace IntelliMed.Core.Entities;
 public class Invoice
 {
     public int Id { get; set; }
+    public int ClinicId { get; set; }
     public int PatientId { get; set; }
     public int? AppointmentId { get; set; }
     public string InvoiceNumber { get; set; } = string.Empty;

@@ -3,6 +3,7 @@ namespace IntelliMed.Core.Entities;
 public class Appointment
 {
     public int Id { get; set; }
+    public int ClinicId { get; set; }
     public int PatientId { get; set; }
     public int PractitionerId { get; set; }
     public DateTime AppointmentDate { get; set; }

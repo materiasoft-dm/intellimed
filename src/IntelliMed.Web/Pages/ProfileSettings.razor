@@ -1,0 +1,384 @@
+@page "/profile"
+@layout MainLayout
+@using System.ComponentModel.DataAnnotations
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject IAuthService AuthService
+@inject IProviderGroupService ProviderGroupService
+
+<PageTitle>Profile Settings - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Profile Settings</h4>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading profile...
+        </div>
+    </div>
+}
+else if (_profile == null)
+{
+    <div class="alert alert-danger">Failed to load your profile. Please try reloading the page.</div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header"><strong>Your Details</strong></div>
+                <div class="card-body">
+                    <EditForm Model="@_model" OnValidSubmit="SaveAsync" FormName="profileForm">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-3" />
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Email</label>
+                                <input class="form-control" value="@_profile.Email" disabled />
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Roles</label>
+                                <div>
+                                    @foreach (var role in _profile.Roles)
+                                    {
+                                        <span class="badge bg-secondary me-1">@role</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-2">
+                                <label class="form-label">Title</label>
+                                <InputText @bind-Value="_model.Title" class="form-control" placeholder="Dr, Mr, Ms..." />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">First Name <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="_model.FirstName" class="form-control" />
+                                <ValidationMessage For="() => _model.FirstName" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Middle</label>
+                                <InputText @bind-Value="_model.MiddleName" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="_model.LastName" class="form-control" />
+                                <ValidationMessage For="() => _model.LastName" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Mobile Phone</label>
+                                <InputText @bind-Value="_model.MobilePhone" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">B.H. (Business Hours)</label>
+                                <InputText @bind-Value="_model.BusinessHoursPhone" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fax</label>
+                                <InputText @bind-Value="_model.Fax" class="form-control" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="mb-3">Professional Details</h6>
+                        <p class="text-muted small mb-3">Only relevant for clinicians — leave blank if not applicable.</p>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Group</label>
+                                <InputSelect @bind-Value="_model.GroupId" class="form-select">
+                                    <option value="">-- Select --</option>
+                                    @foreach (var group in _providerGroups)
+                                    {
+                                        <option value="@group.Id">@group.Name</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Speciality</label>
+                                <InputText @bind-Value="_model.Specialty" class="form-control" placeholder="e.g. General Practice" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Qualifications</label>
+                                <InputText @bind-Value="_model.Qualifications" class="form-control" placeholder="e.g. MBBS, FRACGP" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Prescriber# (Provider Number)</label>
+                                <InputText @bind-Value="_model.ProviderNumber" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">AHPRA Number</label>
+                                <InputText @bind-Value="_model.AhpraNumber" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">HPI-I Number</label>
+                                <InputText @bind-Value="_model.HpiiNumber" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.VocationallyRegistered" class="form-check-input" id="chkVocReg" />
+                                    <label class="form-check-label" for="chkVocReg">Vocationally Registered</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.InternalProvider" class="form-check-input" id="chkInternal" />
+                                    <label class="form-check-label" for="chkInternal">Internal Provider</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.EPrescribingEnabled" class="form-check-input" id="chkEPrescribing" />
+                                    <label class="form-check-label" for="chkEPrescribing">ePrescribing</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="mb-3">Residential Address</h6>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-12">
+                                <label class="form-label small mb-0">Address</label>
+                                <InputText @bind-Value="_model.ResidentialAddress" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small mb-0">Suburb</label>
+                                <InputText @bind-Value="_model.ResidentialSuburb" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">Postcode</label>
+                                <InputText @bind-Value="_model.ResidentialPostcode" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">State</label>
+                                <InputText @bind-Value="_model.ResidentialState" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+
+                        <h6 class="mb-2">Postal Address</h6>
+                        <div class="form-check mb-3">
+                            <InputCheckbox @bind-Value="_model.PostalSameAsResidential" class="form-check-input" id="chkPostalSame" />
+                            <label class="form-check-label" for="chkPostalSame">Same as Residential Address</label>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-12">
+                                <label class="form-label small mb-0">Address</label>
+                                <InputText @bind-Value="_model.PostalAddress" class="form-control form-control-sm" disabled="@_model.PostalSameAsResidential" />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label small mb-0">Suburb</label>
+                                <InputText @bind-Value="_model.PostalSuburb" class="form-control form-control-sm" disabled="@_model.PostalSameAsResidential" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">Postcode</label>
+                                <InputText @bind-Value="_model.PostalPostcode" class="form-control form-control-sm" disabled="@_model.PostalSameAsResidential" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">State</label>
+                                <InputText @bind-Value="_model.PostalState" class="form-control form-control-sm" disabled="@_model.PostalSameAsResidential" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <div class="mb-3">
+                            <label class="form-label">Note</label>
+                            <InputTextArea @bind-Value="_model.Note" class="form-control" rows="3" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                            @if (_isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span><i class="bi bi-save me-1"></i>Save Changes</span>
+                            }
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_toastMessage != null)
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        <div class="toast show align-items-center @(_toastIsError ? "text-bg-danger" : "text-bg-success") border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@_toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="DismissToast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private UserProfileDto? _profile;
+    private ProfileFormModel _model = new();
+    private IEnumerable<ProviderGroupDto> _providerGroups = Enumerable.Empty<ProviderGroupDto>();
+    private string? _toastMessage;
+    private bool _toastIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var profileTask = AuthService.GetMyProfileAsync();
+        _providerGroups = await ProviderGroupService.GetAllActiveAsync();
+        _profile = await profileTask;
+        if (_profile != null)
+        {
+            _model = new ProfileFormModel
+            {
+                FirstName = _profile.FirstName,
+                LastName = _profile.LastName,
+                Title = _profile.Title,
+                MiddleName = _profile.MiddleName,
+                MobilePhone = _profile.MobilePhone,
+                BusinessHoursPhone = _profile.BusinessHoursPhone,
+                Fax = _profile.Fax,
+                Qualifications = _profile.Qualifications,
+                Specialty = _profile.Specialty,
+                ProviderNumber = _profile.ProviderNumber,
+                AhpraNumber = _profile.AhpraNumber,
+                HpiiNumber = _profile.HpiiNumber,
+                Note = _profile.Note,
+                VocationallyRegistered = _profile.VocationallyRegistered,
+                InternalProvider = _profile.InternalProvider,
+                EPrescribingEnabled = _profile.EPrescribingEnabled,
+                GroupId = _profile.GroupId,
+                ResidentialAddress = _profile.ResidentialAddress,
+                ResidentialSuburb = _profile.ResidentialSuburb,
+                ResidentialPostcode = _profile.ResidentialPostcode,
+                ResidentialState = _profile.ResidentialState,
+                PostalSameAsResidential = _profile.PostalSameAsResidential,
+                PostalAddress = _profile.PostalAddress,
+                PostalSuburb = _profile.PostalSuburb,
+                PostalPostcode = _profile.PostalPostcode,
+                PostalState = _profile.PostalState
+            };
+        }
+        _isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new UpdateProfileRequest
+            {
+                FirstName = _model.FirstName,
+                LastName = _model.LastName,
+                Title = _model.Title,
+                MiddleName = _model.MiddleName,
+                MobilePhone = _model.MobilePhone,
+                BusinessHoursPhone = _model.BusinessHoursPhone,
+                Fax = _model.Fax,
+                Qualifications = _model.Qualifications,
+                Specialty = _model.Specialty,
+                ProviderNumber = _model.ProviderNumber,
+                AhpraNumber = _model.AhpraNumber,
+                HpiiNumber = _model.HpiiNumber,
+                Note = _model.Note,
+                VocationallyRegistered = _model.VocationallyRegistered,
+                InternalProvider = _model.InternalProvider,
+                EPrescribingEnabled = _model.EPrescribingEnabled,
+                GroupId = _model.GroupId,
+                ResidentialAddress = _model.ResidentialAddress,
+                ResidentialSuburb = _model.ResidentialSuburb,
+                ResidentialPostcode = _model.ResidentialPostcode,
+                ResidentialState = _model.ResidentialState,
+                PostalSameAsResidential = _model.PostalSameAsResidential,
+                PostalAddress = _model.PostalAddress,
+                PostalSuburb = _model.PostalSuburb,
+                PostalPostcode = _model.PostalPostcode,
+                PostalState = _model.PostalState
+            };
+
+            var success = await AuthService.UpdateMyProfileAsync(request);
+            if (success)
+            {
+                ShowToast("Profile updated successfully.");
+            }
+            else
+            {
+                ShowToast("Failed to update profile.", true);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void ShowToast(string message, bool isError = false)
+    {
+        _toastMessage = message;
+        _toastIsError = isError;
+    }
+
+    private void DismissToast()
+    {
+        _toastMessage = null;
+    }
+
+    private class ProfileFormModel
+    {
+        [Required]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required]
+        public string LastName { get; set; } = string.Empty;
+
+        public string? Title { get; set; }
+        public string? MiddleName { get; set; }
+        public string? MobilePhone { get; set; }
+        public string? BusinessHoursPhone { get; set; }
+        public string? Fax { get; set; }
+        public string? Qualifications { get; set; }
+        public string? Specialty { get; set; }
+        public string? ProviderNumber { get; set; }
+        public string? AhpraNumber { get; set; }
+        public string? HpiiNumber { get; set; }
+        public string? Note { get; set; }
+        public bool VocationallyRegistered { get; set; }
+        public bool InternalProvider { get; set; }
+        public bool EPrescribingEnabled { get; set; }
+        public int? GroupId { get; set; }
+
+        public string? ResidentialAddress { get; set; }
+        public string? ResidentialSuburb { get; set; }
+        public string? ResidentialPostcode { get; set; }
+        public string? ResidentialState { get; set; }
+
+        public bool PostalSameAsResidential { get; set; } = true;
+        public string? PostalAddress { get; set; }
+        public string? PostalSuburb { get; set; }
+        public string? PostalPostcode { get; set; }
+        public string? PostalState { get; set; }
+    }
+}

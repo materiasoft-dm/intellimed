@@ -4,6 +4,7 @@ using FluentAssertions;
 using IntelliMed.Api.Controllers;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
+using IntelliMed.Core.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +21,7 @@ public class AuthControllerTests
     private readonly Mock<SignInManager<IdentityCore.ApplicationUser>> _signInManagerMock;
     private readonly Mock<IConfiguration> _configurationMock;
     private readonly Mock<ILogger<AuthController>> _loggerMock;
+    private readonly Mock<IProviderGroupRepository> _providerGroupRepositoryMock;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
@@ -45,9 +47,13 @@ public class AuthControllerTests
         // Setup Logger mock
         _loggerMock = new Mock<ILogger<AuthController>>();
 
+        // Setup ProviderGroupRepository mock
+        _providerGroupRepositoryMock = new Mock<IProviderGroupRepository>();
+
         _controller = new AuthController(
             _userManagerMock.Object,
             _signInManagerMock.Object,
+            _providerGroupRepositoryMock.Object,
             _configurationMock.Object,
             _loggerMock.Object);
 

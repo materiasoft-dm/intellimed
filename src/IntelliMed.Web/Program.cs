@@ -39,6 +39,10 @@ builder.Services.AddScoped<IPatientAddressService, PatientAddressService>();
 builder.Services.AddScoped<IPatientUdfValueService, PatientUdfValueService>();
 builder.Services.AddScoped<IUdfDefinitionService, UdfDefinitionService>();
 builder.Services.AddScoped<IHealthFundService, HealthFundService>();
+builder.Services.AddScoped<IProviderGroupService, ProviderGroupService>();
+builder.Services.AddScoped<IClinicSettingsService, ClinicSettingsService>();
+builder.Services.AddScoped<IClinicContextService, ClinicContextService>();
+builder.Services.AddScoped<IClinicService, ClinicService>();
 
 var host = builder.Build();
 

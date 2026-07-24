@@ -161,6 +161,7 @@ public class RolePermissionsController : ControllerBase
     {
         return pageKey switch
         {
+            "clinic-settings" or "clinic-manager" => "Practice",
             string p when p.StartsWith("patients") || p.StartsWith("appointments") || p.StartsWith("practitioners") => "Clinical",
             string p when p.StartsWith("invoices") || p.StartsWith("payments") => "Financial",
             string p when p.StartsWith("admin") => "Admin",
@@ -202,6 +203,10 @@ public class RolePermissionsController : ControllerBase
             new() { PageKey = "admin/roles", PageName = "Role Configuration", Category = "Admin", Description = "Configure role permissions" },
             new() { PageKey = "admin/audit", PageName = "Audit Log", Category = "Admin", Description = "View system audit trail" },
             new() { PageKey = "admin/settings", PageName = "System Settings", Category = "Admin", Description = "Configure system parameters" },
+
+            // Practice
+            new() { PageKey = "clinic-settings", PageName = "Clinic Settings", Category = "Practice", Description = "Configure practice-wide identity and contact information" },
+            new() { PageKey = "clinic-manager", PageName = "Clinic Manager", Category = "Practice", Description = "Manage clinic locations and which users belong to each" },
 
             // Reports
             new() { PageKey = "reports", PageName = "Reports Dashboard", Category = "Reports", Description = "View practice reports" },

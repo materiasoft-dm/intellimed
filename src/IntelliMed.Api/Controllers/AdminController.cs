@@ -1,4 +1,5 @@
 using IntelliMed.Core.DTOs;
+using IntelliMed.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -17,16 +18,38 @@ public class AdminController : ControllerBase
 {
     private readonly UserManager<IdentityCore.ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly IClinicRepository _clinicRepository;
     private readonly ILogger<AdminController> _logger;
 
     public AdminController(
         UserManager<IdentityCore.ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
+        IClinicRepository clinicRepository,
         ILogger<AdminController> logger)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _clinicRepository = clinicRepository;
         _logger = logger;
+    }
+
+    private async Task<UserDto> ToUserDtoAsync(IdentityCore.ApplicationUser user, IList<string> roles)
+    {
+        var clinics = (await _clinicRepository.GetMyClinicsAsync(user.Id)).ToList();
+        return new UserDto
+        {
+            Id = user.Id,
+            Email = user.Email ?? string.Empty,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            FullName = user.FullName,
+            Roles = roles,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt,
+            ClinicIds = clinics.Select(c => c.Id).ToList(),
+            ClinicNames = clinics.Select(c => c.Name).ToList()
+        };
     }
 
     // =========================================================================
@@ -46,18 +69,7 @@ public class AdminController : ControllerBase
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            userDtos.Add(new UserDto
-            {
-                Id = user.Id,
-                Email = user.Email ?? string.Empty,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                FullName = user.FullName,
-                Roles = roles.ToList(),
-                IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt,
-                LastLoginAt = user.LastLoginAt
-            });
+            userDtos.Add(await ToUserDtoAsync(user, roles.ToList()));
         }
 
         return Ok(userDtos);
@@ -76,18 +88,7 @@ public class AdminController : ControllerBase
             return NotFound(new UserManagementResponse { Success = false, Message = "User not found." });
 
         var roles = await _userManager.GetRolesAsync(user);
-        return Ok(new UserDto
-        {
-            Id = user.Id,
-            Email = user.Email ?? string.Empty,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            FullName = user.FullName,
-            Roles = roles.ToList(),
-            IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt
-        });
+        return Ok(await ToUserDtoAsync(user, roles.ToList()));
     }
 
     /// <summary>
@@ -141,6 +142,12 @@ public class AdminController : ControllerBase
             await _userManager.AddToRolesAsync(user, request.Roles);
         }
 
+        // Assign clinics
+        if (request.ClinicIds.Count > 0)
+        {
+            await _clinicRepository.SetUserClinicsAsync(user.Id, request.ClinicIds);
+        }
+
         var assignedRoles = await _userManager.GetRolesAsync(user);
 
         _logger.LogInformation("User {Email} created successfully with roles: {Roles}",
@@ -150,18 +157,7 @@ public class AdminController : ControllerBase
         {
             Success = true,
             Message = "User created successfully.",
-            User = new UserDto
-            {
-                Id = user.Id,
-                Email = user.Email ?? string.Empty,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                FullName = user.FullName,
-                Roles = assignedRoles.ToList(),
-                IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt,
-                LastLoginAt = user.LastLoginAt
-            }
+            User = await ToUserDtoAsync(user, assignedRoles.ToList())
         });
     }
 
@@ -221,6 +217,12 @@ public class AdminController : ControllerBase
                 await _userManager.AddToRolesAsync(user, rolesToAdd);
         }
 
+        // Update clinic assignments if provided
+        if (request.ClinicIds != null)
+        {
+            await _clinicRepository.SetUserClinicsAsync(user.Id, request.ClinicIds);
+        }
+
         var finalRoles = await _userManager.GetRolesAsync(user);
 
         _logger.LogInformation("User {Email} updated. Active: {Active}, Roles: {Roles}",
@@ -230,18 +232,7 @@ public class AdminController : ControllerBase
         {
             Success = true,
             Message = "User updated successfully.",
-            User = new UserDto
-            {
-                Id = user.Id,
-                Email = user.Email ?? string.Empty,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                FullName = user.FullName,
-                Roles = finalRoles.ToList(),
-                IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt,
-                LastLoginAt = user.LastLoginAt
-            }
+            User = await ToUserDtoAsync(user, finalRoles.ToList())
         });
     }
 

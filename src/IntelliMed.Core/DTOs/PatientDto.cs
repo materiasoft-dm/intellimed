@@ -5,6 +5,7 @@ namespace IntelliMed.Core.DTOs;
 public class PatientDto
 {
     public int Id { get; set; }
+    public int ClinicId { get; set; }
     public PatientTypeEnum Type { get; set; }
 
     // Personal
@@ -120,6 +121,9 @@ public class PatientDto
 
 public class CreatePatientDto
 {
+    /// <summary>Set server-side from the caller's current clinic context (X-Clinic-Id header), not client-supplied.</summary>
+    public int ClinicId { get; set; }
+
     public PatientTypeEnum Type { get; set; } = PatientTypeEnum.Person;
 
     // Personal
@@ -318,6 +322,9 @@ public class PatientSearchDto
     public bool? IsActive { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
+
+    /// <summary>Set server-side from the caller's current clinic context (X-Clinic-Id header). Null = no clinic filtering.</summary>
+    public int? ClinicId { get; set; }
 
     // Basic
     public string? Surname { get; set; }

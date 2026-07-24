@@ -1,0 +1,215 @@
+@page "/clinic-settings"
+@layout MainLayout
+@using System.ComponentModel.DataAnnotations
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject IClinicSettingsService ClinicSettingsService
+
+<PageTitle>Clinic Settings - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Clinic Settings</h4>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading clinic settings...
+        </div>
+    </div>
+}
+else if (_forbidden)
+{
+    <div class="alert alert-danger">You don't have access to this page.</div>
+}
+else if (_settings == null)
+{
+    <div class="alert alert-danger">Failed to load clinic settings. Please try reloading the page.</div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header"><strong>Practice Information</strong></div>
+                <div class="card-body">
+                    <EditForm Model="@_model" OnValidSubmit="SaveAsync" FormName="clinicSettingsForm">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-3" />
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Practice Name <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="_model.PracticeName" class="form-control" />
+                                <ValidationMessage For="() => _model.PracticeName" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">ABN</label>
+                                <InputText @bind-Value="_model.Abn" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Phone</label>
+                                <InputText @bind-Value="_model.Phone" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Fax</label>
+                                <InputText @bind-Value="_model.Fax" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Email</label>
+                                <InputText @bind-Value="_model.Email" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Website</label>
+                                <InputText @bind-Value="_model.Website" class="form-control" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="mb-3">Address</h6>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-12">
+                                <label class="form-label small mb-0">Address</label>
+                                <InputText @bind-Value="_model.Address" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label small mb-0">Suburb</label>
+                                <InputText @bind-Value="_model.Suburb" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">Postcode</label>
+                                <InputText @bind-Value="_model.Postcode" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">State</label>
+                                <InputText @bind-Value="_model.State" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                            @if (_isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span><i class="bi bi-save me-1"></i>Save Changes</span>
+                            }
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_toastMessage != null)
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        <div class="toast show align-items-center @(_toastIsError ? "text-bg-danger" : "text-bg-success") border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@_toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="DismissToast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _forbidden;
+    private ClinicSettingsDto? _settings;
+    private ClinicSettingsFormModel _model = new();
+    private string? _toastMessage;
+    private bool _toastIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await ClinicSettingsService.GetAsync();
+        if (_settings == null)
+        {
+            _forbidden = true;
+        }
+        else
+        {
+            _model = new ClinicSettingsFormModel
+            {
+                PracticeName = _settings.PracticeName,
+                Abn = _settings.Abn,
+                Phone = _settings.Phone,
+                Fax = _settings.Fax,
+                Email = _settings.Email,
+                Website = _settings.Website,
+                Address = _settings.Address,
+                Suburb = _settings.Suburb,
+                Postcode = _settings.Postcode,
+                State = _settings.State
+            };
+        }
+        _isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new UpdateClinicSettingsRequest
+            {
+                PracticeName = _model.PracticeName,
+                Abn = _model.Abn,
+                Phone = _model.Phone,
+                Fax = _model.Fax,
+                Email = _model.Email,
+                Website = _model.Website,
+                Address = _model.Address,
+                Suburb = _model.Suburb,
+                Postcode = _model.Postcode,
+                State = _model.State
+            };
+
+            var success = await ClinicSettingsService.UpdateAsync(request);
+            ShowToast(success ? "Clinic settings updated successfully." : "Failed to update clinic settings.", !success);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void ShowToast(string message, bool isError = false)
+    {
+        _toastMessage = message;
+        _toastIsError = isError;
+    }
+
+    private void DismissToast()
+    {
+        _toastMessage = null;
+    }
+
+    private class ClinicSettingsFormModel
+    {
+        [Required]
+        public string PracticeName { get; set; } = string.Empty;
+        public string? Abn { get; set; }
+        public string? Phone { get; set; }
+        public string? Fax { get; set; }
+        public string? Email { get; set; }
+        public string? Website { get; set; }
+        public string? Address { get; set; }
+        public string? Suburb { get; set; }
+        public string? Postcode { get; set; }
+        public string? State { get; set; }
+    }
+}

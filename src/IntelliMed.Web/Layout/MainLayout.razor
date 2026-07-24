@@ -1,8 +1,11 @@
 ﻿@inherits LayoutComponentBase
+@using IntelliMed.Core.DTOs
 @using IntelliMed.Web.Services
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
 @inject IAdminService AdminService
+@inject IClinicService ClinicService
+@inject IClinicContextService ClinicContextService
 @inject ILoggerService Logger
 
 <div class="mdi-layout">
@@ -16,10 +19,51 @@
         </button>
         <span class="navbar-brand mb-0 h6 ms-2 d-none d-sm-inline">IntelliMed</span>
         <div class="flex-grow-1"></div>
-        <span class="navbar-text d-none d-sm-inline me-2 small">@GetCurrentUser()</span>
-        <button class="btn btn-primary border-0" @onclick="SignOut" title="Sign Out">
-            <i class="bi bi-box-arrow-right"></i>
-        </button>
+
+        @if (_myClinics.Count > 0)
+        {
+            <div class="dropdown me-2">
+                <button class="btn btn-outline-secondary border-0 dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-building"></i>
+                    <span class="d-none d-sm-inline small">@(_currentClinicName ?? "Select Clinic")</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    @foreach (var clinic in _myClinics)
+                    {
+                        <li>
+                            <button class="dropdown-item d-flex align-items-center justify-content-between @(clinic.Id == _currentClinicId ? "active" : "")"
+                                    type="button" @onclick="() => RequestSwitchClinic(clinic)">
+                                @clinic.Name
+                                @if (clinic.Id == _currentClinicId)
+                                {
+                                    <i class="bi bi-check-lg ms-2"></i>
+                                }
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="dropdown">
+            <button class="btn btn-primary border-0 dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person-circle"></i>
+                <span class="d-none d-sm-inline small">@GetCurrentUser()</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="/profile"><i class="bi bi-person-gear me-2"></i>Profile Settings</a></li>
+                @if (_accessiblePages.Contains("clinic-settings"))
+                {
+                    <li><a class="dropdown-item" href="/clinic-settings"><i class="bi bi-building me-2"></i>Clinic Settings</a></li>
+                }
+                @if (_accessiblePages.Contains("clinic-manager"))
+                {
+                    <li><a class="dropdown-item" href="/clinic-manager"><i class="bi bi-diagram-3 me-2"></i>Clinic Manager</a></li>
+                }
+                <li><hr class="dropdown-divider" /></li>
+                <li><button class="dropdown-item" type="button" @onclick="SignOut"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</button></li>
+            </ul>
+        </div>
     </nav>
 
     <div class="mdi-body">
@@ -131,6 +175,33 @@
     </div>
 </div>
 
+@* =========================================================================
+   SWITCH CLINIC CONFIRMATION MODAL
+   ========================================================================= *@
+@if (_switchTargetClinic != null)
+{
+    <div class="modal-backdrop fade show" style="display:block;"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Switch Clinic</h5>
+                    <button type="button" class="btn-close" @onclick="CancelSwitchClinic" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Switch to <strong>@_switchTargetClinic.Name</strong>? Patient, appointment, and invoice lists will reload for this clinic.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelSwitchClinic">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmSwitchClinic">
+                        <i class="bi bi-arrow-repeat me-1"></i> Switch
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private bool _drawerOpen = false;
     private bool _sidebarCollapsed = false;
@@ -138,12 +209,78 @@
     private string _currentUserEmail = "";
     private IList<string> _currentUserRoles = new List<string>();
     private HashSet<string> _accessiblePages = new(StringComparer.OrdinalIgnoreCase);
+    private List<MyClinicDto> _myClinics = new();
+    private int? _currentClinicId;
+    private string? _currentClinicName;
+    private MyClinicDto? _switchTargetClinic;
 
     protected override async Task OnInitializedAsync()
     {
+        // Restore the X-Clinic-Id header from local storage before anything else fetches data.
+        await ClinicContextService.RestoreAsync();
         await LoadCurrentUserInfo();
         await LoadCurrentUserRoles();
         await LoadAccessiblePages();
+        await LoadMyClinics();
+    }
+
+    private async Task LoadMyClinics()
+    {
+        try
+        {
+            var isAuth = await AuthService.IsAuthenticatedAsync();
+            if (!isAuth) return;
+
+            var clinics = await ClinicService.GetMyClinicsAsync();
+            if (clinics == null) return;
+
+            _myClinics = clinics;
+            _currentClinicId = await ClinicContextService.GetCurrentClinicIdAsync();
+
+            // The stored clinic (possibly left over from a different user's session on this
+            // browser) must actually belong to THIS user, or every request would be scoped to
+            // a clinic they don't have access to.
+            if (_currentClinicId != null && !_myClinics.Any(c => c.Id == _currentClinicId))
+            {
+                _currentClinicId = null;
+                await ClinicContextService.ClearAsync();
+            }
+
+            // Nothing selected yet: auto-select silently if the user only has one clinic.
+            if (_currentClinicId == null && _myClinics.Count == 1)
+            {
+                _currentClinicId = _myClinics[0].Id;
+                await ClinicContextService.SetCurrentClinicIdAsync(_currentClinicId.Value);
+            }
+
+            _currentClinicName = _myClinics.FirstOrDefault(c => c.Id == _currentClinicId)?.Name;
+        }
+        catch (Exception ex)
+        {
+            await Logger.LogErrorAsync(ex, "MainLayout.LoadMyClinics");
+        }
+    }
+
+    private void RequestSwitchClinic(MyClinicDto clinic)
+    {
+        if (clinic.Id == _currentClinicId) return;
+        _switchTargetClinic = clinic;
+    }
+
+    private void CancelSwitchClinic()
+    {
+        _switchTargetClinic = null;
+    }
+
+    private async Task ConfirmSwitchClinic()
+    {
+        if (_switchTargetClinic == null) return;
+
+        await ClinicContextService.SetCurrentClinicIdAsync(_switchTargetClinic.Id);
+        _switchTargetClinic = null;
+
+        // Force-reload so every page's data refetches under the new clinic context.
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
     }
 
     private async Task LoadCurrentUserInfo()

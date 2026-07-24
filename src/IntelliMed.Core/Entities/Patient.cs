@@ -4,6 +4,9 @@ public class Patient
 {
     public int Id { get; set; }
 
+    public int ClinicId { get; set; }
+    public Clinic? Clinic { get; set; }
+
     public PatientTypeEnum Type { get; set; } = PatientTypeEnum.Person;
 
     // Personal

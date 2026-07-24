@@ -74,6 +74,11 @@ public class PatientRepository : Repository<Patient>, IPatientRepository
     {
         var query = _dbSet.Include(p => p.HealthFund).AsQueryable();
 
+        if (search.ClinicId.HasValue)
+        {
+            query = query.Where(p => p.ClinicId == search.ClinicId.Value);
+        }
+
         if (!string.IsNullOrWhiteSpace(search.Query))
         {
             var searchTerm = search.Query.ToLower();

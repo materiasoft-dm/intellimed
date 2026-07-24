@@ -9,6 +9,7 @@ public static class EntityMapper
     public static PatientDto ToDto(Patient entity) => new()
     {
         Id = entity.Id,
+        ClinicId = entity.ClinicId,
         Type = entity.Type,
         FirstName = entity.FirstName,
         LastName = entity.LastName,
@@ -92,6 +93,7 @@ public static class EntityMapper
 
     public static Patient ToEntity(CreatePatientDto dto) => new()
     {
+        ClinicId = dto.ClinicId,
         Type = dto.Type,
         FirstName = dto.FirstName,
         LastName = dto.LastName,

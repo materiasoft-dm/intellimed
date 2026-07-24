@@ -5,6 +5,7 @@
 @using IntelliMed.Web.Services
 @inject IAdminService AdminService
 @inject IAuthService AuthService
+@inject IClinicService ClinicService
 @inject NavigationManager Navigation
 
 <PageTitle>User Management - IntelliMed</PageTitle>
@@ -264,6 +265,37 @@
                             </div>
                         </div>
 
+                        @* Clinic Assignment *@
+                        <h6 class="mt-4 mb-2">Clinic Assignment</h6>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                @if (_availableClinics != null)
+                                {
+                                    @if (_availableClinics.Count == 0)
+                                    {
+                                        <span class="text-muted small">No clinics configured yet.</span>
+                                    }
+                                    foreach (var clinic in _availableClinics.OrderBy(c => c.Name))
+                                    {
+                                        var clinicId = clinic.Id;
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                   checked="@_dialogModel.IsClinicSelected(clinicId)"
+                                                   @onchange="(ChangeEventArgs e) => _dialogModel.ToggleClinic(clinicId, (bool)e.Value!)"
+                                                   id="clinic_@clinicId" />
+                                            <label class="form-check-label" for="clinic_@clinicId">
+                                                @clinic.Name
+                                            </label>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Loading clinics...</span>
+                                }
+                            </div>
+                        </div>
+
                         @if (_isEditing)
                         {
                             <div class="form-check form-switch mt-4">
@@ -274,21 +306,22 @@
                                 <label class="form-check-label" for="activeSwitch">Active Account</label>
                             </div>
                         }
+
+                        <div class="modal-footer px-0 pb-0">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_dialogSaving">
+                                @if (_dialogSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <span>@(_isEditing ? "Save Changes" : "Create User")</span>
+                                }
+                            </button>
+                        </div>
                     </EditForm>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
-                    <button type="submit" form="userDialogForm" class="btn btn-primary" disabled="@_dialogSaving">
-                        @if (_dialogSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                            <span>Saving...</span>
-                        }
-                        else
-                        {
-                            <span>@(_isEditing ? "Save Changes" : "Create User")</span>
-                        }
-                    </button>
                 </div>
             </div>
         </div>
@@ -397,6 +430,7 @@
     // =========================================================================
     private List<UserDto>? _users;
     private List<RoleDto>? _availableRoles;
+    private List<MyClinicDto>? _availableClinics;
     private string _filter = string.Empty;
     private bool _isLoading = true;
     private string? _error;
@@ -453,6 +487,19 @@
     {
         await LoadUsers();
         await LoadRoles();
+        await LoadClinics();
+    }
+
+    private async Task LoadClinics()
+    {
+        try
+        {
+            _availableClinics = await ClinicService.GetLookupAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"LoadClinics error: {ex.Message}");
+        }
     }
 
     private async Task LoadUsers()
@@ -595,7 +642,7 @@
     {
         _isEditing = false;
         _editingUser = null;
-        _dialogModel = new UserDialogModel();
+        _dialogModel = new UserDialogModel { IsEditing = false };
         _dialogSaving = false;
         _showDialogPassword = false;
         _dialogVisible = true;
@@ -610,11 +657,13 @@
         _editingUser = user;
         _dialogModel = new UserDialogModel
         {
+            IsEditing = true,
             FirstName = user.FirstName,
             LastName = user.LastName,
             Email = user.Email,
             IsActive = user.IsActive,
-            SelectedRoles = user.Roles.ToList()
+            SelectedRoles = user.Roles.ToList(),
+            SelectedClinics = user.ClinicIds.ToList()
         };
         _dialogSaving = false;
         _showDialogPassword = false;
@@ -644,7 +693,8 @@
                     FirstName = _dialogModel.FirstName,
                     LastName = _dialogModel.LastName,
                     IsActive = _dialogModel.IsActive,
-                    Roles = _dialogModel.SelectedRoles
+                    Roles = _dialogModel.SelectedRoles,
+                    ClinicIds = _dialogModel.SelectedClinics
                 };
 
                 var result = await AdminService.UpdateUserAsync(_editingUser.Id, request);
@@ -668,7 +718,8 @@
                     Password = _dialogModel.Password,
                     FirstName = _dialogModel.FirstName,
                     LastName = _dialogModel.LastName,
-                    Roles = _dialogModel.SelectedRoles
+                    Roles = _dialogModel.SelectedRoles,
+                    ClinicIds = _dialogModel.SelectedClinics
                 };
 
                 var result = await AdminService.CreateUserAsync(request);
@@ -785,7 +836,7 @@
     // =========================================================================
     // DIALOG MODEL CLASS
     // =========================================================================
-    private class UserDialogModel
+    private class UserDialogModel : IValidatableObject
     {
         [Required]
         public string FirstName { get; set; } = string.Empty;
@@ -796,12 +847,16 @@
         [Required, EmailAddress]
         public string Email { get; set; } = string.Empty;
 
-        [Required, MinLength(8)]
+        /// <summary>Only validated as required when creating a new user — see Validate() below.</summary>
         public string Password { get; set; } = string.Empty;
+
+        /// <summary>Set by the caller before validation runs; true when editing an existing user (password not shown/required).</summary>
+        public bool IsEditing { get; set; }
 
         public bool IsActive { get; set; } = true;
 
         public List<string> SelectedRoles { get; set; } = new();
+        public List<int> SelectedClinics { get; set; } = new();
 
         public bool IsRoleSelected(string role)
         {
@@ -814,6 +869,29 @@
                 SelectedRoles.Add(role);
             else if (!isChecked && SelectedRoles.Contains(role))
                 SelectedRoles.Remove(role);
+        }
+
+        public bool IsClinicSelected(int clinicId)
+        {
+            return SelectedClinics.Contains(clinicId);
+        }
+
+        public void ToggleClinic(int clinicId, bool isChecked)
+        {
+            if (isChecked && !SelectedClinics.Contains(clinicId))
+                SelectedClinics.Add(clinicId);
+            else if (!isChecked && SelectedClinics.Contains(clinicId))
+                SelectedClinics.Remove(clinicId);
+        }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (!IsEditing && Password.Length < 8)
+            {
+                yield return new ValidationResult(
+                    "Password must be at least 8 characters.",
+                    new[] { nameof(Password) });
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using IntelliMed.Core.DTOs;
+using IntelliMed.Core.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -15,17 +16,20 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<IdentityCore.ApplicationUser> _userManager;
     private readonly SignInManager<IdentityCore.ApplicationUser> _signInManager;
+    private readonly IProviderGroupRepository _providerGroupRepository;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         UserManager<IdentityCore.ApplicationUser> userManager,
         SignInManager<IdentityCore.ApplicationUser> signInManager,
+        IProviderGroupRepository providerGroupRepository,
         IConfiguration configuration,
         ILogger<AuthController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _providerGroupRepository = providerGroupRepository;
         _configuration = configuration;
         _logger = logger;
     }
@@ -175,6 +179,106 @@ public class AuthController : ControllerBase
             FullName = user.FullName,
             Roles = roles.ToList()
         });
+    }
+
+    /// <summary>
+    /// Get the current authenticated user's own editable profile.
+    /// </summary>
+    [HttpGet("me/profile")]
+    [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserProfileDto>> GetMyProfile()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized();
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var group = user.GroupId.HasValue ? await _providerGroupRepository.GetByIdAsync(user.GroupId.Value) : null;
+
+        return Ok(new UserProfileDto
+        {
+            Email = user.Email ?? string.Empty,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Roles = roles.ToList(),
+            Title = user.Title,
+            MiddleName = user.MiddleName,
+            MobilePhone = user.MobilePhone,
+            BusinessHoursPhone = user.BusinessHoursPhone,
+            Fax = user.Fax,
+            Qualifications = user.Qualifications,
+            Specialty = user.Specialty,
+            ProviderNumber = user.ProviderNumber,
+            AhpraNumber = user.AhpraNumber,
+            HpiiNumber = user.HpiiNumber,
+            Note = user.Note,
+            VocationallyRegistered = user.VocationallyRegistered,
+            InternalProvider = user.InternalProvider,
+            EPrescribingEnabled = user.EPrescribingEnabled,
+            GroupId = user.GroupId,
+            GroupName = group?.Name,
+            ResidentialAddress = user.ResidentialAddress,
+            ResidentialSuburb = user.ResidentialSuburb,
+            ResidentialPostcode = user.ResidentialPostcode,
+            ResidentialState = user.ResidentialState,
+            PostalSameAsResidential = user.PostalSameAsResidential,
+            PostalAddress = user.PostalAddress,
+            PostalSuburb = user.PostalSuburb,
+            PostalPostcode = user.PostalPostcode,
+            PostalState = user.PostalState
+        });
+    }
+
+    /// <summary>
+    /// Update the current authenticated user's own profile.
+    /// </summary>
+    [HttpPut("me/profile")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateProfileRequest request)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized();
+
+        user.FirstName = request.FirstName;
+        user.LastName = request.LastName;
+        user.Title = request.Title;
+        user.MiddleName = request.MiddleName;
+        user.MobilePhone = request.MobilePhone;
+        user.BusinessHoursPhone = request.BusinessHoursPhone;
+        user.Fax = request.Fax;
+        user.Qualifications = request.Qualifications;
+        user.Specialty = request.Specialty;
+        user.ProviderNumber = request.ProviderNumber;
+        user.AhpraNumber = request.AhpraNumber;
+        user.HpiiNumber = request.HpiiNumber;
+        user.Note = request.Note;
+        user.VocationallyRegistered = request.VocationallyRegistered;
+        user.InternalProvider = request.InternalProvider;
+        user.EPrescribingEnabled = request.EPrescribingEnabled;
+        user.GroupId = request.GroupId;
+        user.ResidentialAddress = request.ResidentialAddress;
+        user.ResidentialSuburb = request.ResidentialSuburb;
+        user.ResidentialPostcode = request.ResidentialPostcode;
+        user.ResidentialState = request.ResidentialState;
+        user.PostalSameAsResidential = request.PostalSameAsResidential;
+        user.PostalAddress = request.PostalSameAsResidential ? request.ResidentialAddress : request.PostalAddress;
+        user.PostalSuburb = request.PostalSameAsResidential ? request.ResidentialSuburb : request.PostalSuburb;
+        user.PostalPostcode = request.PostalSameAsResidential ? request.ResidentialPostcode : request.PostalPostcode;
+        user.PostalState = request.PostalSameAsResidential ? request.ResidentialState : request.PostalState;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+                ModelState.AddModelError(error.Code, error.Description);
+            return BadRequest(ModelState);
+        }
+
+        return NoContent();
     }
 
     private async Task<string> GenerateJwtTokenAsync(IdentityCore.ApplicationUser user, IList<string> roles)

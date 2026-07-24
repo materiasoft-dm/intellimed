@@ -14,6 +14,8 @@ public interface IAuthService
     string? GetCurrentUserName();
     string? GetToken();
     Task<CurrentUserResponse?> GetCurrentUserAsync();
+    Task<UserProfileDto?> GetMyProfileAsync();
+    Task<bool> UpdateMyProfileAsync(UpdateProfileRequest request);
 }
 
 public class AuthService : IAuthService
@@ -141,6 +143,47 @@ public class AuthService : IAuthService
         catch
         {
             return new CurrentUserResponse { IsAuthenticated = false };
+        }
+    }
+
+    public async Task<UserProfileDto?> GetMyProfileAsync()
+    {
+        try
+        {
+            await AttachTokenAsync();
+            var response = await _httpClient.GetAsync("api/auth/me/profile");
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<UserProfileDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"GetMyProfile error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateMyProfileAsync(UpdateProfileRequest request)
+    {
+        try
+        {
+            await AttachTokenAsync();
+            var response = await _httpClient.PutAsJsonAsync("api/auth/me/profile", request);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"UpdateMyProfile error: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task AttachTokenAsync()
+    {
+        var token = await _storage.GetItemAsync(TokenKey);
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         }
     }
 }

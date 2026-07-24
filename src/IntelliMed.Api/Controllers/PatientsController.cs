@@ -24,6 +24,7 @@ public class PatientsController : ControllerBase
     [ProducesResponseType(typeof(PagedResult<PatientDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Search([FromQuery] PatientSearchDto search)
     {
+        search.ClinicId = GetCurrentClinicId();
         var (items, totalCount) = await _patientRepository.GetPagedAsync(search);
         return Ok(new PagedResult<PatientDto>
         {
@@ -45,6 +46,7 @@ public class PatientsController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        dto.ClinicId = GetCurrentClinicId() ?? 1;
         var id = await _patientRepository.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
@@ -94,5 +96,20 @@ public class PatientsController : ControllerBase
 
         await _patientRepository.ArchiveAsync(id);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Reads the caller's currently selected clinic from the X-Clinic-Id header set by the Web client.
+    /// Null/missing (e.g. existing tests that don't send it) means "no clinic filtering" for search,
+    /// and defaults to clinic 1 for create.
+    /// </summary>
+    private int? GetCurrentClinicId()
+    {
+        if (Request.Headers.TryGetValue("X-Clinic-Id", out var value) &&
+            int.TryParse(value.ToString(), out var clinicId))
+        {
+            return clinicId;
+        }
+        return null;
     }
 }
