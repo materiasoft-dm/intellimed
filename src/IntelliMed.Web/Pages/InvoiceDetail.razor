@@ -1,0 +1,292 @@
+@page "/invoices/edit/{Id:int}"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IInvoiceService InvoiceService
+@inject NavigationManager NavManager
+
+<PageTitle>Invoice @(_invoice?.InvoiceNumber) - IntelliMed</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-3">
+        <div class="card-body py-2">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading invoice...
+        </div>
+    </div>
+}
+else if (_invoice == null)
+{
+    <div class="alert alert-danger">Invoice not found.</div>
+}
+else
+{
+    <div class="d-flex align-items-center justify-content-between mb-1">
+        <h5 class="mb-0 small">🧾 Invoice @_invoice.InvoiceNumber — @_invoice.ClientName</h5>
+        @if (!string.IsNullOrEmpty(_statusMessage))
+        {
+            <span class="small @(_statusIsError ? "text-danger" : "text-success")">@_statusMessage</span>
+        }
+    </div>
+
+    <div class="row g-2 mb-2">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header py-1"><strong>Details</strong></div>
+                <div class="card-body py-2">
+                    <div class="row g-1 small">
+                        <div class="col-6 text-muted">Client</div>
+                        <div class="col-6">@_invoice.ClientName</div>
+                        <div class="col-6 text-muted">Provider</div>
+                        <div class="col-6">@(_invoice.PractitionerName ?? "-")</div>
+                        <div class="col-6 text-muted">Account Type</div>
+                        <div class="col-6">@_invoice.AccountTypeName</div>
+                        <div class="col-6 text-muted">Invoice Date</div>
+                        <div class="col-6">@_invoice.InvoiceDate.ToString("dd/MM/yyyy")</div>
+                        <div class="col-6 text-muted">Due Date</div>
+                        <div class="col-6">@_invoice.DueDate.ToString("dd/MM/yyyy")</div>
+                        @if (!string.IsNullOrWhiteSpace(_invoice.Notes))
+                        {
+                            <div class="col-6 text-muted">Notes</div>
+                            <div class="col-6">@_invoice.Notes</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header py-1"><strong>Status</strong></div>
+                <div class="card-body py-2">
+                    <div class="row g-1 small mb-2">
+                        <div class="col-6 text-muted">Total</div>
+                        <div class="col-6">@_invoice.TotalAmount.ToString("C")</div>
+                        <div class="col-6 text-muted">Paid</div>
+                        <div class="col-6">@_invoice.AmountPaid.ToString("C")</div>
+                        <div class="col-6 text-muted fw-semibold">Owing</div>
+                        <div class="col-6 fw-semibold">@_invoice.AmountOwing.ToString("C")</div>
+                    </div>
+                    <label class="form-label small mb-0">Change Status</label>
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" @bind="_selectedStatus">
+                            @foreach (var status in Enum.GetValues<InvoiceStatus>())
+                            {
+                                <option value="@status">@status</option>
+                            }
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" @onclick="UpdateStatusAsync" disabled="@(_selectedStatus == _invoice.Status)">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-2">
+        <div class="card-header py-1"><strong>Line Items</strong></div>
+        <div class="card-body py-2">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:70px">Item#</th>
+                        <th>Description</th>
+                        <th style="width:110px">Service Date</th>
+                        <th style="width:60px">Qty</th>
+                        <th style="width:100px">Unit Price</th>
+                        <th style="width:100px">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _invoice.Items)
+                    {
+                        <tr>
+                            <td>@(item.ItemNumber ?? "-")</td>
+                            <td>@item.Description</td>
+                            <td>@(item.ServiceDate?.ToString("dd/MM/yyyy") ?? "-")</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.UnitPrice.ToString("C")</td>
+                            <td>@item.TotalPrice.ToString("C")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="text-end fw-semibold">Total</td>
+                        <td class="fw-semibold">@_invoice.TotalAmount.ToString("C")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-2">
+        <div class="card-header py-1 d-flex justify-content-between align-items-center">
+            <strong>Payments</strong>
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenPaymentModal" disabled="@(_invoice.AmountOwing <= 0)">+ Record Payment</button>
+        </div>
+        <div class="card-body py-2">
+            @if (_invoice.Payments.Count == 0)
+            {
+                <div class="text-muted small">No payments recorded yet.</div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:110px">Date</th>
+                            <th style="width:120px">Method</th>
+                            <th>Reference</th>
+                            <th style="width:100px">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var payment in _invoice.Payments)
+                        {
+                            <tr>
+                                <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                <td>@payment.MethodName</td>
+                                <td>@(payment.Reference ?? "-")</td>
+                                <td>@payment.Amount.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end">
+        <button type="button" class="btn btn-secondary" @onclick="@(() => NavManager.NavigateTo("/invoices"))">Close</button>
+    </div>
+}
+
+@if (_showPaymentModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Record Payment</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showPaymentModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small mb-0">Amount</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="_paymentAmount" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-0">Method</label>
+                            <select class="form-select form-select-sm" @bind="_paymentMethod">
+                                @foreach (var method in Enum.GetValues<PaymentMethod>())
+                                {
+                                    <option value="@method">@method</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-0">Date</label>
+                            <input type="date" class="form-control form-control-sm" @bind="_paymentDate" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-0">Reference</label>
+                            <input class="form-control form-control-sm" @bind="_paymentReference" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showPaymentModal = false)">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-primary" @onclick="SavePaymentAsync">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private InvoiceDto? _invoice;
+    private bool _isLoading = true;
+    private InvoiceStatus _selectedStatus;
+
+    private bool _showPaymentModal;
+    private decimal _paymentAmount;
+    private PaymentMethod _paymentMethod = PaymentMethod.Cash;
+    private DateTime _paymentDate = DateTime.Today;
+    private string? _paymentReference;
+
+    private string? _statusMessage;
+    private bool _statusIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _invoice = await InvoiceService.GetInvoiceByIdAsync(Id);
+        if (_invoice != null)
+        {
+            _selectedStatus = _invoice.Status;
+        }
+        _isLoading = false;
+    }
+
+    private async Task UpdateStatusAsync()
+    {
+        if (_invoice == null) return;
+        var success = await InvoiceService.UpdateInvoiceStatusAsync(_invoice.Id, _selectedStatus);
+        if (success)
+        {
+            ShowStatus("Status updated.", false);
+            await LoadAsync();
+        }
+        else
+        {
+            ShowStatus("Failed to update status.", true);
+        }
+    }
+
+    private void OpenPaymentModal()
+    {
+        _paymentAmount = _invoice?.AmountOwing ?? 0;
+        _paymentMethod = PaymentMethod.Cash;
+        _paymentDate = DateTime.Today;
+        _paymentReference = null;
+        _showPaymentModal = true;
+    }
+
+    private async Task SavePaymentAsync()
+    {
+        if (_invoice == null) return;
+        var success = await InvoiceService.AddPaymentAsync(_invoice.Id, new CreatePaymentDto
+        {
+            Amount = _paymentAmount,
+            Method = _paymentMethod,
+            PaymentDate = _paymentDate,
+            Reference = _paymentReference
+        });
+
+        _showPaymentModal = false;
+        if (success)
+        {
+            ShowStatus("Payment recorded.", false);
+            await LoadAsync();
+        }
+        else
+        {
+            ShowStatus("Failed to record payment.", true);
+        }
+    }
+
+    private void ShowStatus(string message, bool isError)
+    {
+        _statusMessage = message;
+        _statusIsError = isError;
+    }
+}

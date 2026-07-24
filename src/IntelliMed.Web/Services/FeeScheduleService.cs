@@ -1,0 +1,104 @@
+using System.Net.Http.Json;
+using IntelliMed.Core.DTOs;
+
+namespace IntelliMed.Web.Services;
+
+public class FeeScheduleService : IFeeScheduleService
+{
+    private readonly HttpClient _httpClient;
+
+    public FeeScheduleService(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    public async Task<PagedResult<FeeScheduleDto>> SearchFeeSchedulesAsync(FeeScheduleSearchDto search)
+    {
+        var args = new List<string>
+        {
+            $"page={search.Page}",
+            $"pageSize={search.PageSize}",
+            $"includeArchived={search.IncludeArchived}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(search.Code)) args.Add($"code={Uri.EscapeDataString(search.Code)}");
+        if (!string.IsNullOrWhiteSpace(search.Description)) args.Add($"description={Uri.EscapeDataString(search.Description)}");
+
+        var uri = "api/fee-schedules/search?" + string.Join("&", args);
+        return await _httpClient.GetFromJsonAsync<PagedResult<FeeScheduleDto>>(uri)
+            ?? new PagedResult<FeeScheduleDto>();
+    }
+
+    public async Task<List<FeeScheduleDto>> GetAllActiveAsync()
+    {
+        var results = await _httpClient.GetFromJsonAsync<List<FeeScheduleDto>>("api/fee-schedules/active");
+        return results ?? new List<FeeScheduleDto>();
+    }
+
+    public async Task<FeeScheduleDto?> GetFeeScheduleByIdAsync(int id)
+    {
+        var response = await _httpClient.GetAsync($"api/fee-schedules/{id}");
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<FeeScheduleDto>();
+    }
+
+    private record CreateResult(int Id);
+
+    public async Task<int?> CreateFeeScheduleAsync(CreateFeeScheduleDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/fee-schedules", dto);
+            if (!response.IsSuccessStatusCode) return null;
+            var result = await response.Content.ReadFromJsonAsync<CreateResult>();
+            return result?.Id;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Create fee schedule error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateFeeScheduleAsync(int id, UpdateFeeScheduleDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/fee-schedules/{id}", dto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Update fee schedule error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> ArchiveFeeScheduleAsync(int id)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/fee-schedules/{id}/archive", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Archive fee schedule error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteFeeScheduleAsync(int id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/fee-schedules/{id}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Delete fee schedule error: {ex.Message}");
+            return false;
+        }
+    }
+}

@@ -1,0 +1,251 @@
+@page "/invoices"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IInvoiceService InvoiceService
+@inject IClientService ClientService
+@inject NavigationManager Navigation
+
+<PageTitle>Invoice Search - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Invoice Search</h4>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger d-flex align-items-center mb-4">
+        <i class="bi bi-exclamation-triangle me-2"></i> @_error
+        <button class="btn btn-outline-danger btn-sm ms-auto" @onclick="RefreshAsync">Retry</button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-12 col-md-3">
+        <div class="card mb-4">
+            <div class="card-header"><strong>Filters</strong></div>
+            <div class="card-body" @onkeydown="HandleFilterKeyDown">
+                <div class="mb-2">
+                    <label class="form-label small mb-0">Client</label>
+                    <div class="input-group input-group-sm">
+                        <input class="form-control form-control-sm" value="@_clientDisplayName" readonly placeholder="Any" />
+                        <button type="button" class="btn btn-outline-secondary" @onclick="OpenClientPicker">Find</button>
+                        @if (_filter.ClientId.HasValue)
+                        {
+                            <button type="button" class="btn btn-outline-secondary" @onclick="ClearClient">x</button>
+                        }
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small mb-0">Status</label>
+                    <select class="form-select form-select-sm" @bind="_filter.Status">
+                        <option value="">All</option>
+                        @foreach (var status in Enum.GetValues<InvoiceStatus>())
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small mb-0">From</label>
+                    <input type="date" class="form-control form-control-sm" @bind="_filter.FromDate" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small mb-0">To</label>
+                    <input type="date" class="form-control form-control-sm" @bind="_filter.ToDate" />
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-primary" @onclick="FindAsync">Find</button>
+                <button type="button" class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-9 mt-3 mt-md-0">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between py-2">
+                <span class="small text-muted"><i class="bi bi-receipt me-1"></i> Total Invoices: <strong>@_totalCount</strong></span>
+                <button class="btn btn-sm btn-outline-primary" @onclick="RefreshAsync">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                </button>
+            </div>
+
+            <RadzenDataGrid @ref="_grid" TItem="InvoiceDto" Data="@_invoices" Count="@_totalCount"
+                             LoadData="@LoadDataAsync" IsLoading="@_isLoading"
+                             AllowPaging="true" PageSize="@_pageSize" PagerHorizontalAlign="HorizontalAlign.Center"
+                             EmptyText="No invoices found.">
+                <Columns>
+                    <RadzenDataGridColumn TItem="InvoiceDto" Property="InvoiceNumber" Title="Invoice #" Width="120px">
+                        <Template Context="i">
+                            <a href="javascript:void(0)" class="link-primary" @onclick="() => ViewInvoice(i)">@i.InvoiceNumber</a>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="InvoiceDto" Property="ClientName" Title="Client" Width="180px" />
+                    <RadzenDataGridColumn TItem="InvoiceDto" Property="InvoiceDate" Title="Date" Width="100px" FormatString="{0:dd/MM/yyyy}" />
+                    <RadzenDataGridColumn TItem="InvoiceDto" Property="DueDate" Title="Due" Width="100px" FormatString="{0:dd/MM/yyyy}" />
+                    <RadzenDataGridColumn TItem="InvoiceDto" Property="StatusName" Title="Status" Width="110px" />
+                    <RadzenDataGridColumn TItem="InvoiceDto" Property="TotalAmount" Title="Total" Width="100px" FormatString="{0:C}" />
+                    <RadzenDataGridColumn TItem="InvoiceDto" Property="AmountOwing" Title="Owing" Width="100px" FormatString="{0:C}" />
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+
+        <div class="d-flex justify-content-end mt-3">
+            <button class="btn btn-sm btn-primary" @onclick="@(() => Navigation.NavigateTo("/invoices/new"))">
+                <i class="bi bi-plus-lg"></i> New Invoice
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (_showClientPickerModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Find Client</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showClientPickerModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <input class="form-control form-control-sm mb-2" placeholder="Search by name..."
+                           @bind="_clientSearchTerm" @bind:event="oninput" @bind:after="SearchClientCandidatesAsync" />
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        @if (_clientSearchResults.Count == 0)
+                        {
+                            <div class="text-muted small">No matches.</div>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var candidate in _clientSearchResults)
+                                {
+                                    <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectClient(candidate))">
+                                        @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showClientPickerModal = false)">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private RadzenDataGrid<InvoiceDto>? _grid;
+    private List<InvoiceDto> _invoices = new();
+    private int _totalCount;
+    private bool _isLoading;
+    private string? _error;
+    private int _pageSize = 10;
+
+    private InvoiceSearchDto _filter = new();
+    private string? _clientDisplayName;
+
+    private bool _showClientPickerModal;
+    private string _clientSearchTerm = string.Empty;
+    private List<ClientDto> _clientSearchResults = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _grid != null)
+        {
+            await _grid.Reload();
+        }
+    }
+
+    private async Task LoadDataAsync(LoadDataArgs args)
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            _filter.Page = (args.Skip ?? 0) / _pageSize + 1;
+            _filter.PageSize = _pageSize;
+
+            var result = await InvoiceService.SearchInvoicesAsync(_filter);
+            _invoices = result.Items.ToList();
+            _totalCount = result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task FindAsync()
+    {
+        await LoadDataAsync(new LoadDataArgs { Skip = 0, Top = _pageSize });
+        if (_grid != null)
+        {
+            await _grid.GoToPage(0);
+        }
+    }
+
+    private async Task HandleFilterKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await FindAsync();
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_grid != null)
+        {
+            await _grid.Reload();
+        }
+    }
+
+    private void ClearFilters()
+    {
+        _filter = new InvoiceSearchDto();
+        _clientDisplayName = null;
+    }
+
+    private void OpenClientPicker()
+    {
+        _clientSearchTerm = string.Empty;
+        _clientSearchResults = new();
+        _showClientPickerModal = true;
+    }
+
+    private async Task SearchClientCandidatesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_clientSearchTerm))
+        {
+            _clientSearchResults = new();
+            return;
+        }
+        var result = await ClientService.SearchClientsAsync(new ClientSearchDto { Query = _clientSearchTerm, PageSize = 10 });
+        _clientSearchResults = result.Items.ToList();
+    }
+
+    private void SelectClient(ClientDto candidate)
+    {
+        _filter.ClientId = candidate.Id;
+        _clientDisplayName = candidate.FullName;
+        _showClientPickerModal = false;
+    }
+
+    private void ClearClient()
+    {
+        _filter.ClientId = null;
+        _clientDisplayName = null;
+    }
+
+    private void ViewInvoice(InvoiceDto invoice)
+    {
+        Navigation.NavigateTo($"/invoices/edit/{invoice.Id}");
+    }
+}

@@ -8,6 +8,10 @@ public class InvoiceDto
     public int ClientId { get; set; }
     public string ClientName { get; set; } = string.Empty;
     public int? AppointmentId { get; set; }
+    public int? PractitionerId { get; set; }
+    public string? PractitionerName { get; set; }
+    public AccountTypeEnum AccountType { get; set; }
+    public string AccountTypeName => AccountType.ToString();
     public string InvoiceNumber { get; set; } = string.Empty;
     public DateTime InvoiceDate { get; set; }
     public DateTime DueDate { get; set; }
@@ -27,7 +31,10 @@ public class InvoiceItemDto
 {
     public int Id { get; set; }
     public int InvoiceId { get; set; }
+    public int? BillingItemId { get; set; }
+    public string? ItemNumber { get; set; }
     public string Description { get; set; } = string.Empty;
+    public DateTime? ServiceDate { get; set; }
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal TotalPrice => Quantity * UnitPrice;
@@ -37,6 +44,8 @@ public class PaymentDto
 {
     public int Id { get; set; }
     public int InvoiceId { get; set; }
+    public string? InvoiceNumber { get; set; }
+    public string? ClientName { get; set; }
     public decimal Amount { get; set; }
     public PaymentMethod Method { get; set; }
     public string MethodName => Method.ToString();
@@ -46,8 +55,11 @@ public class PaymentDto
 
 public class CreateInvoiceDto
 {
+    public int ClinicId { get; set; }
     public int ClientId { get; set; }
     public int? AppointmentId { get; set; }
+    public int? PractitionerId { get; set; }
+    public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.PrivatePatient;
     public DateTime DueDate { get; set; }
     public string? Notes { get; set; }
     public List<CreateInvoiceItemDto> Items { get; set; } = new();
@@ -55,7 +67,9 @@ public class CreateInvoiceDto
 
 public class CreateInvoiceItemDto
 {
+    public int? BillingItemId { get; set; }
     public string Description { get; set; } = string.Empty;
+    public DateTime? ServiceDate { get; set; }
     public int Quantity { get; set; } = 1;
     public decimal UnitPrice { get; set; }
 }
@@ -71,10 +85,21 @@ public class CreatePaymentDto
 
 public class InvoiceSearchDto
 {
+    public int? ClinicId { get; set; }
     public int? ClientId { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
     public InvoiceStatus? Status { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+}
+
+public class PaymentSearchDto
+{
+    public int? ClinicId { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+    public PaymentMethod? Method { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
 }

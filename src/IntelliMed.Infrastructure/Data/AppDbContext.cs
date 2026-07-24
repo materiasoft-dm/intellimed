@@ -32,6 +32,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ClinicSettings> ClinicSettings => Set<ClinicSettings>();
     public DbSet<Clinic> Clinics => Set<Clinic>();
     public DbSet<UserClinic> UserClinics => Set<UserClinic>();
+    public DbSet<BillingItem> BillingItems => Set<BillingItem>();
+    public DbSet<FeeSchedule> FeeSchedules => Set<FeeSchedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -388,6 +390,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.AppointmentId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Practitioner)
+                .WithMany()
+                .HasForeignKey(e => e.PractitionerId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Clinic>()
                 .WithMany()
                 .HasForeignKey(e => e.ClinicId)
@@ -404,6 +410,39 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(i => i.Items)
                 .HasForeignKey(e => e.InvoiceId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.BillingItem)
+                .WithMany()
+                .HasForeignKey(e => e.BillingItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // BillingItem configuration
+        modelBuilder.Entity<BillingItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ItemNumber).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Category).HasMaxLength(10);
+            entity.Property(e => e.Group).HasMaxLength(10);
+            entity.Property(e => e.Description).IsRequired();
+            entity.HasIndex(e => e.ItemNumber).IsUnique();
+        });
+
+        // FeeSchedule configuration
+        modelBuilder.Entity<FeeSchedule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasOne(e => e.HealthFund)
+                .WithMany()
+                .HasForeignKey(e => e.HealthFundId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.FeeTable)
+                .WithMany()
+                .HasForeignKey(e => e.FeeTableId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Payment configuration

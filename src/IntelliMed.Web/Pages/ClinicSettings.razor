@@ -4,6 +4,7 @@
 @using IntelliMed.Core.DTOs
 @using IntelliMed.Web.Services
 @inject IClinicSettingsService ClinicSettingsService
+@inject IBillingItemService BillingItemService
 
 <PageTitle>Clinic Settings - IntelliMed</PageTitle>
 
@@ -109,6 +110,36 @@ else
                 </div>
             </div>
         </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header"><strong>Billing Item Catalog</strong></div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        Refreshes the invoice line-item picker from the free, official Medicare
+                        Benefits Schedule (MBS) published quarterly by the Department of Health.
+                    </p>
+                    <button type="button" class="btn btn-outline-primary" disabled="@_isSyncing" @onclick="SyncBillingItemsAsync">
+                        @if (_isSyncing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Updating...</span>
+                        }
+                        else
+                        {
+                            <span><i class="bi bi-cloud-download me-1"></i>Update Fees &amp; Bill Items</span>
+                        }
+                    </button>
+                    @if (_lastSyncResult != null)
+                    {
+                        <div class="small text-muted mt-3">
+                            Last sync @_lastSyncResult.SyncedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"):
+                            @_lastSyncResult.Added added, @_lastSyncResult.Updated updated, @_lastSyncResult.Deactivated deactivated.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 }
 
@@ -127,9 +158,11 @@ else
 @code {
     private bool _isLoading = true;
     private bool _isSaving;
+    private bool _isSyncing;
     private bool _forbidden;
     private ClinicSettingsDto? _settings;
     private ClinicSettingsFormModel _model = new();
+    private BillingItemSyncResultDto? _lastSyncResult;
     private string? _toastMessage;
     private bool _toastIsError;
 
@@ -184,6 +217,28 @@ else
         finally
         {
             _isSaving = false;
+        }
+    }
+
+    private async Task SyncBillingItemsAsync()
+    {
+        _isSyncing = true;
+        try
+        {
+            var result = await BillingItemService.SyncAsync();
+            if (result != null)
+            {
+                _lastSyncResult = result;
+                ShowToast($"Billing items updated: {result.Added} added, {result.Updated} updated, {result.Deactivated} deactivated.");
+            }
+            else
+            {
+                ShowToast("Failed to update billing items.", true);
+            }
+        }
+        finally
+        {
+            _isSyncing = false;
         }
     }
 

@@ -44,6 +44,10 @@ builder.Services.AddScoped<IProviderGroupService, ProviderGroupService>();
 builder.Services.AddScoped<IClinicSettingsService, ClinicSettingsService>();
 builder.Services.AddScoped<IClinicContextService, ClinicContextService>();
 builder.Services.AddScoped<IClinicService, ClinicService>();
+builder.Services.AddScoped<IBillingItemService, BillingItemService>();
+builder.Services.AddScoped<IPractitionerService, PractitionerService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IFeeScheduleService, FeeScheduleService>();
 
 // Radzen DataGrid (column show/hide/reorder + server-side paging) for list pages
 builder.Services.AddRadzenComponents();

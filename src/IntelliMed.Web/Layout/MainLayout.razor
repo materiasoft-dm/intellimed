@@ -121,6 +121,12 @@
                 <a href="/invoices/payments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
                     <i class="bi bi-credit-card me-2"></i> <span class="mdi-nav-label">Payments</span>
                 </a>
+                @if (_accessiblePages.Contains("fee-schedules"))
+                {
+                    <a href="/fee-schedules" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-cash-stack me-2"></i> <span class="mdi-nav-label">Fee Schedules</span>
+                    </a>
+                }
 
                 @* Admin Section — conditional *@
                 @if (_accessiblePages.Contains("admin/users") || _accessiblePages.Contains("admin/roles"))

@@ -570,6 +570,9 @@ public static class EntityMapper
         ClientId = entity.ClientId,
         ClientName = entity.Client != null ? $"{entity.Client.FirstName} {entity.Client.LastName}" : string.Empty,
         AppointmentId = entity.AppointmentId,
+        PractitionerId = entity.PractitionerId,
+        PractitionerName = entity.Practitioner != null ? $"{entity.Practitioner.Title} {entity.Practitioner.FirstName} {entity.Practitioner.LastName}".Trim() : null,
+        AccountType = entity.AccountType,
         InvoiceNumber = entity.InvoiceNumber,
         InvoiceDate = entity.InvoiceDate,
         DueDate = entity.DueDate,
@@ -587,7 +590,10 @@ public static class EntityMapper
     {
         Id = entity.Id,
         InvoiceId = entity.InvoiceId,
+        BillingItemId = entity.BillingItemId,
+        ItemNumber = entity.BillingItem?.ItemNumber,
         Description = entity.Description,
+        ServiceDate = entity.ServiceDate,
         Quantity = entity.Quantity,
         UnitPrice = entity.UnitPrice
     };
@@ -596,6 +602,8 @@ public static class EntityMapper
     {
         Id = entity.Id,
         InvoiceId = entity.InvoiceId,
+        InvoiceNumber = entity.Invoice?.InvoiceNumber,
+        ClientName = entity.Invoice?.Client != null ? $"{entity.Invoice.Client.FirstName} {entity.Invoice.Client.LastName}" : null,
         Amount = entity.Amount,
         Method = entity.Method,
         Reference = entity.Reference,
@@ -604,8 +612,11 @@ public static class EntityMapper
 
     public static Invoice ToEntity(CreateInvoiceDto dto, string invoiceNumber) => new()
     {
+        ClinicId = dto.ClinicId,
         ClientId = dto.ClientId,
         AppointmentId = dto.AppointmentId,
+        PractitionerId = dto.PractitionerId,
+        AccountType = dto.AccountType,
         InvoiceNumber = invoiceNumber,
         InvoiceDate = DateTime.UtcNow,
         DueDate = dto.DueDate,
@@ -616,7 +627,9 @@ public static class EntityMapper
         CreatedAt = DateTime.UtcNow,
         Items = dto.Items.Select(i => new InvoiceItem
         {
+            BillingItemId = i.BillingItemId,
             Description = i.Description,
+            ServiceDate = i.ServiceDate,
             Quantity = i.Quantity,
             UnitPrice = i.UnitPrice
         }).ToList()
@@ -631,4 +644,58 @@ public static class EntityMapper
         PaymentDate = dto.PaymentDate,
         CreatedAt = DateTime.UtcNow
     };
+
+    // BillingItem mappings
+    public static BillingItemDto ToDto(BillingItem entity) => new()
+    {
+        Id = entity.Id,
+        ItemNumber = entity.ItemNumber,
+        Category = entity.Category,
+        Group = entity.Group,
+        Description = entity.Description,
+        ScheduleFee = entity.ScheduleFee,
+        Benefit100 = entity.Benefit100,
+        IsActive = entity.IsActive
+    };
+
+    // FeeSchedule mappings
+    public static FeeScheduleDto ToDto(FeeSchedule entity) => new()
+    {
+        Id = entity.Id,
+        Code = entity.Code,
+        Description = entity.Description,
+        Note = entity.Note,
+        HealthFundId = entity.HealthFundId,
+        HealthFundCode = entity.HealthFund?.Code,
+        FeeTableId = entity.FeeTableId,
+        FeeTableCode = entity.FeeTable?.Code,
+        RoundingType = entity.RoundingType,
+        IsArchived = entity.IsArchived,
+        CreatedAt = entity.CreatedAt,
+        UpdatedAt = entity.UpdatedAt
+    };
+
+    public static FeeSchedule ToEntity(CreateFeeScheduleDto dto) => new()
+    {
+        Code = dto.Code,
+        Description = dto.Description,
+        Note = dto.Note,
+        HealthFundId = dto.HealthFundId,
+        FeeTableId = dto.FeeTableId,
+        RoundingType = dto.RoundingType,
+        IsArchived = false,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    public static void UpdateEntity(FeeSchedule entity, UpdateFeeScheduleDto dto)
+    {
+        entity.Code = dto.Code;
+        entity.Description = dto.Description;
+        entity.Note = dto.Note;
+        entity.HealthFundId = dto.HealthFundId;
+        entity.FeeTableId = dto.FeeTableId;
+        entity.RoundingType = dto.RoundingType;
+        entity.IsArchived = dto.IsArchived;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
 }

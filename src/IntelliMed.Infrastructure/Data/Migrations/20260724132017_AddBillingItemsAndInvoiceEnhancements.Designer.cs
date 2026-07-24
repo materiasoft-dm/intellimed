@@ -3,6 +3,7 @@ using System;
 using IntelliMed.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IntelliMed.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724132017_AddBillingItemsAndInvoiceEnhancements")]
+    partial class AddBillingItemsAndInvoiceEnhancements
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.6");
@@ -1017,56 +1020,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("IntelliMed.Core.Entities.FeeSchedule", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("FeeTableId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("HealthFundId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsArchived")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RoundingType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("FeeTableId");
-
-                    b.HasIndex("HealthFundId");
-
-                    b.ToTable("FeeSchedules");
-                });
-
             modelBuilder.Entity("IntelliMed.Core.Entities.HealthFund", b =>
                 {
                     b.Property<int>("Id")
@@ -1793,23 +1746,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("Client");
 
                     b.Navigation("UserDefinedFieldType");
-                });
-
-            modelBuilder.Entity("IntelliMed.Core.Entities.FeeSchedule", b =>
-                {
-                    b.HasOne("IntelliMed.Core.Entities.FeeSchedule", "FeeTable")
-                        .WithMany()
-                        .HasForeignKey("FeeTableId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("IntelliMed.Core.Entities.HealthFund", "HealthFund")
-                        .WithMany()
-                        .HasForeignKey("HealthFundId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("FeeTable");
-
-                    b.Navigation("HealthFund");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.Invoice", b =>

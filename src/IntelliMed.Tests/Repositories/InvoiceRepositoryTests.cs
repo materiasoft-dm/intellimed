@@ -196,6 +196,117 @@ public class InvoiceRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task SearchAsync_WithClinicIdFilter_ReturnsOnlyThatClinicsInvoices()
+    {
+        // Arrange
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoices = new[]
+        {
+            new Invoice { ClinicId = 1, ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 100.00m },
+            new Invoice { ClinicId = 2, ClientId = client.Id, InvoiceNumber = "INV-002", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 200.00m }
+        };
+        _context.Invoices.AddRange(invoices);
+        await _context.SaveChangesAsync();
+
+        var search = new InvoiceSearchDto { ClinicId = 1 };
+
+        // Act
+        var result = (await _repository.SearchAsync(search)).ToList();
+
+        // Assert
+        result.Should().ContainSingle();
+        result[0].InvoiceNumber.Should().Be("INV-001");
+    }
+
+    [Fact]
+    public async Task CreateAsync_SetsClinicIdFromDto()
+    {
+        // Arrange
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var dto = new CreateInvoiceDto
+        {
+            ClinicId = 3,
+            ClientId = client.Id,
+            DueDate = DateTime.Today.AddDays(30),
+            Items = new List<CreateInvoiceItemDto> { new() { Description = "Consultation", Quantity = 1, UnitPrice = 100m } }
+        };
+
+        // Act
+        var id = await _repository.CreateAsync(dto);
+
+        // Assert
+        var invoice = await _context.Invoices.FindAsync(id);
+        invoice!.ClinicId.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GetAllPaymentsAsync_ReturnsPaymentsWithClientAndInvoiceNumber()
+    {
+        // Arrange
+        var client = new Client { FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice
+        {
+            ClinicId = 1,
+            ClientId = client.Id,
+            InvoiceNumber = "INV-777",
+            InvoiceDate = DateTime.Today,
+            DueDate = DateTime.Today.AddDays(30),
+            Status = InvoiceStatus.PartiallyPaid,
+            TotalAmount = 200.00m,
+            AmountPaid = 100.00m
+        };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        _context.Payments.Add(new Payment { InvoiceId = invoice.Id, Amount = 100.00m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today });
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (items, totalCount) = await _repository.GetAllPaymentsAsync(new PaymentSearchDto());
+
+        // Assert
+        totalCount.Should().Be(1);
+        var payment = items.Should().ContainSingle().Subject;
+        payment.InvoiceNumber.Should().Be("INV-777");
+        payment.ClientName.Should().Be("Jane Doe");
+    }
+
+    [Fact]
+    public async Task GetAllPaymentsAsync_WithClinicIdFilter_ReturnsOnlyThatClinicsPayments()
+    {
+        // Arrange
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoiceClinic1 = new Invoice { ClinicId = 1, ClientId = client.Id, InvoiceNumber = "INV-A", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Paid, TotalAmount = 100m, AmountPaid = 100m };
+        var invoiceClinic2 = new Invoice { ClinicId = 2, ClientId = client.Id, InvoiceNumber = "INV-B", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Paid, TotalAmount = 50m, AmountPaid = 50m };
+        _context.Invoices.AddRange(invoiceClinic1, invoiceClinic2);
+        await _context.SaveChangesAsync();
+
+        _context.Payments.AddRange(
+            new Payment { InvoiceId = invoiceClinic1.Id, Amount = 100m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today },
+            new Payment { InvoiceId = invoiceClinic2.Id, Amount = 50m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today });
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (items, totalCount) = await _repository.GetAllPaymentsAsync(new PaymentSearchDto { ClinicId = 1 });
+
+        // Assert
+        totalCount.Should().Be(1);
+        items.Should().ContainSingle(p => p.InvoiceNumber == "INV-A");
+    }
+
+    [Fact]
     public async Task GetPagedAsync_ReturnsCorrectPage()
     {
         // Arrange

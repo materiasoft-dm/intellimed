@@ -15,4 +15,5 @@ public interface IInvoiceRepository : IRepository<Invoice>
     Task<int> CreateAsync(CreateInvoiceDto dto);
     Task AddPaymentAsync(int invoiceId, CreatePaymentDto dto);
     Task UpdateStatusAsync(int id, InvoiceStatus status);
+    Task<(IEnumerable<PaymentDto> Items, int TotalCount)> GetAllPaymentsAsync(PaymentSearchDto search);
 }

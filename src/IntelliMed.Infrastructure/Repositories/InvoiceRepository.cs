@@ -24,7 +24,9 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         var invoice = await _dbSet
             .Include(i => i.Client)
             .Include(i => i.Appointment)
+            .Include(i => i.Practitioner)
             .Include(i => i.Items)
+                .ThenInclude(item => item.BillingItem)
             .Include(i => i.Payments)
             .FirstOrDefaultAsync(i => i.Id == id);
         return invoice == null ? null : EntityMapper.ToDto(invoice);
@@ -156,9 +158,42 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task<(IEnumerable<PaymentDto> Items, int TotalCount)> GetAllPaymentsAsync(PaymentSearchDto search)
+    {
+        var query = _context.Payments
+            .Include(p => p.Invoice)
+            .ThenInclude(i => i!.Client)
+            .AsQueryable();
+
+        if (search.ClinicId.HasValue)
+            query = query.Where(p => p.Invoice!.ClinicId == search.ClinicId.Value);
+
+        if (search.Method.HasValue)
+            query = query.Where(p => p.Method == search.Method.Value);
+
+        if (search.FromDate.HasValue)
+            query = query.Where(p => p.PaymentDate >= search.FromDate.Value);
+
+        if (search.ToDate.HasValue)
+            query = query.Where(p => p.PaymentDate <= search.ToDate.Value);
+
+        var totalCount = await query.CountAsync();
+
+        var payments = await query
+            .OrderByDescending(p => p.PaymentDate)
+            .Skip((search.Page - 1) * search.PageSize)
+            .Take(search.PageSize)
+            .ToListAsync();
+
+        return (payments.Select(EntityMapper.ToDto), totalCount);
+    }
+
     private IQueryable<Invoice> BuildSearchQuery(InvoiceSearchDto search)
     {
         var query = _dbSet.AsQueryable();
+
+        if (search.ClinicId.HasValue)
+            query = query.Where(i => i.ClinicId == search.ClinicId.Value);
 
         if (search.ClientId.HasValue)
             query = query.Where(i => i.ClientId == search.ClientId.Value);

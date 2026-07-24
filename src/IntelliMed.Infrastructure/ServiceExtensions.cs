@@ -1,6 +1,7 @@
 using IntelliMed.Core.Interfaces;
 using IntelliMed.Infrastructure.Data;
 using IntelliMed.Infrastructure.Repositories;
+using IntelliMed.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,6 +31,9 @@ public static class ServiceExtensions
         services.AddScoped<IProviderGroupRepository, ProviderGroupRepository>();
         services.AddScoped<IClinicSettingsRepository, ClinicSettingsRepository>();
         services.AddScoped<IClinicRepository, ClinicRepository>();
+        services.AddScoped<IBillingItemRepository, BillingItemRepository>();
+        services.AddHttpClient<IBillingItemSyncService, BillingItemSyncService>();
+        services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
 
         return services;
     }

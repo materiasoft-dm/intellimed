@@ -1,0 +1,139 @@
+@page "/invoices/payments"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IInvoiceService InvoiceService
+@inject NavigationManager NavManager
+
+<PageTitle>Payments - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Payments</h4>
+
+<div class="row">
+    <div class="col-12 col-md-3">
+        <div class="card mb-4">
+            <div class="card-header"><strong>Filters</strong></div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label small mb-0">Method</label>
+                    <select class="form-select form-select-sm" @bind="_filter.Method">
+                        <option value="">All</option>
+                        @foreach (var method in Enum.GetValues<PaymentMethod>())
+                        {
+                            <option value="@method">@method</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small mb-0">From</label>
+                    <input type="date" class="form-control form-control-sm" @bind="_filter.FromDate" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small mb-0">To</label>
+                    <input type="date" class="form-control form-control-sm" @bind="_filter.ToDate" />
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-primary" @onclick="FindAsync">Find</button>
+                <button type="button" class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-9 mt-3 mt-md-0">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between py-2">
+                <span class="small text-muted">
+                    <i class="bi bi-cash-coin me-1"></i> Total: <strong>@_totalCount</strong>
+                    &middot; Sum: <strong>@_pageSum.ToString("C")</strong>
+                </span>
+                <button class="btn btn-sm btn-outline-primary" @onclick="RefreshAsync">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                </button>
+            </div>
+
+            <RadzenDataGrid @ref="_grid" TItem="PaymentDto" Data="@_payments" Count="@_totalCount"
+                             LoadData="@LoadDataAsync" IsLoading="@_isLoading"
+                             AllowPaging="true" PageSize="@_pageSize" PagerHorizontalAlign="HorizontalAlign.Center"
+                             EmptyText="No payments found.">
+                <Columns>
+                    <RadzenDataGridColumn TItem="PaymentDto" Property="PaymentDate" Title="Date" Width="100px" FormatString="{0:dd/MM/yyyy}" />
+                    <RadzenDataGridColumn TItem="PaymentDto" Property="ClientName" Title="Client" Width="180px" />
+                    <RadzenDataGridColumn TItem="PaymentDto" Title="Invoice #" Width="120px">
+                        <Template Context="p">
+                            <a href="javascript:void(0)" class="link-primary" @onclick="() => ViewInvoice(p)">@p.InvoiceNumber</a>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="PaymentDto" Property="MethodName" Title="Method" Width="120px" />
+                    <RadzenDataGridColumn TItem="PaymentDto" Property="Reference" Title="Reference" Width="140px" />
+                    <RadzenDataGridColumn TItem="PaymentDto" Property="Amount" Title="Amount" Width="100px" FormatString="{0:C}" />
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RadzenDataGrid<PaymentDto>? _grid;
+    private List<PaymentDto> _payments = new();
+    private int _totalCount;
+    private decimal _pageSum => _payments.Sum(p => p.Amount);
+    private bool _isLoading;
+    private int _pageSize = 15;
+
+    private PaymentSearchDto _filter = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _grid != null)
+        {
+            await _grid.Reload();
+        }
+    }
+
+    private async Task LoadDataAsync(LoadDataArgs args)
+    {
+        _isLoading = true;
+        try
+        {
+            _filter.Page = (args.Skip ?? 0) / _pageSize + 1;
+            _filter.PageSize = _pageSize;
+
+            var result = await InvoiceService.GetAllPaymentsAsync(_filter);
+            _payments = result.Items.ToList();
+            _totalCount = result.TotalCount;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task FindAsync()
+    {
+        await LoadDataAsync(new LoadDataArgs { Skip = 0, Top = _pageSize });
+        if (_grid != null)
+        {
+            await _grid.GoToPage(0);
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_grid != null)
+        {
+            await _grid.Reload();
+        }
+    }
+
+    private void ClearFilters()
+    {
+        _filter = new PaymentSearchDto();
+    }
+
+    private void ViewInvoice(PaymentDto payment)
+    {
+        NavManager.NavigateTo($"/invoices/edit/{payment.InvoiceId}");
+    }
+}
