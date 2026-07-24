@@ -29,6 +29,7 @@
 }
 else
 {
+    <div class="patient-edit-page">
     <div class="d-flex align-items-center justify-content-between mb-1">
         <h5 class="mb-0 small">🩺 @(Id.HasValue ? $"Edit Patient — {_model.FirstName} {_model.LastName}" : "New Patient")</h5>
         @if (!string.IsNullOrEmpty(_statusMessage))
@@ -662,6 +663,7 @@ else
             </div>
         </div>
     }
+    </div>
 }
 
 @code {

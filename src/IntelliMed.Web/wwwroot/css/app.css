@@ -360,6 +360,32 @@ code {
     }
 }
 
+/* Edit/Add Patient page: labels sit to the left of their textbox/select/textarea on desktop and
+   tablet, instead of stacked above it. Targets every "<label class=form-label> + <input/select>"
+   pair on the page generically (via :has), so it applies uniformly across all field sections and
+   the bottom tab-strip forms without needing a class on each individual field wrapper. */
+@media (min-width: 768px) {
+    .patient-edit-page div:has(> label.form-label + .form-control),
+    .patient-edit-page div:has(> label.form-label + .form-select) {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .patient-edit-page label.form-label {
+        flex-shrink: 0;
+        width: 110px;
+        padding-top: 0.25rem;
+        margin-bottom: 0 !important;
+    }
+
+    .patient-edit-page .form-control,
+    .patient-edit-page .form-select {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+}
+
 .mdi-nav-link {
     color: var(--imed-sidebar-text) !important;
     padding: 10px 24px !important;
