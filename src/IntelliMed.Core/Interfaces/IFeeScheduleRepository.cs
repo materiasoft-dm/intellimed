@@ -11,4 +11,11 @@ public interface IFeeScheduleRepository : IRepository<FeeSchedule>
     Task<int> CreateAsync(CreateFeeScheduleDto dto);
     Task UpdateAsync(int id, UpdateFeeScheduleDto dto);
     Task ArchiveAsync(int id);
+
+    Task<IEnumerable<FeeScheduleItemDto>> GetItemsAsync(int feeScheduleId);
+    Task<int> AddItemAsync(int feeScheduleId, CreateFeeScheduleItemDto dto);
+    Task UpdateItemFeeAsync(int itemId, decimal fee);
+    Task RemoveItemAsync(int itemId);
+    Task<int> CopyFeesFromMbsAsync(int feeScheduleId);
+    Task<int> ImportItemsAsync(int feeScheduleId, ImportFeeScheduleItemsRequest request);
 }

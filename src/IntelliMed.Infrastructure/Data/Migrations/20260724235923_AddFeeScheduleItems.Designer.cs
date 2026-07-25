@@ -3,6 +3,7 @@ using System;
 using IntelliMed.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,43 +11,14 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IntelliMed.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724235923_AddFeeScheduleItems")]
+    partial class AddFeeScheduleItems
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.6");
-
-            modelBuilder.Entity("IntelliMed.Core.Entities.AccountTypeFeeScheduleMapping", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("AccountType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("ClinicId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("FeeScheduleId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FeeScheduleId");
-
-                    b.HasIndex("ClinicId", "AccountType")
-                        .IsUnique();
-
-                    b.ToTable("AccountTypeFeeScheduleMappings");
-                });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ApplicationUser", b =>
                 {
@@ -1269,9 +1241,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("PlaceOfService")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int?>("PractitionerId")
                         .HasColumnType("INTEGER");
 
@@ -1314,26 +1283,11 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal>("Discount")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("FeeIncludeGst")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("GstAmount")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("InvoiceId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<decimal>("PercentGst")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("Quantity")
                         .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("RebatePerUnit")
-                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("ServiceDate")
                         .HasColumnType("TEXT");
@@ -1427,9 +1381,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<string>("ProviderNumber")
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("ServiceType")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -1716,17 +1667,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("IntelliMed.Core.Entities.AccountTypeFeeScheduleMapping", b =>
-                {
-                    b.HasOne("IntelliMed.Core.Entities.FeeSchedule", "FeeSchedule")
-                        .WithMany()
-                        .HasForeignKey("FeeScheduleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("FeeSchedule");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ApplicationUser", b =>

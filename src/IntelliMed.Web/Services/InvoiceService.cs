@@ -84,6 +84,41 @@ public class InvoiceService : IInvoiceService
         }
     }
 
+    public async Task<ResolveLineResult?> ResolveLineAsync(ResolveLineRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/invoices/resolve-line", request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<ResolveLineResult>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Resolve line error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<List<AccountTypeFeeScheduleMappingDto>> GetFeeScheduleMappingsAsync()
+    {
+        var results = await _httpClient.GetFromJsonAsync<List<AccountTypeFeeScheduleMappingDto>>("api/invoices/fee-schedule-mappings");
+        return results ?? new List<AccountTypeFeeScheduleMappingDto>();
+    }
+
+    public async Task<bool> SaveFeeScheduleMappingAsync(SaveAccountTypeFeeScheduleMappingDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync("api/invoices/fee-schedule-mappings", dto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Save fee schedule mapping error: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<PagedResult<PaymentDto>> GetAllPaymentsAsync(PaymentSearchDto search)
     {
         var args = new List<string>

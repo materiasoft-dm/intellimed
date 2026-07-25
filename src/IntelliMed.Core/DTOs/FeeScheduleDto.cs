@@ -8,6 +8,7 @@ public class FeeScheduleDto
     public string Code { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? Note { get; set; }
+    public bool IsHealthFund { get; set; }
     public int? HealthFundId { get; set; }
     public string? HealthFundCode { get; set; }
     public int? FeeTableId { get; set; }
@@ -29,6 +30,7 @@ public class CreateFeeScheduleDto
     public string Code { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? Note { get; set; }
+    public bool IsHealthFund { get; set; }
     public int? HealthFundId { get; set; }
     public int? FeeTableId { get; set; }
     public RoundingTypeEnum RoundingType { get; set; } = RoundingTypeEnum.Exact;
@@ -39,10 +41,40 @@ public class UpdateFeeScheduleDto
     public string Code { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? Note { get; set; }
+    public bool IsHealthFund { get; set; }
     public int? HealthFundId { get; set; }
     public int? FeeTableId { get; set; }
     public RoundingTypeEnum RoundingType { get; set; }
     public bool IsArchived { get; set; }
+}
+
+public class FeeScheduleItemDto
+{
+    public int Id { get; set; }
+    public int FeeScheduleId { get; set; }
+    public int BillingItemId { get; set; }
+    public string ItemNumber { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public decimal Fee { get; set; }
+}
+
+public class CreateFeeScheduleItemDto
+{
+    public int BillingItemId { get; set; }
+    public decimal Fee { get; set; }
+}
+
+public class UpdateFeeScheduleItemFeeDto
+{
+    public decimal Fee { get; set; }
+}
+
+public class ImportFeeScheduleItemsRequest
+{
+    /// <summary>Null means "the whole active MBS catalog"; otherwise another FeeSchedule's item list.</summary>
+    public int? SourceFeeScheduleId { get; set; }
+    public decimal Percent { get; set; }
+    public decimal FlatAmount { get; set; }
 }
 
 public class FeeScheduleSearchDto

@@ -34,6 +34,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserClinic> UserClinics => Set<UserClinic>();
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
     public DbSet<FeeSchedule> FeeSchedules => Set<FeeSchedule>();
+    public DbSet<FeeScheduleItem> FeeScheduleItems => Set<FeeScheduleItem>();
+    public DbSet<AccountTypeFeeScheduleMapping> AccountTypeFeeScheduleMappings => Set<AccountTypeFeeScheduleMapping>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -442,6 +444,32 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(e => e.FeeTable)
                 .WithMany()
                 .HasForeignKey(e => e.FeeTableId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // FeeScheduleItem configuration
+        modelBuilder.Entity<FeeScheduleItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.FeeScheduleId, e.BillingItemId }).IsUnique();
+            entity.HasOne(e => e.FeeSchedule)
+                .WithMany()
+                .HasForeignKey(e => e.FeeScheduleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.BillingItem)
+                .WithMany()
+                .HasForeignKey(e => e.BillingItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // AccountTypeFeeScheduleMapping configuration
+        modelBuilder.Entity<AccountTypeFeeScheduleMapping>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ClinicId, e.AccountType }).IsUnique();
+            entity.HasOne(e => e.FeeSchedule)
+                .WithMany()
+                .HasForeignKey(e => e.FeeScheduleId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

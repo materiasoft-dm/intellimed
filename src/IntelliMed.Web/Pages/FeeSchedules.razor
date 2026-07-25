@@ -6,6 +6,7 @@
 @using IntelliMed.Web.Services
 @inject IFeeScheduleService FeeScheduleService
 @inject IHealthFundService HealthFundService
+@inject IBillingItemService BillingItemService
 @inject IJSRuntime JS
 
 <PageTitle>Fee Schedules - IntelliMed</PageTitle>
@@ -108,97 +109,248 @@
 {
     <div class="modal-backdrop fade show" style="display:block;"></div>
     <div class="modal fade show d-block" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header py-2">
                     <h5 class="modal-title">@(_isEditing ? "Edit Fee Schedule" : "New Fee Schedule")</h5>
                     <button type="button" class="btn-close" @onclick="CloseDialog" aria-label="Close"></button>
                 </div>
+                <ul class="nav nav-tabs px-3 pt-2">
+                    <li class="nav-item">
+                        <a class="nav-link @(_activeDialogTab == "General" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _activeDialogTab = "General")">General</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(_activeDialogTab == "Items" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _activeDialogTab = "Items")">Items</a>
+                    </li>
+                </ul>
                 <div class="modal-body">
-                    <EditForm Model="@_dialogModel" OnValidSubmit="SaveAsync" FormName="feeScheduleDialogForm">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary class="text-danger small mb-3" />
+                    @if (_activeDialogTab == "General")
+                    {
+                        <EditForm Model="@_dialogModel" OnValidSubmit="SaveAsync" FormName="feeScheduleDialogForm">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger small mb-3" />
 
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Code <span class="text-danger">*</span></label>
-                                <InputText @bind-Value="_dialogModel.Code" class="form-control" />
-                                <ValidationMessage For="() => _dialogModel.Code" />
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Code <span class="text-danger">*</span></label>
+                                    <InputText @bind-Value="_dialogModel.Code" class="form-control" />
+                                    <ValidationMessage For="() => _dialogModel.Code" />
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">Description <span class="text-danger">*</span></label>
+                                    <InputText @bind-Value="_dialogModel.Description" class="form-control" />
+                                    <ValidationMessage For="() => _dialogModel.Description" />
+                                </div>
                             </div>
-                            <div class="col-md-8">
-                                <label class="form-label">Description <span class="text-danger">*</span></label>
-                                <InputText @bind-Value="_dialogModel.Description" class="form-control" />
-                                <ValidationMessage For="() => _dialogModel.Description" />
-                            </div>
-                        </div>
 
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-12">
-                                <label class="form-label">Note</label>
-                                <InputText @bind-Value="_dialogModel.Note" class="form-control" />
+                            <div class="form-check mb-3">
+                                <InputCheckbox @bind-Value="_dialogModel.IsHealthFund" class="form-check-input" id="chkIsHealthFund" />
+                                <label class="form-check-label" for="chkIsHealthFund">Is a Health Fund</label>
                             </div>
-                        </div>
 
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Health Fund</label>
-                                <InputSelect @bind-Value="_dialogModel.HealthFundId" class="form-select">
-                                    <option value="">-- None --</option>
-                                    @foreach (var fund in _healthFunds)
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-12">
+                                    <label class="form-label">Note</label>
+                                    <InputText @bind-Value="_dialogModel.Note" class="form-control" />
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Health Fund</label>
+                                    <InputSelect @bind-Value="_dialogModel.HealthFundId" class="form-select">
+                                        <option value="">-- None --</option>
+                                        @foreach (var fund in _healthFunds)
+                                        {
+                                            <option value="@fund.Id">@fund.Code - @fund.Name</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Fee Table</label>
+                                    <InputSelect @bind-Value="_dialogModel.FeeTableId" class="form-select">
+                                        <option value="">-- None --</option>
+                                        @foreach (var schedule in _feeTableOptions)
+                                        {
+                                            <option value="@schedule.Id">@schedule.Code - @schedule.Description</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Round Type</label>
+                                    <InputSelect @bind-Value="_dialogModel.RoundingType" class="form-select">
+                                        <option value="@RoundingTypeEnum.Exact">Exact</option>
+                                        <option value="@RoundingTypeEnum.ToNearest1c">To Nearest 1c</option>
+                                        <option value="@RoundingTypeEnum.ToNearest5c">To Nearest 5c</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+
+                            @if (_isEditing)
+                            {
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           checked="@(!_dialogModel.IsArchived)"
+                                           @onchange="(ChangeEventArgs e) => _dialogModel.IsArchived = !(bool)e.Value!"
+                                           id="feeScheduleActiveSwitch" />
+                                    <label class="form-check-label" for="feeScheduleActiveSwitch">Active</label>
+                                </div>
+                            }
+
+                            <div class="modal-footer px-0 pb-0">
+                                <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                                <button type="submit" class="btn btn-primary" disabled="@_dialogSaving">
+                                    @if (_dialogSaving)
                                     {
-                                        <option value="@fund.Id">@fund.Code - @fund.Name</option>
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        <span>Saving...</span>
                                     }
-                                </InputSelect>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Fee Table</label>
-                                <InputSelect @bind-Value="_dialogModel.FeeTableId" class="form-select">
-                                    <option value="">-- None --</option>
-                                    @foreach (var schedule in _feeTableOptions)
+                                    else
                                     {
-                                        <option value="@schedule.Id">@schedule.Code - @schedule.Description</option>
+                                        <span>@(_isEditing ? "Save Changes" : "Create")</span>
                                     }
-                                </InputSelect>
+                                </button>
                             </div>
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Round Type</label>
-                                <InputSelect @bind-Value="_dialogModel.RoundingType" class="form-select">
-                                    <option value="@RoundingTypeEnum.Exact">Exact</option>
-                                    <option value="@RoundingTypeEnum.ToNearest1c">To Nearest 1c</option>
-                                    <option value="@RoundingTypeEnum.ToNearest5c">To Nearest 5c</option>
-                                </InputSelect>
-                            </div>
-                        </div>
-
-                        @if (_isEditing)
+                        </EditForm>
+                    }
+                    else
+                    {
+                        @if (!_isEditing)
                         {
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch"
-                                       checked="@(!_dialogModel.IsArchived)"
-                                       @onchange="(ChangeEventArgs e) => _dialogModel.IsArchived = !(bool)e.Value!"
-                                       id="feeScheduleActiveSwitch" />
-                                <label class="form-check-label" for="feeScheduleActiveSwitch">Active</label>
+                            <div class="text-muted small">Save the schedule first to manage its items.</div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenItemPicker">
+                                    <i class="bi bi-plus-lg"></i> Add Item
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyFeesFromMbsAsync" disabled="@_copyingFromMbs">
+                                    @if (_copyingFromMbs)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    Copy Fees from MBS
+                                </button>
                             </div>
+
+                            <div class="card mb-3">
+                                <div class="card-header py-1"><strong class="small">Import Items From</strong></div>
+                                <div class="card-body py-2">
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-5">
+                                            <label class="form-label small mb-0">Source</label>
+                                            <select class="form-select form-select-sm" @bind="_importSourceId">
+                                                <option value="">MBS Catalog (all active items)</option>
+                                                @foreach (var schedule in _feeTableOptions)
+                                                {
+                                                    <option value="@schedule.Id">@schedule.Code - @schedule.Description</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-0">Adjustment %</label>
+                                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="_importPercent" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-0">Flat $ Adjustment</label>
+                                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="_importFlatAmount" />
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-sm btn-primary w-100" @onclick="ImportItemsAsync" disabled="@_importing">
+                                                @if (_importing)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm"></span>
+                                                }
+                                                else
+                                                {
+                                                    <span>Apply</span>
+                                                }
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="small text-muted mt-1">Fee = source fee &times; (1 + %/100) + flat $. Leave both at 0 for a plain copy.</div>
+                                </div>
+                            </div>
+
+                            @if (_itemsLoading)
+                            {
+                                <div class="text-muted small">Loading items...</div>
+                            }
+                            else if (_items.Count == 0)
+                            {
+                                <div class="text-muted small">No items yet. Use "Add Item" or "Import Items From" above.</div>
+                            }
+                            else
+                            {
+                                <table class="table table-sm table-hover">
+                                    <thead><tr><th>Item#</th><th>Description</th><th style="width:120px">Fee</th><th></th></tr></thead>
+                                    <tbody>
+                                        @foreach (var item in _items)
+                                        {
+                                            <tr>
+                                                <td>@item.ItemNumber</td>
+                                                <td>@item.Description</td>
+                                                <td>
+                                                    <input type="number" step="0.01" class="form-control form-control-sm" value="@item.Fee"
+                                                           @onchange="@(e => UpdateItemFeeAsync(item, e.Value))" />
+                                                </td>
+                                                <td class="text-end">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveItemAsync(item))">Delete</button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
                         }
 
                         <div class="modal-footer px-0 pb-0">
-                            <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
-                            <button type="submit" class="btn btn-primary" disabled="@_dialogSaving">
-                                @if (_dialogSaving)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-2"></span>
-                                    <span>Saving...</span>
-                                }
-                                else
-                                {
-                                    <span>@(_isEditing ? "Save Changes" : "Create")</span>
-                                }
-                            </button>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Close</button>
                         </div>
-                    </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showBillingItemPickerModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4); z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Find Billing Item</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showBillingItemPickerModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
+                           @bind="_billingItemSearchTerm" @bind:event="oninput" @bind:after="SearchBillingItemCandidatesAsync" />
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        @if (_billingItemSearchResults.Count == 0)
+                        {
+                            <div class="text-muted small">No matches.</div>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var candidate in _billingItemSearchResults)
+                                {
+                                    <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => AddItemAsync(candidate))">
+                                        <strong>@candidate.ItemNumber</strong> — @candidate.Description
+                                        <span class="text-muted small">(@candidate.ScheduleFee.ToString("C"))</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showBillingItemPickerModal = false)">Cancel</button>
                 </div>
             </div>
         </div>
@@ -222,6 +374,19 @@
     private bool _dialogSaving;
     private int _editingId;
     private FeeScheduleDialogModel _dialogModel = new();
+    private string _activeDialogTab = "General";
+
+    private List<FeeScheduleItemDto> _items = new();
+    private bool _itemsLoading;
+    private bool _copyingFromMbs;
+    private bool _importing;
+    private int? _importSourceId;
+    private decimal _importPercent;
+    private decimal _importFlatAmount;
+
+    private bool _showBillingItemPickerModal;
+    private string _billingItemSearchTerm = string.Empty;
+    private List<BillingItemDto> _billingItemSearchResults = new();
 
     private string? _toastMessage;
     private bool _toastIsError;
@@ -292,6 +457,8 @@
         _isEditing = false;
         _dialogModel = new FeeScheduleDialogModel();
         _dialogSaving = false;
+        _activeDialogTab = "General";
+        _items = new();
         _feeTableOptions = (await FeeScheduleService.GetAllActiveAsync());
         _dialogVisible = true;
     }
@@ -310,19 +477,149 @@
             HealthFundId = _selectedSchedule.HealthFundId,
             FeeTableId = _selectedSchedule.FeeTableId,
             RoundingType = _selectedSchedule.RoundingType,
-            IsArchived = _selectedSchedule.IsArchived
+            IsArchived = _selectedSchedule.IsArchived,
+            IsHealthFund = _selectedSchedule.IsHealthFund
         };
         _dialogSaving = false;
+        _activeDialogTab = "General";
+        _importSourceId = null;
+        _importPercent = 0;
+        _importFlatAmount = 0;
         // Exclude self from the Fee Table options — a schedule can't borrow rates from itself.
         _feeTableOptions = (await FeeScheduleService.GetAllActiveAsync())
             .Where(s => s.Id != _editingId)
             .ToList();
         _dialogVisible = true;
+        await LoadItemsAsync();
     }
 
     private void CloseDialog()
     {
         _dialogVisible = false;
+    }
+
+    private async Task LoadItemsAsync()
+    {
+        _itemsLoading = true;
+        try
+        {
+            _items = await FeeScheduleService.GetItemsAsync(_editingId);
+        }
+        finally
+        {
+            _itemsLoading = false;
+        }
+    }
+
+    private void OpenItemPicker()
+    {
+        _billingItemSearchTerm = string.Empty;
+        _billingItemSearchResults = new();
+        _showBillingItemPickerModal = true;
+    }
+
+    private async Task SearchBillingItemCandidatesAsync()
+    {
+        _billingItemSearchResults = string.IsNullOrWhiteSpace(_billingItemSearchTerm)
+            ? new()
+            : await BillingItemService.SearchAsync(_billingItemSearchTerm);
+    }
+
+    private async Task AddItemAsync(BillingItemDto candidate)
+    {
+        var success = await FeeScheduleService.AddItemAsync(_editingId, new CreateFeeScheduleItemDto
+        {
+            BillingItemId = candidate.Id,
+            Fee = candidate.ScheduleFee
+        });
+
+        if (success)
+        {
+            _showBillingItemPickerModal = false;
+            await LoadItemsAsync();
+        }
+        else
+        {
+            ShowToast("Failed to add item (it may already be on this schedule).", true);
+        }
+    }
+
+    private async Task UpdateItemFeeAsync(FeeScheduleItemDto item, object? value)
+    {
+        if (value == null || !decimal.TryParse(value.ToString(), out var fee)) return;
+
+        var success = await FeeScheduleService.UpdateItemFeeAsync(item.Id, fee);
+        if (success)
+        {
+            item.Fee = fee;
+        }
+        else
+        {
+            ShowToast("Failed to update item fee.", true);
+        }
+    }
+
+    private async Task RemoveItemAsync(FeeScheduleItemDto item)
+    {
+        var success = await FeeScheduleService.RemoveItemAsync(item.Id);
+        if (success)
+        {
+            _items.Remove(item);
+        }
+        else
+        {
+            ShowToast("Failed to remove item.", true);
+        }
+    }
+
+    private async Task CopyFeesFromMbsAsync()
+    {
+        _copyingFromMbs = true;
+        try
+        {
+            var updated = await FeeScheduleService.CopyFeesFromMbsAsync(_editingId);
+            if (updated.HasValue)
+            {
+                ShowToast($"{updated.Value} item fee(s) reset to the current MBS schedule fee.", false);
+                await LoadItemsAsync();
+            }
+            else
+            {
+                ShowToast("Failed to copy fees from MBS.", true);
+            }
+        }
+        finally
+        {
+            _copyingFromMbs = false;
+        }
+    }
+
+    private async Task ImportItemsAsync()
+    {
+        _importing = true;
+        try
+        {
+            var affected = await FeeScheduleService.ImportItemsAsync(_editingId, new ImportFeeScheduleItemsRequest
+            {
+                SourceFeeScheduleId = _importSourceId,
+                Percent = _importPercent,
+                FlatAmount = _importFlatAmount
+            });
+
+            if (affected.HasValue)
+            {
+                ShowToast($"{affected.Value} item(s) imported.", false);
+                await LoadItemsAsync();
+            }
+            else
+            {
+                ShowToast("Failed to import items.", true);
+            }
+        }
+        finally
+        {
+            _importing = false;
+        }
     }
 
     private async Task SaveAsync()
@@ -341,7 +638,8 @@
                     HealthFundId = _dialogModel.HealthFundId,
                     FeeTableId = _dialogModel.FeeTableId,
                     RoundingType = _dialogModel.RoundingType,
-                    IsArchived = _dialogModel.IsArchived
+                    IsArchived = _dialogModel.IsArchived,
+                    IsHealthFund = _dialogModel.IsHealthFund
                 });
             }
             else
@@ -353,7 +651,8 @@
                     Note = _dialogModel.Note,
                     HealthFundId = _dialogModel.HealthFundId,
                     FeeTableId = _dialogModel.FeeTableId,
-                    RoundingType = _dialogModel.RoundingType
+                    RoundingType = _dialogModel.RoundingType,
+                    IsHealthFund = _dialogModel.IsHealthFund
                 }) != null;
             }
 
@@ -421,5 +720,6 @@
         public int? FeeTableId { get; set; }
         public RoundingTypeEnum RoundingType { get; set; } = RoundingTypeEnum.Exact;
         public bool IsArchived { get; set; }
+        public bool IsHealthFund { get; set; }
     }
 }

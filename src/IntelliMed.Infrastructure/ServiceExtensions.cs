@@ -34,6 +34,8 @@ public static class ServiceExtensions
         services.AddScoped<IBillingItemRepository, BillingItemRepository>();
         services.AddHttpClient<IBillingItemSyncService, BillingItemSyncService>();
         services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
+        services.AddScoped<IAccountTypeFeeScheduleMappingRepository, AccountTypeFeeScheduleMappingRepository>();
+        services.AddScoped<IBillingCalculator, BillingCalculator>();
 
         return services;
     }

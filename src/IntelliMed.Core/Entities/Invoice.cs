@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace IntelliMed.Core.Entities;
 
 public class Invoice
@@ -8,6 +10,7 @@ public class Invoice
     public int? AppointmentId { get; set; }
     public int? PractitionerId { get; set; }
     public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.PrivatePatient;
+    public PlaceOfServiceEnum PlaceOfService { get; set; } = PlaceOfServiceEnum.Rooms;
     public string InvoiceNumber { get; set; } = string.Empty;
     public DateTime InvoiceDate { get; set; }
     public DateTime DueDate { get; set; }
@@ -35,8 +38,28 @@ public class InvoiceItem
     public string Description { get; set; } = string.Empty;
     public DateTime? ServiceDate { get; set; }
     public int Quantity { get; set; } = 1;
+
+    // UnitPrice is the charged fee per unit (legacy: InvItem.Fee).
     public decimal UnitPrice { get; set; }
-    public decimal TotalPrice => Quantity * UnitPrice;
+
+    // The bulk-bill-equivalent Medicare rebate per unit (legacy: RebatePerItem).
+    public decimal RebatePerUnit { get; set; }
+
+    // Line-level discount and GST (AU medical is GST-exempt, so GST defaults to 0).
+    public decimal Discount { get; set; }
+    public decimal GstAmount { get; set; }
+    public decimal PercentGst { get; set; }
+    public bool FeeIncludeGst { get; set; }
+
+    // Computed money fields, matching legacy InvItem semantics.
+    [NotMapped]
+    public decimal LineRebate => RebatePerUnit * Quantity;
+    [NotMapped]
+    public decimal NetAmount => UnitPrice * Quantity + GstAmount;
+    [NotMapped]
+    public decimal TotalPrice => NetAmount - Discount;
+    [NotMapped]
+    public decimal Gap => TotalPrice - LineRebate;
 
     // Navigation properties
     public Invoice? Invoice { get; set; }

@@ -573,6 +573,7 @@ public static class EntityMapper
         PractitionerId = entity.PractitionerId,
         PractitionerName = entity.Practitioner != null ? $"{entity.Practitioner.Title} {entity.Practitioner.FirstName} {entity.Practitioner.LastName}".Trim() : null,
         AccountType = entity.AccountType,
+        PlaceOfService = entity.PlaceOfService,
         InvoiceNumber = entity.InvoiceNumber,
         InvoiceDate = entity.InvoiceDate,
         DueDate = entity.DueDate,
@@ -595,7 +596,11 @@ public static class EntityMapper
         Description = entity.Description,
         ServiceDate = entity.ServiceDate,
         Quantity = entity.Quantity,
-        UnitPrice = entity.UnitPrice
+        UnitPrice = entity.UnitPrice,
+        RebatePerUnit = entity.RebatePerUnit,
+        Discount = entity.Discount,
+        GstAmount = entity.GstAmount,
+        PercentGst = entity.PercentGst
     };
 
     public static PaymentDto ToDto(Payment entity) => new()
@@ -617,12 +622,14 @@ public static class EntityMapper
         AppointmentId = dto.AppointmentId,
         PractitionerId = dto.PractitionerId,
         AccountType = dto.AccountType,
+        PlaceOfService = dto.PlaceOfService,
         InvoiceNumber = invoiceNumber,
         InvoiceDate = DateTime.UtcNow,
         DueDate = dto.DueDate,
         Notes = dto.Notes,
         Status = InvoiceStatus.Draft,
-        TotalAmount = dto.Items.Sum(i => i.Quantity * i.UnitPrice),
+        // TotalAmount is recomputed authoritatively in InvoiceRepository after the BillingCalculator runs.
+        TotalAmount = dto.Items.Sum(i => i.Quantity * i.UnitPrice - i.Discount),
         AmountPaid = 0,
         CreatedAt = DateTime.UtcNow,
         Items = dto.Items.Select(i => new InvoiceItem
@@ -631,7 +638,8 @@ public static class EntityMapper
             Description = i.Description,
             ServiceDate = i.ServiceDate,
             Quantity = i.Quantity,
-            UnitPrice = i.UnitPrice
+            UnitPrice = i.UnitPrice,
+            Discount = i.Discount
         }).ToList()
     };
 
@@ -665,6 +673,7 @@ public static class EntityMapper
         Code = entity.Code,
         Description = entity.Description,
         Note = entity.Note,
+        IsHealthFund = entity.IsHealthFund,
         HealthFundId = entity.HealthFundId,
         HealthFundCode = entity.HealthFund?.Code,
         FeeTableId = entity.FeeTableId,
@@ -680,6 +689,7 @@ public static class EntityMapper
         Code = dto.Code,
         Description = dto.Description,
         Note = dto.Note,
+        IsHealthFund = dto.IsHealthFund,
         HealthFundId = dto.HealthFundId,
         FeeTableId = dto.FeeTableId,
         RoundingType = dto.RoundingType,
@@ -692,10 +702,21 @@ public static class EntityMapper
         entity.Code = dto.Code;
         entity.Description = dto.Description;
         entity.Note = dto.Note;
+        entity.IsHealthFund = dto.IsHealthFund;
         entity.HealthFundId = dto.HealthFundId;
         entity.FeeTableId = dto.FeeTableId;
         entity.RoundingType = dto.RoundingType;
         entity.IsArchived = dto.IsArchived;
         entity.UpdatedAt = DateTime.UtcNow;
     }
+
+    public static FeeScheduleItemDto ToDto(FeeScheduleItem entity) => new()
+    {
+        Id = entity.Id,
+        FeeScheduleId = entity.FeeScheduleId,
+        BillingItemId = entity.BillingItemId,
+        ItemNumber = entity.BillingItem?.ItemNumber ?? string.Empty,
+        Description = entity.BillingItem?.Description ?? string.Empty,
+        Fee = entity.Fee
+    };
 }

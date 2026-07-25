@@ -101,4 +101,82 @@ public class FeeScheduleService : IFeeScheduleService
             return false;
         }
     }
+
+    public async Task<List<FeeScheduleItemDto>> GetItemsAsync(int feeScheduleId)
+    {
+        var results = await _httpClient.GetFromJsonAsync<List<FeeScheduleItemDto>>($"api/fee-schedules/{feeScheduleId}/items");
+        return results ?? new List<FeeScheduleItemDto>();
+    }
+
+    public async Task<bool> AddItemAsync(int feeScheduleId, CreateFeeScheduleItemDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/fee-schedules/{feeScheduleId}/items", dto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Add fee schedule item error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> UpdateItemFeeAsync(int itemId, decimal fee)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/fee-schedules/items/{itemId}", new UpdateFeeScheduleItemFeeDto { Fee = fee });
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Update fee schedule item error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> RemoveItemAsync(int itemId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/fee-schedules/items/{itemId}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Remove fee schedule item error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<int?> CopyFeesFromMbsAsync(int feeScheduleId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/fee-schedules/{feeScheduleId}/items/copy-from-mbs", null);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<int>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Copy fees from MBS error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<int?> ImportItemsAsync(int feeScheduleId, ImportFeeScheduleItemsRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/fee-schedules/{feeScheduleId}/items/import", request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<int>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Import fee schedule items error: {ex.Message}");
+            return null;
+        }
+    }
 }

@@ -119,4 +119,75 @@ public class FeeSchedulesController : ControllerBase
         await _repository.DeleteAsync(id);
         return NoContent();
     }
+
+    /// <summary>
+    /// List the item-fee mappings for a fee schedule.
+    /// </summary>
+    [HttpGet("{id:int}/items")]
+    [ProducesResponseType(typeof(IEnumerable<FeeScheduleItemDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetItems(int id)
+    {
+        var items = await _repository.GetItemsAsync(id);
+        return Ok(items);
+    }
+
+    /// <summary>
+    /// Add a single item-fee mapping to a fee schedule.
+    /// </summary>
+    [HttpPost("{id:int}/items")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddItem(int id, [FromBody] CreateFeeScheduleItemDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var itemId = await _repository.AddItemAsync(id, dto);
+        return CreatedAtAction(nameof(GetItems), new { id }, new { id = itemId });
+    }
+
+    /// <summary>
+    /// Update the fee of a single item-fee mapping.
+    /// </summary>
+    [HttpPut("items/{itemId:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UpdateItemFee(int itemId, [FromBody] UpdateFeeScheduleItemFeeDto dto)
+    {
+        await _repository.UpdateItemFeeAsync(itemId, dto.Fee);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Remove a single item-fee mapping.
+    /// </summary>
+    [HttpDelete("items/{itemId:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveItem(int itemId)
+    {
+        await _repository.RemoveItemAsync(itemId);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Reset every existing item's fee to the current MBS schedule fee.
+    /// </summary>
+    [HttpPost("{id:int}/items/copy-from-mbs")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CopyFeesFromMbs(int id)
+    {
+        var updated = await _repository.CopyFeesFromMbsAsync(id);
+        return Ok(updated);
+    }
+
+    /// <summary>
+    /// Bulk-populate this schedule's items from another schedule's item-fee list (or the whole MBS
+    /// catalog when SourceFeeScheduleId is null), optionally applying a percentage/flat adjustment.
+    /// </summary>
+    [HttpPost("{id:int}/items/import")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ImportItems(int id, [FromBody] ImportFeeScheduleItemsRequest request)
+    {
+        var affected = await _repository.ImportItemsAsync(id, request);
+        return Ok(affected);
+    }
 }

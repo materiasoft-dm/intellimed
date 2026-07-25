@@ -89,12 +89,15 @@ else
             <table class="table table-sm mb-0">
                 <thead>
                     <tr>
-                        <th style="width:70px">Item#</th>
+                        <th style="width:60px">Item#</th>
                         <th>Description</th>
-                        <th style="width:110px">Service Date</th>
-                        <th style="width:60px">Qty</th>
-                        <th style="width:100px">Unit Price</th>
-                        <th style="width:100px">Total</th>
+                        <th style="width:100px">Service Date</th>
+                        <th style="width:50px">Qty</th>
+                        <th style="width:90px" class="text-end">Fee</th>
+                        <th style="width:90px" class="text-end">Rebate</th>
+                        <th style="width:80px" class="text-end">Disc.</th>
+                        <th style="width:90px" class="text-end">Gap</th>
+                        <th style="width:90px" class="text-end">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -105,15 +108,21 @@ else
                             <td>@item.Description</td>
                             <td>@(item.ServiceDate?.ToString("dd/MM/yyyy") ?? "-")</td>
                             <td>@item.Quantity</td>
-                            <td>@item.UnitPrice.ToString("C")</td>
-                            <td>@item.TotalPrice.ToString("C")</td>
+                            <td class="text-end">@item.UnitPrice.ToString("C")</td>
+                            <td class="text-end">@item.LineRebate.ToString("C")</td>
+                            <td class="text-end">@item.Discount.ToString("C")</td>
+                            <td class="text-end @(item.Gap > 0 ? "text-danger" : "")">@item.Gap.ToString("C")</td>
+                            <td class="text-end">@item.TotalPrice.ToString("C")</td>
                         </tr>
                     }
                 </tbody>
                 <tfoot>
-                    <tr>
-                        <td colspan="5" class="text-end fw-semibold">Total</td>
-                        <td class="fw-semibold">@_invoice.TotalAmount.ToString("C")</td>
+                    <tr class="fw-semibold">
+                        <td colspan="5" class="text-end">Totals</td>
+                        <td class="text-end">@_invoice.TotalRebate.ToString("C")</td>
+                        <td></td>
+                        <td class="text-end">@_invoice.TotalGap.ToString("C")</td>
+                        <td class="text-end">@_invoice.TotalAmount.ToString("C")</td>
                     </tr>
                 </tfoot>
             </table>

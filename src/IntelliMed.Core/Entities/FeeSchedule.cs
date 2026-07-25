@@ -6,6 +6,7 @@ public class FeeSchedule
     public string Code { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? Note { get; set; }
+    public bool IsHealthFund { get; set; }
     public int? HealthFundId { get; set; }
     public int? FeeTableId { get; set; }
     public RoundingTypeEnum RoundingType { get; set; } = RoundingTypeEnum.Exact;

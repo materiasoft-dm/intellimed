@@ -3,14 +3,18 @@ using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
 using IntelliMed.Infrastructure.Data;
 using IntelliMed.Infrastructure.Mappers;
+using IntelliMed.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace IntelliMed.Infrastructure.Repositories;
 
 public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
 {
-    public InvoiceRepository(AppDbContext context) : base(context)
+    private readonly IBillingCalculator _billingCalculator;
+
+    public InvoiceRepository(AppDbContext context, IBillingCalculator billingCalculator) : base(context)
     {
+        _billingCalculator = billingCalculator;
     }
 
     public async Task<InvoiceDto?> GetByIdAsync(int id)
@@ -105,9 +109,52 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         var invoiceNumber = await GenerateInvoiceNumberAsync();
         var invoice = EntityMapper.ToEntity(dto, invoiceNumber);
 
+        // Provider service-type drives the bulk-bill-equivalent rebate lookup (defaults to GP).
+        var providerServiceType = ProviderServiceType.GeneralPractitioner;
+        if (dto.PractitionerId.HasValue)
+        {
+            providerServiceType = await _context.Practitioners
+                .Where(p => p.Id == dto.PractitionerId.Value)
+                .Select(p => p.ServiceType)
+                .FirstOrDefaultAsync();
+        }
+
+        // The charged fee (UnitPrice) is user-editable, so we keep whatever the client sent; the
+        // rebate/GST are derived authoritatively from the billing context.
+        foreach (var item in invoice.Items.Where(i => i.BillingItemId.HasValue))
+        {
+            var resolved = await _billingCalculator.ResolveLineAsync(
+                dto.ClinicId, dto.AccountType, providerServiceType, dto.PlaceOfService,
+                item.BillingItemId!.Value, item.ServiceDate);
+
+            item.RebatePerUnit = resolved.RebatePerUnit;
+            item.GstAmount = resolved.GstAmount;
+            item.PercentGst = resolved.PercentGst;
+            if (string.IsNullOrWhiteSpace(item.Description))
+                item.Description = resolved.Description;
+        }
+
+        invoice.TotalAmount = BillingMath.RoundMoney(invoice.Items.Sum(i => i.TotalPrice));
+
         await _dbSet.AddAsync(invoice);
         await _context.SaveChangesAsync();
         return invoice.Id;
+    }
+
+    public async Task<ResolveLineResult> ResolveLineAsync(ResolveLineRequest request)
+    {
+        var providerServiceType = ProviderServiceType.GeneralPractitioner;
+        if (request.PractitionerId.HasValue)
+        {
+            providerServiceType = await _context.Practitioners
+                .Where(p => p.Id == request.PractitionerId.Value)
+                .Select(p => p.ServiceType)
+                .FirstOrDefaultAsync();
+        }
+
+        return await _billingCalculator.ResolveLineAsync(
+            request.ClinicId, request.AccountType, providerServiceType, request.PlaceOfService,
+            request.BillingItemId, request.ServiceDate);
     }
 
     public async Task AddPaymentAsync(int invoiceId, CreatePaymentDto dto)

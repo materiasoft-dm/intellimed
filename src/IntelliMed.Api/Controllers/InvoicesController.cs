@@ -10,10 +10,14 @@ namespace IntelliMed.Api.Controllers;
 public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceRepository _invoiceRepository;
+    private readonly IAccountTypeFeeScheduleMappingRepository _mappingRepository;
 
-    public InvoicesController(IInvoiceRepository invoiceRepository)
+    public InvoicesController(
+        IInvoiceRepository invoiceRepository,
+        IAccountTypeFeeScheduleMappingRepository mappingRepository)
     {
         _invoiceRepository = invoiceRepository;
+        _mappingRepository = mappingRepository;
     }
 
     /// <summary>
@@ -66,6 +70,40 @@ public class InvoicesController : ControllerBase
         dto.ClinicId = GetCurrentClinicId() ?? 1;
         var id = await _invoiceRepository.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { id }, new { id });
+    }
+
+    /// <summary>
+    /// Resolve a line item's fee / rebate / GST for the current billing context (live UI preview).
+    /// </summary>
+    [HttpPost("resolve-line")]
+    [ProducesResponseType(typeof(ResolveLineResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ResolveLine([FromBody] ResolveLineRequest request)
+    {
+        request.ClinicId = GetCurrentClinicId() ?? 1;
+        var result = await _invoiceRepository.ResolveLineAsync(request);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// List the account-type → fee-schedule mappings for the current clinic (one row per account type).
+    /// </summary>
+    [HttpGet("fee-schedule-mappings")]
+    [ProducesResponseType(typeof(IEnumerable<AccountTypeFeeScheduleMappingDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFeeScheduleMappings()
+    {
+        var mappings = await _mappingRepository.GetMappingsAsync(GetCurrentClinicId() ?? 1);
+        return Ok(mappings);
+    }
+
+    /// <summary>
+    /// Upsert (or clear) a single account-type → fee-schedule mapping for the current clinic.
+    /// </summary>
+    [HttpPut("fee-schedule-mappings")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> SaveFeeScheduleMapping([FromBody] SaveAccountTypeFeeScheduleMappingDto dto)
+    {
+        await _mappingRepository.SaveMappingAsync(GetCurrentClinicId() ?? 1, dto);
+        return NoContent();
     }
 
     /// <summary>

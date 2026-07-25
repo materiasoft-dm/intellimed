@@ -13,6 +13,7 @@ public interface IInvoiceRepository : IRepository<Invoice>
     Task<IEnumerable<InvoiceDto>> GetOverdueInvoicesAsync();
     Task<string> GenerateInvoiceNumberAsync();
     Task<int> CreateAsync(CreateInvoiceDto dto);
+    Task<ResolveLineResult> ResolveLineAsync(ResolveLineRequest request);
     Task AddPaymentAsync(int invoiceId, CreatePaymentDto dto);
     Task UpdateStatusAsync(int id, InvoiceStatus status);
     Task<(IEnumerable<PaymentDto> Items, int TotalCount)> GetAllPaymentsAsync(PaymentSearchDto search);

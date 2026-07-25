@@ -26,10 +26,11 @@
             @foreach (var type in Enum.GetValues<AccountTypeEnum>())
             {
                 <li class="nav-item">
-                    <a class="nav-link py-1 px-2 small @(_model.AccountType == type ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _model.AccountType = type)">@AccountTypeLabel(type)</a>
+                    <a class="nav-link py-1 px-2 small @(_model.AccountType == type ? "active" : "")" href="javascript:void(0)" @onclick="@(() => SelectAccountTypeAsync(type))">@AccountTypeLabel(type)</a>
                 </li>
             }
         </ul>
+        <div class="small text-muted mt-2">Fees and the Medicare rebate are resolved from the account type's mapped fee schedule (configure in Clinic Settings). Fee is editable inline.</div>
     </div>
 </div>
 
@@ -46,9 +47,9 @@
                             <button type="button" class="btn btn-outline-secondary" @onclick="OpenClientPicker">Find</button>
                         </div>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
                         <label class="form-label small mb-0">Provider</label>
-                        <select class="form-select form-select-sm" @bind="_model.PractitionerId">
+                        <select class="form-select form-select-sm" @bind="_model.PractitionerId" @bind:after="RecalculateAllLinesAsync">
                             <option value="">-- None --</option>
                             @foreach (var p in _practitioners)
                             {
@@ -56,7 +57,16 @@
                             }
                         </select>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
+                        <label class="form-label small mb-0">Place of Service</label>
+                        <select class="form-select form-select-sm" @bind="_model.PlaceOfService" @bind:after="RecalculateAllLinesAsync">
+                            @foreach (var place in Enum.GetValues<PlaceOfServiceEnum>())
+                            {
+                                <option value="@place">@place</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-4">
                         <label class="form-label small mb-0">Due Date</label>
                         <input type="date" class="form-control form-control-sm" @bind="_model.DueDate" />
                     </div>
@@ -118,16 +128,19 @@
         }
         else
         {
-            <table class="table table-sm mb-0">
+            <table class="table table-sm mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th style="width:70px">Item#</th>
+                        <th style="width:60px">Item#</th>
                         <th>Description</th>
-                        <th style="width:130px">Service Date</th>
-                        <th style="width:70px">Qty</th>
-                        <th style="width:100px">Unit Price</th>
-                        <th style="width:100px">Total</th>
-                        <th style="width:40px"></th>
+                        <th style="width:120px">Service Date</th>
+                        <th style="width:55px">Qty</th>
+                        <th style="width:95px">Fee</th>
+                        <th style="width:90px" class="text-end">Rebate</th>
+                        <th style="width:90px">Discount</th>
+                        <th style="width:90px" class="text-end">Gap</th>
+                        <th style="width:95px" class="text-end">Total</th>
+                        <th style="width:36px"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -139,15 +152,21 @@
                             <td><input type="date" class="form-control form-control-sm" @bind="item.ServiceDate" /></td>
                             <td><input type="number" min="1" class="form-control form-control-sm" @bind="item.Quantity" /></td>
                             <td><input type="number" step="0.01" class="form-control form-control-sm" @bind="item.UnitPrice" /></td>
-                            <td class="text-end">@((item.Quantity * item.UnitPrice).ToString("C"))</td>
+                            <td class="text-end">@item.LineRebate.ToString("C")</td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm" @bind="item.Discount" /></td>
+                            <td class="text-end @(item.Gap > 0 ? "text-danger" : "")">@item.Gap.ToString("C")</td>
+                            <td class="text-end">@item.LineTotal.ToString("C")</td>
                             <td><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => _items.Remove(item)">x</button></td>
                         </tr>
                     }
                 </tbody>
                 <tfoot>
-                    <tr>
-                        <td colspan="5" class="text-end fw-semibold">Total</td>
-                        <td class="text-end fw-semibold">@_total.ToString("C")</td>
+                    <tr class="fw-semibold">
+                        <td colspan="5" class="text-end">Totals</td>
+                        <td class="text-end">@_totalRebate.ToString("C")</td>
+                        <td></td>
+                        <td class="text-end">@_totalGap.ToString("C")</td>
+                        <td class="text-end">@_total.ToString("C")</td>
                         <td></td>
                     </tr>
                 </tfoot>
@@ -229,7 +248,7 @@
                                 {
                                     <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectBillingItem(candidate))">
                                         <strong>@candidate.ItemNumber</strong> — @candidate.Description
-                                        <span class="text-muted small">(@candidate.ScheduleFee.ToString("C"))</span>
+                                        <span class="text-muted small">(@FeeHint(candidate))</span>
                                     </li>
                                 }
                             </ul>
@@ -247,7 +266,9 @@
 @code {
     private CreateInvoiceDto _model = new() { DueDate = DateTime.Today.AddDays(14) };
     private List<LineItemRow> _items = new();
-    private decimal _total => _items.Sum(i => i.Quantity * i.UnitPrice);
+    private decimal _total => _items.Sum(i => i.LineTotal);
+    private decimal _totalRebate => _items.Sum(i => i.LineRebate);
+    private decimal _totalGap => _items.Sum(i => i.Gap);
 
     private string? _clientDisplayName;
     private bool _showClientPickerModal;
@@ -300,12 +321,19 @@
         _clientSearchResults = result.Items.ToList();
     }
 
-    private void SelectClient(ClientDto candidate)
+    private async Task SelectClient(ClientDto candidate)
     {
         _model.ClientId = candidate.Id;
         _model.AccountType = candidate.AccountType;
         _clientDisplayName = candidate.FullName;
         _showClientPickerModal = false;
+        await RecalculateAllLinesAsync();
+    }
+
+    private async Task SelectAccountTypeAsync(AccountTypeEnum type)
+    {
+        _model.AccountType = type;
+        await RecalculateAllLinesAsync();
     }
 
     private void OpenBillingItemPicker()
@@ -320,9 +348,9 @@
         _billingItemSearchResults = await BillingItemService.SearchAsync(_billingItemSearchTerm);
     }
 
-    private void SelectBillingItem(BillingItemDto candidate)
+    private async Task SelectBillingItem(BillingItemDto candidate)
     {
-        _items.Add(new LineItemRow
+        var row = new LineItemRow
         {
             BillingItemId = candidate.Id,
             ItemNumberDisplay = candidate.ItemNumber,
@@ -330,8 +358,42 @@
             ServiceDate = DateTime.Today,
             Quantity = 1,
             UnitPrice = candidate.ScheduleFee
-        });
+        };
+        _items.Add(row);
         _showBillingItemPickerModal = false;
+        await ResolveLineAsync(row);
+    }
+
+    private string FeeHint(BillingItemDto candidate) => $"Schedule: {candidate.ScheduleFee:C}";
+
+    /// <summary>Resolve a catalog line's fee + rebate from the server for the current billing context.</summary>
+    private async Task ResolveLineAsync(LineItemRow row)
+    {
+        if (row.BillingItemId == null) return;
+
+        var result = await InvoiceService.ResolveLineAsync(new ResolveLineRequest
+        {
+            AccountType = _model.AccountType,
+            PractitionerId = _model.PractitionerId,
+            PlaceOfService = _model.PlaceOfService,
+            BillingItemId = row.BillingItemId.Value,
+            ServiceDate = row.ServiceDate
+        });
+
+        if (result != null)
+        {
+            row.UnitPrice = result.Fee;
+            row.RebatePerUnit = result.RebatePerUnit;
+            if (string.IsNullOrWhiteSpace(row.Description))
+                row.Description = result.Description;
+        }
+    }
+
+    /// <summary>Re-resolve every catalog line when the account type, provider or place of service changes.</summary>
+    private async Task RecalculateAllLinesAsync()
+    {
+        foreach (var row in _items.Where(i => i.BillingItemId.HasValue))
+            await ResolveLineAsync(row);
     }
 
     private void AddCustomLine()
@@ -368,7 +430,8 @@
                 Description = i.Description,
                 ServiceDate = i.ServiceDate,
                 Quantity = i.Quantity,
-                UnitPrice = i.UnitPrice
+                UnitPrice = i.UnitPrice,
+                Discount = i.Discount
             }).ToList();
 
             var id = await InvoiceService.CreateInvoiceAsync(_model);
@@ -410,5 +473,11 @@
         public DateTime? ServiceDate { get; set; }
         public int Quantity { get; set; } = 1;
         public decimal UnitPrice { get; set; }
+        public decimal RebatePerUnit { get; set; }
+        public decimal Discount { get; set; }
+
+        public decimal LineRebate => RebatePerUnit * Quantity;
+        public decimal LineTotal => UnitPrice * Quantity - Discount;
+        public decimal Gap => LineTotal - LineRebate;
     }
 }

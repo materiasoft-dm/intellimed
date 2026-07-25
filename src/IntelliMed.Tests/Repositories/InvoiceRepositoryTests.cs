@@ -3,6 +3,7 @@ using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
 using IntelliMed.Infrastructure.Data;
 using IntelliMed.Infrastructure.Repositories;
+using IntelliMed.Infrastructure.Services;
 using IntelliMed.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -17,7 +18,7 @@ public class InvoiceRepositoryTests : IDisposable
     public InvoiceRepositoryTests()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
-        _repository = new InvoiceRepository(_context);
+        _repository = new InvoiceRepository(_context, new BillingCalculator(_context));
     }
 
     public void Dispose()

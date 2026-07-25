@@ -2,9 +2,12 @@
 @layout MainLayout
 @using System.ComponentModel.DataAnnotations
 @using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
 @using IntelliMed.Web.Services
 @inject IClinicSettingsService ClinicSettingsService
 @inject IBillingItemService BillingItemService
+@inject IInvoiceService InvoiceService
+@inject IFeeScheduleService FeeScheduleService
 
 <PageTitle>Clinic Settings - IntelliMed</PageTitle>
 
@@ -139,6 +142,34 @@ else
                     }
                 </div>
             </div>
+
+            <div class="card mt-3">
+                <div class="card-header"><strong>Account Type → Fee Schedule</strong></div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        Maps each account type to the fee schedule that prices its invoice lines. For the
+                        Medicare rebate to resolve, also create schedules coded <code>BBGP</code>,
+                        <code>BBO</code> and <code>BBI</code> and populate them via Fee Schedules → Items.
+                    </p>
+                    @foreach (var mapping in _mappings)
+                    {
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-5 small">@AccountTypeLabel(mapping.AccountType)</div>
+                            <div class="col-7">
+                                <select class="form-select form-select-sm"
+                                        value="@(mapping.FeeScheduleId?.ToString() ?? "")"
+                                        @onchange="@(e => SaveMappingAsync(mapping, e.Value?.ToString()))">
+                                    <option value="">-- None --</option>
+                                    @foreach (var schedule in _feeSchedules)
+                                    {
+                                        <option value="@schedule.Id">@schedule.Code - @schedule.Description</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
 }
@@ -163,6 +194,8 @@ else
     private ClinicSettingsDto? _settings;
     private ClinicSettingsFormModel _model = new();
     private BillingItemSyncResultDto? _lastSyncResult;
+    private List<AccountTypeFeeScheduleMappingDto> _mappings = new();
+    private List<FeeScheduleDto> _feeSchedules = new();
     private string? _toastMessage;
     private bool _toastIsError;
 
@@ -188,8 +221,34 @@ else
                 Postcode = _settings.Postcode,
                 State = _settings.State
             };
+
+            _feeSchedules = await FeeScheduleService.GetAllActiveAsync();
+            _mappings = await InvoiceService.GetFeeScheduleMappingsAsync();
         }
         _isLoading = false;
+    }
+
+    private static string AccountTypeLabel(AccountTypeEnum type) => type switch
+    {
+        AccountTypeEnum.BulkBill => "Bulk Bill",
+        AccountTypeEnum.PrivatePatient => "Private Patient",
+        AccountTypeEnum.Veteran => "DVA (Veteran)",
+        AccountTypeEnum.WorkCover => "WorkCover",
+        AccountTypeEnum.Tac => "TAC",
+        _ => type.ToString()
+    };
+
+    private async Task SaveMappingAsync(AccountTypeFeeScheduleMappingDto mapping, string? feeScheduleId)
+    {
+        int? scheduleId = int.TryParse(feeScheduleId, out var id) ? id : null;
+        mapping.FeeScheduleId = scheduleId;
+
+        var success = await InvoiceService.SaveFeeScheduleMappingAsync(new SaveAccountTypeFeeScheduleMappingDto
+        {
+            AccountType = mapping.AccountType,
+            FeeScheduleId = scheduleId
+        });
+        ShowToast(success ? $"{AccountTypeLabel(mapping.AccountType)} mapping saved." : "Failed to save mapping.", !success);
     }
 
     private async Task SaveAsync()
