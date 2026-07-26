@@ -163,7 +163,7 @@ public class RolePermissionsController : ControllerBase
         {
             "clinic-settings" or "clinic-manager" => "Practice",
             string p when p.StartsWith("clients") || p.StartsWith("appointments") || p.StartsWith("practitioners") => "Clinical",
-            string p when p.StartsWith("invoices") || p.StartsWith("payments") || p == "fee-schedules" => "Financial",
+            string p when p.StartsWith("invoices") || p.StartsWith("payments") || p == "fee-schedules" || p == "derived-item-configs" => "Financial",
             string p when p.StartsWith("admin") => "Admin",
             string p when p.StartsWith("reports") => "Reports",
             _ => "Other"
@@ -198,6 +198,7 @@ public class RolePermissionsController : ControllerBase
             new() { PageKey = "invoices/delete", PageName = "Delete Invoice", Category = "Financial", Description = "Remove invoices" },
             new() { PageKey = "payments", PageName = "Payments", Category = "Financial", Description = "View and process payments" },
             new() { PageKey = "fee-schedules", PageName = "Fee Schedules", Category = "Financial", Description = "Manage fee schedules and health fund rate tables" },
+            new() { PageKey = "derived-item-configs", PageName = "Derived Item Rules", Category = "Financial", Description = "Configure MBS items whose fee derives from other items on the invoice" },
 
             // Admin
             new() { PageKey = "admin/users", PageName = "User Management", Category = "Admin", Description = "Manage system users" },

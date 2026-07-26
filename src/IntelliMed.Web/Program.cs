@@ -48,6 +48,7 @@ builder.Services.AddScoped<IBillingItemService, BillingItemService>();
 builder.Services.AddScoped<IPractitionerService, PractitionerService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IFeeScheduleService, FeeScheduleService>();
+builder.Services.AddScoped<IDerivedItemConfigService, DerivedItemConfigService>();
 
 // Radzen DataGrid (column show/hide/reorder + server-side paging) for list pages
 builder.Services.AddRadzenComponents();

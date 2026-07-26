@@ -44,6 +44,7 @@ public class InvoiceItemDto
     public decimal Discount { get; set; }
     public decimal GstAmount { get; set; }
     public decimal PercentGst { get; set; }
+    public decimal? DerivedQuantity { get; set; }
     public decimal LineRebate => RebatePerUnit * Quantity;
     public decimal NetAmount => UnitPrice * Quantity + GstAmount;
     public decimal TotalPrice => NetAmount - Discount;
@@ -84,6 +85,7 @@ public class CreateInvoiceItemDto
     public int Quantity { get; set; } = 1;
     public decimal UnitPrice { get; set; }
     public decimal Discount { get; set; }
+    public decimal? DerivedQuantity { get; set; }
 }
 
 /// <summary>Request to resolve a line item's fee/rebate/GST for the given billing context (live UI preview).</summary>
@@ -95,6 +97,7 @@ public class ResolveLineRequest
     public PlaceOfServiceEnum PlaceOfService { get; set; }
     public int BillingItemId { get; set; }
     public DateTime? ServiceDate { get; set; }
+    public int? HealthFundId { get; set; }
 }
 
 public class ResolveLineResult

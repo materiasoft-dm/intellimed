@@ -11,10 +11,12 @@ namespace IntelliMed.Infrastructure.Repositories;
 public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
 {
     private readonly IBillingCalculator _billingCalculator;
+    private readonly IDerivedFeeCalculator _derivedFeeCalculator;
 
-    public InvoiceRepository(AppDbContext context, IBillingCalculator billingCalculator) : base(context)
+    public InvoiceRepository(AppDbContext context, IBillingCalculator billingCalculator, IDerivedFeeCalculator derivedFeeCalculator) : base(context)
     {
         _billingCalculator = billingCalculator;
+        _derivedFeeCalculator = derivedFeeCalculator;
     }
 
     public async Task<InvoiceDto?> GetByIdAsync(int id)
@@ -119,13 +121,20 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
                 .FirstOrDefaultAsync();
         }
 
+        // The client's own HealthFundId (not anything client-supplied on the DTO) is the single
+        // source of truth for fund-specific fee schedule resolution.
+        var healthFundId = await _context.Clients
+            .Where(c => c.Id == dto.ClientId)
+            .Select(c => c.HealthFundId)
+            .FirstOrDefaultAsync();
+
         // The charged fee (UnitPrice) is user-editable, so we keep whatever the client sent; the
         // rebate/GST are derived authoritatively from the billing context.
         foreach (var item in invoice.Items.Where(i => i.BillingItemId.HasValue))
         {
             var resolved = await _billingCalculator.ResolveLineAsync(
                 dto.ClinicId, dto.AccountType, providerServiceType, dto.PlaceOfService,
-                item.BillingItemId!.Value, item.ServiceDate);
+                item.BillingItemId!.Value, item.ServiceDate, healthFundId);
 
             item.RebatePerUnit = resolved.RebatePerUnit;
             item.GstAmount = resolved.GstAmount;
@@ -133,6 +142,11 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             if (string.IsNullOrWhiteSpace(item.Description))
                 item.Description = resolved.Description;
         }
+
+        // Derived items (assistant-at-surgery, patients-seen, time-loading, etc.) need every line's
+        // normally-resolved fee already in place before their own formulas can run, and must run
+        // before the invoice total is summed so the override is reflected in TotalAmount.
+        await _derivedFeeCalculator.ApplyDerivedFeesAsync(invoice.Items);
 
         invoice.TotalAmount = BillingMath.RoundMoney(invoice.Items.Sum(i => i.TotalPrice));
 
@@ -154,7 +168,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
 
         return await _billingCalculator.ResolveLineAsync(
             request.ClinicId, request.AccountType, providerServiceType, request.PlaceOfService,
-            request.BillingItemId, request.ServiceDate);
+            request.BillingItemId, request.ServiceDate, request.HealthFundId);
     }
 
     public async Task AddPaymentAsync(int invoiceId, CreatePaymentDto dto)

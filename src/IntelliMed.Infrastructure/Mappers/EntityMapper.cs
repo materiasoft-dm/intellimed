@@ -600,7 +600,8 @@ public static class EntityMapper
         RebatePerUnit = entity.RebatePerUnit,
         Discount = entity.Discount,
         GstAmount = entity.GstAmount,
-        PercentGst = entity.PercentGst
+        PercentGst = entity.PercentGst,
+        DerivedQuantity = entity.DerivedQuantity
     };
 
     public static PaymentDto ToDto(Payment entity) => new()
@@ -639,7 +640,8 @@ public static class EntityMapper
             ServiceDate = i.ServiceDate,
             Quantity = i.Quantity,
             UnitPrice = i.UnitPrice,
-            Discount = i.Discount
+            Discount = i.Discount,
+            DerivedQuantity = i.DerivedQuantity
         }).ToList()
     };
 
@@ -680,6 +682,9 @@ public static class EntityMapper
         FeeTableCode = entity.FeeTable?.Code,
         RoundingType = entity.RoundingType,
         IsArchived = entity.IsArchived,
+        SourceUrl = entity.SourceUrl,
+        LastFetchedAt = entity.LastFetchedAt,
+        LastFetchResult = entity.LastFetchResult,
         CreatedAt = entity.CreatedAt,
         UpdatedAt = entity.UpdatedAt
     };
@@ -693,6 +698,7 @@ public static class EntityMapper
         HealthFundId = dto.HealthFundId,
         FeeTableId = dto.FeeTableId,
         RoundingType = dto.RoundingType,
+        SourceUrl = dto.SourceUrl,
         IsArchived = false,
         CreatedAt = DateTime.UtcNow
     };
@@ -707,6 +713,7 @@ public static class EntityMapper
         entity.FeeTableId = dto.FeeTableId;
         entity.RoundingType = dto.RoundingType;
         entity.IsArchived = dto.IsArchived;
+        entity.SourceUrl = dto.SourceUrl;
         entity.UpdatedAt = DateTime.UtcNow;
     }
 
@@ -717,6 +724,56 @@ public static class EntityMapper
         BillingItemId = entity.BillingItemId,
         ItemNumber = entity.BillingItem?.ItemNumber ?? string.Empty,
         Description = entity.BillingItem?.Description ?? string.Empty,
-        Fee = entity.Fee
+        Fee = entity.Fee,
+        CreatedAt = entity.CreatedAt,
+        UpdatedAt = entity.UpdatedAt
     };
+
+    // DerivedItemConfig mappings
+    public static DerivedItemConfigDto ToDto(DerivedItemConfig entity) => new()
+    {
+        Id = entity.Id,
+        BillingItemId = entity.BillingItemId,
+        ItemNumber = entity.BillingItem?.ItemNumber ?? string.Empty,
+        Description = entity.BillingItem?.Description ?? string.Empty,
+        CalculationType = entity.CalculationType,
+        AssociatedBillingItemId = entity.AssociatedBillingItemId,
+        AssociatedItemNumber = entity.AssociatedBillingItem?.ItemNumber,
+        AssociatedDescription = entity.AssociatedBillingItem?.Description,
+        Percentage = entity.Percentage,
+        UnitValue = entity.UnitValue,
+        LimitQuantity = entity.LimitQuantity,
+        OverLimitUnitValue = entity.OverLimitUnitValue,
+        IsActive = entity.IsActive,
+        Notes = entity.Notes,
+        CreatedAt = entity.CreatedAt,
+        UpdatedAt = entity.UpdatedAt
+    };
+
+    public static DerivedItemConfig ToEntity(CreateDerivedItemConfigDto dto) => new()
+    {
+        BillingItemId = dto.BillingItemId,
+        CalculationType = dto.CalculationType,
+        AssociatedBillingItemId = dto.AssociatedBillingItemId,
+        Percentage = dto.Percentage,
+        UnitValue = dto.UnitValue,
+        LimitQuantity = dto.LimitQuantity,
+        OverLimitUnitValue = dto.OverLimitUnitValue,
+        Notes = dto.Notes,
+        IsActive = true,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    public static void UpdateEntity(DerivedItemConfig entity, UpdateDerivedItemConfigDto dto)
+    {
+        entity.CalculationType = dto.CalculationType;
+        entity.AssociatedBillingItemId = dto.AssociatedBillingItemId;
+        entity.Percentage = dto.Percentage;
+        entity.UnitValue = dto.UnitValue;
+        entity.LimitQuantity = dto.LimitQuantity;
+        entity.OverLimitUnitValue = dto.OverLimitUnitValue;
+        entity.IsActive = dto.IsActive;
+        entity.Notes = dto.Notes;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
 }

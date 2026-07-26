@@ -1,0 +1,421 @@
+@page "/derived-item-configs"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IDerivedItemConfigService ConfigService
+@inject IBillingItemService BillingItemService
+@inject IJSRuntime JS
+
+<PageTitle>Derived Item Rules - IntelliMed</PageTitle>
+
+<h4 class="mb-2">Derived Item Rules</h4>
+<p class="text-muted small">
+    Configures MBS items whose fee is computed from other items on the same invoice (assistant-at-surgery,
+    anaesthesia time-loading, per-patient-seen billing, etc.) instead of a flat fee-schedule lookup.
+    There's no bulk-import source for this data — add rules one at a time as you identify them.
+</p>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between py-2">
+        <span class="small text-muted"><i class="bi bi-calculator me-1"></i> Total: <strong>@_configs.Count</strong></span>
+        <button class="btn btn-sm btn-primary" @onclick="OpenCreateDialog">
+            <i class="bi bi-plus-lg me-1"></i> Add Rule
+        </button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="card-body text-muted small">Loading...</div>
+    }
+    else if (_configs.Count == 0)
+    {
+        <div class="card-body text-muted small">No derived-item rules yet. Click "Add Rule" to create one.</div>
+    }
+    else
+    {
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Item#</th>
+                    <th>Description</th>
+                    <th>Calculation</th>
+                    <th>Associated Item</th>
+                    <th>Value</th>
+                    <th>Active</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var config in _configs)
+                {
+                    <tr>
+                        <td>@config.ItemNumber</td>
+                        <td>@config.Description</td>
+                        <td>@CalculationTypeLabel(config.CalculationType)</td>
+                        <td>@(config.AssociatedItemNumber ?? "—")</td>
+                        <td>@ValueSummary(config)</td>
+                        <td>
+                            @if (config.IsActive)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactive</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditDialog(config)"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(config)"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite" aria-atomic="true">
+    @if (_toastMessage != null)
+    {
+        <div class="toast show align-items-center @(_toastIsError ? "text-bg-danger" : "text-bg-success") border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@_toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => _toastMessage = null" aria-label="Close"></button>
+            </div>
+        </div>
+    }
+</div>
+
+@if (_dialogVisible)
+{
+    <div class="modal-backdrop fade show" style="display:block;"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title">@(_isEditing ? "Edit Derived Item Rule" : "New Derived Item Rule")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDialog"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Billing Item <span class="text-danger">*</span></label>
+                        @if (_isEditing)
+                        {
+                            <input class="form-control" value="@($"{_billingItemLabel}")" readonly />
+                        }
+                        else
+                        {
+                            <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
+                                   @bind="_billingItemSearchTerm" @bind:event="oninput" @bind:after="SearchBillingItemsAsync" />
+                            @if (_billingItemSearchResults.Count > 0)
+                            {
+                                <ul class="list-group" style="max-height:180px; overflow-y:auto;">
+                                    @foreach (var candidate in _billingItemSearchResults)
+                                    {
+                                        <li class="list-group-item list-group-item-action @(_model.BillingItemId == candidate.Id ? "active" : "")"
+                                            style="cursor:pointer" @onclick="() => SelectBillingItem(candidate)">
+                                            <strong>@candidate.ItemNumber</strong> — @candidate.Description
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            @if (_billingItemLabel != null)
+                            {
+                                <div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>@_billingItemLabel</div>
+                            }
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Calculation Type</label>
+                        <InputSelect @bind-Value="_model.CalculationType" class="form-select">
+                            <option value="@DerivedCalculationType.PercentageOfAssociatedItem">Percentage of Associated Item</option>
+                            <option value="@DerivedCalculationType.AssistanceAnaesthesia">Assistance / Anaesthesia (percentage + time loading)</option>
+                            <option value="@DerivedCalculationType.BasicUnits">Basic Units</option>
+                            <option value="@DerivedCalculationType.FieldQuantity">Field Quantity</option>
+                            <option value="@DerivedCalculationType.TimeDuration">Time Duration</option>
+                            <option value="@DerivedCalculationType.NumberOfPatientsSeen">Number of Patients Seen</option>
+                        </InputSelect>
+                    </div>
+
+                    @if (IsAssociativeType(_model.CalculationType))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Associated Billing Item</label>
+                            <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
+                                   @bind="_associatedSearchTerm" @bind:event="oninput" @bind:after="SearchAssociatedItemsAsync" />
+                            @if (_associatedSearchResults.Count > 0)
+                            {
+                                <ul class="list-group" style="max-height:150px; overflow-y:auto;">
+                                    @foreach (var candidate in _associatedSearchResults)
+                                    {
+                                        <li class="list-group-item list-group-item-action @(_model.AssociatedBillingItemId == candidate.Id ? "active" : "")"
+                                            style="cursor:pointer" @onclick="() => SelectAssociatedItem(candidate)">
+                                            <strong>@candidate.ItemNumber</strong> — @candidate.Description
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            @if (_associatedItemLabel != null)
+                            {
+                                <div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>@_associatedItemLabel</div>
+                            }
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Percentage (%)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_model.Percentage" />
+                        </div>
+                    }
+
+                    @if (_model.CalculationType == DerivedCalculationType.AssistanceAnaesthesia
+                        || !IsAssociativeType(_model.CalculationType))
+                    {
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Unit Value ($)</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.UnitValue" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Limit Quantity</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.LimitQuantity" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Over-Limit Unit Value ($)</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.OverLimitUnitValue" />
+                            </div>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" rows="2" @bind="_model.Notes"></textarea>
+                    </div>
+
+                    @if (_isEditing)
+                    {
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" role="switch" @bind="_model.IsActive" id="activeSwitch" />
+                            <label class="form-check-label" for="activeSwitch">Active</label>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@(_saving || _model.BillingItemId == 0)">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<DerivedItemConfigDto> _configs = new();
+    private bool _loading;
+    private bool _saving;
+    private string? _toastMessage;
+    private bool _toastIsError;
+
+    private bool _dialogVisible;
+    private bool _isEditing;
+    private int _editingId;
+    private DialogModel _model = new();
+
+    private string _billingItemSearchTerm = string.Empty;
+    private List<BillingItemDto> _billingItemSearchResults = new();
+    private string? _billingItemLabel;
+
+    private string _associatedSearchTerm = string.Empty;
+    private List<BillingItemDto> _associatedSearchResults = new();
+    private string? _associatedItemLabel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _configs = await ConfigService.GetAllAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static bool IsAssociativeType(DerivedCalculationType type) =>
+        type is DerivedCalculationType.PercentageOfAssociatedItem or DerivedCalculationType.AssistanceAnaesthesia;
+
+    private static string CalculationTypeLabel(DerivedCalculationType type) => type switch
+    {
+        DerivedCalculationType.PercentageOfAssociatedItem => "% of Associated Item",
+        DerivedCalculationType.AssistanceAnaesthesia => "Assistance / Anaesthesia",
+        DerivedCalculationType.BasicUnits => "Basic Units",
+        DerivedCalculationType.FieldQuantity => "Field Quantity",
+        DerivedCalculationType.TimeDuration => "Time Duration",
+        DerivedCalculationType.NumberOfPatientsSeen => "Patients Seen",
+        _ => type.ToString()
+    };
+
+    private static string ValueSummary(DerivedItemConfigDto config) => IsAssociativeType(config.CalculationType)
+        ? $"{config.Percentage ?? 0}%" + (config.CalculationType == DerivedCalculationType.AssistanceAnaesthesia ? $" + {config.UnitValue ?? 0:C}/unit" : "")
+        : $"{config.UnitValue ?? 0:C}/unit";
+
+    private void OpenCreateDialog()
+    {
+        _isEditing = false;
+        _model = new DialogModel();
+        _billingItemSearchTerm = string.Empty;
+        _billingItemSearchResults = new();
+        _billingItemLabel = null;
+        _associatedSearchTerm = string.Empty;
+        _associatedSearchResults = new();
+        _associatedItemLabel = null;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(DerivedItemConfigDto config)
+    {
+        _isEditing = true;
+        _editingId = config.Id;
+        _model = new DialogModel
+        {
+            BillingItemId = config.BillingItemId,
+            CalculationType = config.CalculationType,
+            AssociatedBillingItemId = config.AssociatedBillingItemId,
+            Percentage = config.Percentage,
+            UnitValue = config.UnitValue,
+            LimitQuantity = config.LimitQuantity,
+            OverLimitUnitValue = config.OverLimitUnitValue,
+            IsActive = config.IsActive,
+            Notes = config.Notes
+        };
+        _billingItemLabel = $"{config.ItemNumber} — {config.Description}";
+        _associatedItemLabel = config.AssociatedItemNumber != null ? $"{config.AssociatedItemNumber} — {config.AssociatedDescription}" : null;
+        _associatedSearchTerm = string.Empty;
+        _associatedSearchResults = new();
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog() => _dialogVisible = false;
+
+    private async Task SearchBillingItemsAsync()
+    {
+        _billingItemSearchResults = string.IsNullOrWhiteSpace(_billingItemSearchTerm)
+            ? new()
+            : await BillingItemService.SearchAsync(_billingItemSearchTerm);
+    }
+
+    private void SelectBillingItem(BillingItemDto candidate)
+    {
+        _model.BillingItemId = candidate.Id;
+        _billingItemLabel = $"{candidate.ItemNumber} — {candidate.Description}";
+        _billingItemSearchResults = new();
+    }
+
+    private async Task SearchAssociatedItemsAsync()
+    {
+        _associatedSearchResults = string.IsNullOrWhiteSpace(_associatedSearchTerm)
+            ? new()
+            : await BillingItemService.SearchAsync(_associatedSearchTerm);
+    }
+
+    private void SelectAssociatedItem(BillingItemDto candidate)
+    {
+        _model.AssociatedBillingItemId = candidate.Id;
+        _associatedItemLabel = $"{candidate.ItemNumber} — {candidate.Description}";
+        _associatedSearchResults = new();
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            bool success;
+            if (_isEditing)
+            {
+                success = await ConfigService.UpdateAsync(_editingId, new UpdateDerivedItemConfigDto
+                {
+                    CalculationType = _model.CalculationType,
+                    AssociatedBillingItemId = _model.AssociatedBillingItemId,
+                    Percentage = _model.Percentage,
+                    UnitValue = _model.UnitValue,
+                    LimitQuantity = _model.LimitQuantity,
+                    OverLimitUnitValue = _model.OverLimitUnitValue,
+                    IsActive = _model.IsActive,
+                    Notes = _model.Notes
+                });
+            }
+            else
+            {
+                success = await ConfigService.CreateAsync(new CreateDerivedItemConfigDto
+                {
+                    BillingItemId = _model.BillingItemId,
+                    CalculationType = _model.CalculationType,
+                    AssociatedBillingItemId = _model.AssociatedBillingItemId,
+                    Percentage = _model.Percentage,
+                    UnitValue = _model.UnitValue,
+                    LimitQuantity = _model.LimitQuantity,
+                    OverLimitUnitValue = _model.OverLimitUnitValue,
+                    Notes = _model.Notes
+                }) != null;
+            }
+
+            if (success)
+            {
+                ShowToast(_isEditing ? "Rule updated." : "Rule created.", false);
+                _dialogVisible = false;
+                await LoadAsync();
+            }
+            else
+            {
+                ShowToast("Failed to save rule.", true);
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteAsync(DerivedItemConfigDto config)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Delete the derived-item rule for item {config.ItemNumber}?");
+        if (!confirmed) return;
+
+        var success = await ConfigService.DeleteAsync(config.Id);
+        ShowToast(success ? "Rule deleted." : "Failed to delete rule.", !success);
+        if (success) await LoadAsync();
+    }
+
+    private void ShowToast(string message, bool isError)
+    {
+        _toastMessage = message;
+        _toastIsError = isError;
+    }
+
+    private class DialogModel
+    {
+        public int BillingItemId { get; set; }
+        public DerivedCalculationType CalculationType { get; set; } = DerivedCalculationType.PercentageOfAssociatedItem;
+        public int? AssociatedBillingItemId { get; set; }
+        public decimal? Percentage { get; set; }
+        public decimal? UnitValue { get; set; }
+        public decimal? LimitQuantity { get; set; }
+        public decimal? OverLimitUnitValue { get; set; }
+        public bool IsActive { get; set; } = true;
+        public string? Notes { get; set; }
+    }
+}

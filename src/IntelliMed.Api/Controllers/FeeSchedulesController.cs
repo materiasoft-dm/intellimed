@@ -9,10 +9,12 @@ namespace IntelliMed.Api.Controllers;
 public class FeeSchedulesController : ControllerBase
 {
     private readonly IFeeScheduleRepository _repository;
+    private readonly IFeeScheduleImportService _importService;
 
-    public FeeSchedulesController(IFeeScheduleRepository repository)
+    public FeeSchedulesController(IFeeScheduleRepository repository, IFeeScheduleImportService importService)
     {
         _repository = repository;
+        _importService = importService;
     }
 
     /// <summary>
@@ -158,6 +160,17 @@ public class FeeSchedulesController : ControllerBase
     }
 
     /// <summary>
+    /// Every fee this item has held, most recent first — lets a user see when a price last moved.
+    /// </summary>
+    [HttpGet("items/{itemId:int}/history")]
+    [ProducesResponseType(typeof(IEnumerable<FeeScheduleItemHistoryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetItemHistory(int itemId)
+    {
+        var history = await _repository.GetItemHistoryAsync(itemId);
+        return Ok(history);
+    }
+
+    /// <summary>
     /// Remove a single item-fee mapping.
     /// </summary>
     [HttpDelete("items/{itemId:int}")]
@@ -189,5 +202,45 @@ public class FeeSchedulesController : ControllerBase
     {
         var affected = await _repository.ImportItemsAsync(id, request);
         return Ok(affected);
+    }
+
+    /// <summary>
+    /// Find-or-creates the BBGP/BBO/BBI bulk-bill schedules and (re)populates their items from the
+    /// MBS catalog's 100% benefit, so bulk-bill rebate resolution works without any external file.
+    /// </summary>
+    [HttpPost("seed-bulk-bill")]
+    [ProducesResponseType(typeof(SeedBulkBillResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SeedBulkBillSchedules()
+    {
+        var result = await _repository.SeedBulkBillSchedulesAsync();
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Find-or-creates the VAGP/VASO/VASI DVA schedule shells. No fee auto-population — populate via
+    /// the generic CSV importer or manual Add Item once a DVA fee schedule CSV is available.
+    /// </summary>
+    [HttpPost("seed-dva")]
+    [ProducesResponseType(typeof(SeedBulkBillResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SeedDvaScheduleShells()
+    {
+        var result = await _repository.SeedDvaScheduleShellsAsync();
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Downloads and parses the schedule's configured SourceUrl now, on demand (the same operation
+    /// the background auto-import service runs periodically).
+    /// </summary>
+    [HttpPost("{id:int}/fetch-now")]
+    [ProducesResponseType(typeof(FeeScheduleFetchResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> FetchNow(int id)
+    {
+        var existing = await _repository.GetByIdAsync(id);
+        if (existing == null) return NotFound();
+
+        var result = await _importService.FetchFromSourceAsync(id);
+        return Ok(result);
     }
 }

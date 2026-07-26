@@ -179,4 +179,55 @@ public class FeeScheduleService : IFeeScheduleService
             return null;
         }
     }
+
+    public async Task<SeedBulkBillResultDto?> SeedBulkBillSchedulesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync("api/fee-schedules/seed-bulk-bill", null);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<SeedBulkBillResultDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Seed bulk-bill schedules error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<SeedBulkBillResultDto?> SeedDvaScheduleShellsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync("api/fee-schedules/seed-dva", null);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<SeedBulkBillResultDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Seed DVA schedule shells error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<FeeScheduleFetchResultDto?> FetchNowAsync(int feeScheduleId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/fee-schedules/{feeScheduleId}/fetch-now", null);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<FeeScheduleFetchResultDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Fetch fee schedule now error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<List<FeeScheduleItemHistoryDto>> GetItemHistoryAsync(int itemId)
+    {
+        var results = await _httpClient.GetFromJsonAsync<List<FeeScheduleItemHistoryDto>>($"api/fee-schedules/items/{itemId}/history");
+        return results ?? new List<FeeScheduleItemHistoryDto>();
+    }
 }

@@ -18,7 +18,7 @@ public class InvoiceRepositoryTests : IDisposable
     public InvoiceRepositoryTests()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
-        _repository = new InvoiceRepository(_context, new BillingCalculator(_context));
+        _repository = new InvoiceRepository(_context, new BillingCalculator(_context), new DerivedFeeCalculator(_context));
     }
 
     public void Dispose()
@@ -63,6 +63,48 @@ public class InvoiceRepositoryTests : IDisposable
         invoice.Should().NotBeNull();
         invoice!.ClientId.Should().Be(client.Id);
         invoice.Items.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithDerivedItemLine_AppliesDerivedFeeBeforeTotal()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+
+        var primaryItem = new BillingItem { ItemNumber = "30571", Description = "Primary surgical procedure", ScheduleFee = 500m, Benefit100 = 500m, IsActive = true };
+        var assistantItem = new BillingItem { ItemNumber = "51300", Description = "Assistant at surgery", ScheduleFee = 0m, Benefit100 = 0m, IsActive = true };
+        _context.BillingItems.AddRange(primaryItem, assistantItem);
+        await _context.SaveChangesAsync();
+
+        _context.DerivedItemConfigs.Add(new DerivedItemConfig
+        {
+            BillingItemId = assistantItem.Id,
+            CalculationType = DerivedCalculationType.PercentageOfAssociatedItem,
+            AssociatedBillingItemId = primaryItem.Id,
+            Percentage = 20m
+        });
+        await _context.SaveChangesAsync();
+
+        var dto = new CreateInvoiceDto
+        {
+            ClientId = client.Id,
+            AccountType = AccountTypeEnum.BulkBill,
+            DueDate = DateTime.Today.AddDays(30),
+            Items = new List<CreateInvoiceItemDto>
+            {
+                new() { BillingItemId = primaryItem.Id, Description = "Primary", Quantity = 1, UnitPrice = 500m },
+                // UnitPrice here is a deliberately wrong placeholder — the derived pass must overwrite it.
+                new() { BillingItemId = assistantItem.Id, Description = "Assistant", Quantity = 1, UnitPrice = 999m }
+            }
+        };
+
+        var invoiceId = await _repository.CreateAsync(dto);
+
+        var invoice = await _context.Invoices.Include(i => i.Items).FirstAsync(i => i.Id == invoiceId);
+        var assistantLine = invoice.Items.Single(i => i.BillingItemId == assistantItem.Id);
+
+        assistantLine.UnitPrice.Should().Be(100m); // 20% of the primary line's $500
+        invoice.TotalAmount.Should().Be(600m); // 500 (primary) + 100 (derived), not 500 + 999
     }
 
     [Fact]

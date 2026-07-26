@@ -138,6 +138,7 @@
                         <th style="width:95px">Fee</th>
                         <th style="width:90px" class="text-end">Rebate</th>
                         <th style="width:90px">Discount</th>
+                        <th style="width:80px" title="For derived-item rules (patients seen, minutes, fields, units) — see Derived Item Rules">D.Qty</th>
                         <th style="width:90px" class="text-end">Gap</th>
                         <th style="width:95px" class="text-end">Total</th>
                         <th style="width:36px"></th>
@@ -154,6 +155,7 @@
                             <td><input type="number" step="0.01" class="form-control form-control-sm" @bind="item.UnitPrice" /></td>
                             <td class="text-end">@item.LineRebate.ToString("C")</td>
                             <td><input type="number" step="0.01" class="form-control form-control-sm" @bind="item.Discount" /></td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm" @bind="item.DerivedQuantity" /></td>
                             <td class="text-end @(item.Gap > 0 ? "text-danger" : "")">@item.Gap.ToString("C")</td>
                             <td class="text-end">@item.LineTotal.ToString("C")</td>
                             <td><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => _items.Remove(item)">x</button></td>
@@ -164,6 +166,7 @@
                     <tr class="fw-semibold">
                         <td colspan="5" class="text-end">Totals</td>
                         <td class="text-end">@_totalRebate.ToString("C")</td>
+                        <td></td>
                         <td></td>
                         <td class="text-end">@_totalGap.ToString("C")</td>
                         <td class="text-end">@_total.ToString("C")</td>
@@ -271,6 +274,8 @@
     private decimal _totalGap => _items.Sum(i => i.Gap);
 
     private string? _clientDisplayName;
+    private int? _selectedHealthFundId;
+    private bool _accountTypeManuallySet;
     private bool _showClientPickerModal;
     private string _clientSearchTerm = string.Empty;
     private List<ClientDto> _clientSearchResults = new();
@@ -300,6 +305,7 @@
         AccountTypeEnum.Veteran => "DVA",
         AccountTypeEnum.WorkCover => "WorkCover",
         AccountTypeEnum.Tac => "TAC",
+        AccountTypeEnum.Imc => "IMC",
         _ => type.ToString()
     };
 
@@ -324,8 +330,12 @@
     private async Task SelectClient(ClientDto candidate)
     {
         _model.ClientId = candidate.Id;
-        _model.AccountType = candidate.AccountType;
+        // Prefill the account type from the client's stored default, but only if the user
+        // hasn't already made an explicit choice — otherwise this would silently override it.
+        if (!_accountTypeManuallySet)
+            _model.AccountType = candidate.AccountType;
         _clientDisplayName = candidate.FullName;
+        _selectedHealthFundId = candidate.HealthFundId;
         _showClientPickerModal = false;
         await RecalculateAllLinesAsync();
     }
@@ -333,6 +343,7 @@
     private async Task SelectAccountTypeAsync(AccountTypeEnum type)
     {
         _model.AccountType = type;
+        _accountTypeManuallySet = true;
         await RecalculateAllLinesAsync();
     }
 
@@ -377,7 +388,8 @@
             PractitionerId = _model.PractitionerId,
             PlaceOfService = _model.PlaceOfService,
             BillingItemId = row.BillingItemId.Value,
-            ServiceDate = row.ServiceDate
+            ServiceDate = row.ServiceDate,
+            HealthFundId = _selectedHealthFundId
         });
 
         if (result != null)
@@ -431,7 +443,8 @@
                 ServiceDate = i.ServiceDate,
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
-                Discount = i.Discount
+                Discount = i.Discount,
+                DerivedQuantity = i.DerivedQuantity
             }).ToList();
 
             var id = await InvoiceService.CreateInvoiceAsync(_model);
@@ -475,6 +488,7 @@
         public decimal UnitPrice { get; set; }
         public decimal RebatePerUnit { get; set; }
         public decimal Discount { get; set; }
+        public decimal? DerivedQuantity { get; set; }
 
         public decimal LineRebate => RebatePerUnit * Quantity;
         public decimal LineTotal => UnitPrice * Quantity - Discount;

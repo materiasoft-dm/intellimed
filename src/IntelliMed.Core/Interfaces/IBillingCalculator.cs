@@ -15,5 +15,6 @@ public interface IBillingCalculator
         ProviderServiceType providerServiceType,
         PlaceOfServiceEnum placeOfService,
         int billingItemId,
-        DateTime? serviceDate);
+        DateTime? serviceDate,
+        int? healthFundId = null);
 }

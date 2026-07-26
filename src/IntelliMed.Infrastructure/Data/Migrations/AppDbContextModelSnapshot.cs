@@ -1048,6 +1048,56 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.DerivedItemConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AssociatedBillingItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("BillingItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CalculationType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("LimitQuantity")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("OverLimitUnitValue")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Percentage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("UnitValue")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssociatedBillingItemId");
+
+                    b.HasIndex("BillingItemId")
+                        .IsUnique();
+
+                    b.ToTable("DerivedItemConfigs");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.FeeSchedule", b =>
                 {
                     b.Property<int>("Id")
@@ -1079,12 +1129,23 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<bool>("IsHealthFund")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("LastFetchResult")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastFetchedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RoundingType")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");
@@ -1130,6 +1191,28 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("FeeScheduleItems");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.FeeScheduleItemPriceHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Fee")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FeeScheduleItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeeScheduleItemId", "ChangedAt");
+
+                    b.ToTable("FeeScheduleItemPriceHistories");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.HealthFund", b =>
@@ -1308,6 +1391,9 @@ namespace IntelliMed.Infrastructure.Data.Migrations
 
                     b.Property<int?>("BillingItemId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("DerivedQuantity")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1892,6 +1978,24 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("UserDefinedFieldType");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.DerivedItemConfig", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.BillingItem", "AssociatedBillingItem")
+                        .WithMany()
+                        .HasForeignKey("AssociatedBillingItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("IntelliMed.Core.Entities.BillingItem", "BillingItem")
+                        .WithMany()
+                        .HasForeignKey("BillingItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AssociatedBillingItem");
+
+                    b.Navigation("BillingItem");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.FeeSchedule", b =>
                 {
                     b.HasOne("IntelliMed.Core.Entities.FeeSchedule", "FeeTable")
@@ -1926,6 +2030,17 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("BillingItem");
 
                     b.Navigation("FeeSchedule");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.FeeScheduleItemPriceHistory", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.FeeScheduleItem", "FeeScheduleItem")
+                        .WithMany()
+                        .HasForeignKey("FeeScheduleItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FeeScheduleItem");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.Invoice", b =>

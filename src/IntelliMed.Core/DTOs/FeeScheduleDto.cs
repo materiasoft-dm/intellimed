@@ -21,6 +21,9 @@ public class FeeScheduleDto
         _ => "Exact"
     };
     public bool IsArchived { get; set; }
+    public string? SourceUrl { get; set; }
+    public DateTime? LastFetchedAt { get; set; }
+    public string? LastFetchResult { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -34,6 +37,7 @@ public class CreateFeeScheduleDto
     public int? HealthFundId { get; set; }
     public int? FeeTableId { get; set; }
     public RoundingTypeEnum RoundingType { get; set; } = RoundingTypeEnum.Exact;
+    public string? SourceUrl { get; set; }
 }
 
 public class UpdateFeeScheduleDto
@@ -46,6 +50,23 @@ public class UpdateFeeScheduleDto
     public int? FeeTableId { get; set; }
     public RoundingTypeEnum RoundingType { get; set; }
     public bool IsArchived { get; set; }
+    public string? SourceUrl { get; set; }
+}
+
+/// <summary>Result of a manual or background fetch-and-import from a FeeSchedule's SourceUrl.</summary>
+public class FeeScheduleFetchResultDto
+{
+    public bool Success { get; set; }
+    public int ItemsAffected { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public DateTime FetchedAt { get; set; }
+}
+
+/// <summary>Result of auto-seeding the BBGP/BBO/BBI bulk-bill schedules from the MBS catalog.</summary>
+public class SeedBulkBillResultDto
+{
+    public int SchedulesCreated { get; set; }
+    public int ItemsAffected { get; set; }
 }
 
 public class FeeScheduleItemDto
@@ -56,6 +77,15 @@ public class FeeScheduleItemDto
     public string ItemNumber { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal Fee { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
+
+/// <summary>One past fee value for a FeeScheduleItem, in the order it took effect.</summary>
+public class FeeScheduleItemHistoryDto
+{
+    public decimal Fee { get; set; }
+    public DateTime ChangedAt { get; set; }
 }
 
 public class CreateFeeScheduleItemDto

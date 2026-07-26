@@ -51,5 +51,7 @@ public enum AccountTypeEnum
     WorkCover,
     Tac,
     BulkBill,
-    Other
+    Other,
+    /// <summary>In-Patient Medical Claim — resolves via the same fund-matched fee schedule as PrivatePatient (see BillingCalculator.ResolveChargedFeeScheduleIdAsync), differs only in claiming path.</summary>
+    Imc
 }

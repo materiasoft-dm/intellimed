@@ -51,6 +51,10 @@ public class InvoiceItem
     public decimal PercentGst { get; set; }
     public bool FeeIncludeGst { get; set; }
 
+    // Manually-entered per-line quantity feeding a derived-item formula (minutes/fields/patients/units) —
+    // distinct from Quantity, which is a plain repeat-count multiplier.
+    public decimal? DerivedQuantity { get; set; }
+
     // Computed money fields, matching legacy InvItem semantics.
     [NotMapped]
     public decimal LineRebate => RebatePerUnit * Quantity;

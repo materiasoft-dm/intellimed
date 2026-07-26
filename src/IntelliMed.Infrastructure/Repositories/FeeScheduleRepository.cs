@@ -89,16 +89,35 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
         return items.Select(EntityMapper.ToDto);
     }
 
+    /// <summary>Upsert: adding an item already on the schedule updates its fee instead of throwing on the unique (FeeScheduleId, BillingItemId) index, so retrying/double-clicking is safe.</summary>
     public async Task<int> AddItemAsync(int feeScheduleId, CreateFeeScheduleItemDto dto)
     {
+        var existing = await _context.FeeScheduleItems
+            .FirstOrDefaultAsync(i => i.FeeScheduleId == feeScheduleId && i.BillingItemId == dto.BillingItemId);
+
+        if (existing != null)
+        {
+            if (existing.Fee != dto.Fee)
+            {
+                var now = DateTime.UtcNow;
+                existing.Fee = dto.Fee;
+                existing.UpdatedAt = now;
+                AddHistoryEntry(existing, dto.Fee, now);
+                await _context.SaveChangesAsync();
+            }
+            return existing.Id;
+        }
+
+        var created = DateTime.UtcNow;
         var item = new FeeScheduleItem
         {
             FeeScheduleId = feeScheduleId,
             BillingItemId = dto.BillingItemId,
             Fee = dto.Fee,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = created
         };
         await _context.FeeScheduleItems.AddAsync(item);
+        AddHistoryEntry(item, dto.Fee, created);
         await _context.SaveChangesAsync();
         return item.Id;
     }
@@ -109,8 +128,12 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
         if (item == null)
             throw new InvalidOperationException($"FeeScheduleItem with ID {itemId} not found");
 
+        if (item.Fee == fee) return;
+
+        var now = DateTime.UtcNow;
         item.Fee = fee;
-        item.UpdatedAt = DateTime.UtcNow;
+        item.UpdatedAt = now;
+        AddHistoryEntry(item, fee, now);
         await _context.SaveChangesAsync();
     }
 
@@ -139,6 +162,7 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
             {
                 item.Fee = item.BillingItem.ScheduleFee;
                 item.UpdatedAt = now;
+                AddHistoryEntry(item, item.Fee, now);
                 updated++;
             }
         }
@@ -170,34 +194,140 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
             .Select(f => f.RoundingType)
             .FirstOrDefaultAsync();
 
+        var rawFees = sourceFees.ToDictionary(
+            kv => kv.Key,
+            kv => kv.Value * (1 + request.Percent / 100m) + request.FlatAmount);
+
+        return await UpsertItemsAsync(feeScheduleId, rawFees, targetRounding);
+    }
+
+    public async Task<int> ImportFromParsedFeesAsync(int feeScheduleId, IReadOnlyDictionary<string, decimal> feesByItemNumber)
+    {
+        var itemNumberToId = await _context.BillingItems
+            .Where(b => feesByItemNumber.Keys.Contains(b.ItemNumber))
+            .ToDictionaryAsync(b => b.ItemNumber, b => b.Id);
+
+        var feesByBillingItemId = feesByItemNumber
+            .Where(kv => itemNumberToId.ContainsKey(kv.Key))
+            .ToDictionary(kv => itemNumberToId[kv.Key], kv => kv.Value);
+
+        var rounding = await _dbSet
+            .Where(f => f.Id == feeScheduleId)
+            .Select(f => f.RoundingType)
+            .FirstOrDefaultAsync();
+
+        return await UpsertItemsAsync(feeScheduleId, feesByBillingItemId, rounding);
+    }
+
+    public async Task<SeedBulkBillResultDto> SeedBulkBillSchedulesAsync()
+    {
+        var definitions = new (string Code, string Description)[]
+        {
+            ("BBGP", "Bulk Bill - General Practice"),
+            ("BBO", "Bulk Bill - Specialist (Rooms)"),
+            ("BBI", "Bulk Bill - In-Hospital"),
+        };
+
+        var billingFees = await _context.BillingItems
+            .Where(b => b.IsActive)
+            .ToDictionaryAsync(b => b.Id, b => b.Benefit100 ?? b.ScheduleFee);
+
+        var result = new SeedBulkBillResultDto();
+        foreach (var (code, description) in definitions)
+        {
+            var schedule = await _dbSet.FirstOrDefaultAsync(f => f.Code == code);
+            if (schedule == null)
+            {
+                schedule = new FeeSchedule
+                {
+                    Code = code,
+                    Description = description,
+                    RoundingType = RoundingTypeEnum.Exact,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _dbSet.AddAsync(schedule);
+                await _context.SaveChangesAsync();
+                result.SchedulesCreated++;
+            }
+
+            result.ItemsAffected += await UpsertItemsAsync(schedule.Id, billingFees, schedule.RoundingType);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Find-or-creates the VAGP/VASO/VASI DVA schedule shells. Unlike bulk-bill schedules, DVA has
+    /// no authoritative fee source in our data (no MBS-derived proxy) — it's a distinct, published
+    /// fee set with no public machine-readable feed, so this only creates empty schedules for an
+    /// admin to populate via the generic CSV importer (SourceUrl/Fetch Now) or manual Add Item, once
+    /// a DVA fee schedule has been exported to CSV from dva.gov.au. ItemsAffected is always 0 by design.
+    /// </summary>
+    public async Task<SeedBulkBillResultDto> SeedDvaScheduleShellsAsync()
+    {
+        var definitions = new (string Code, string Description)[]
+        {
+            ("VAGP", "DVA - General Practice"),
+            ("VASO", "DVA - Specialist (Rooms)"),
+            ("VASI", "DVA - In-Hospital"),
+        };
+
+        var result = new SeedBulkBillResultDto();
+        foreach (var (code, description) in definitions)
+        {
+            var schedule = await _dbSet.FirstOrDefaultAsync(f => f.Code == code);
+            if (schedule == null)
+            {
+                schedule = new FeeSchedule
+                {
+                    Code = code,
+                    Description = description,
+                    RoundingType = RoundingTypeEnum.Exact,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _dbSet.AddAsync(schedule);
+                await _context.SaveChangesAsync();
+                result.SchedulesCreated++;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Shared upsert: writes a BillingItemId-&gt;fee map onto a schedule's FeeScheduleItems, rounded per the given RoundingType.</summary>
+    private async Task<int> UpsertItemsAsync(int feeScheduleId, Dictionary<int, decimal> feesByBillingItemId, RoundingTypeEnum rounding)
+    {
         var existing = await _context.FeeScheduleItems
             .Where(i => i.FeeScheduleId == feeScheduleId)
             .ToDictionaryAsync(i => i.BillingItemId);
 
         var now = DateTime.UtcNow;
         var affected = 0;
-        foreach (var (billingItemId, sourceFee) in sourceFees)
+        foreach (var (billingItemId, rawFee) in feesByBillingItemId)
         {
-            var computedFee = BillingMath.ApplyScheduleRounding(sourceFee * (1 + request.Percent / 100m) + request.FlatAmount, targetRounding);
+            var fee = BillingMath.ApplyScheduleRounding(rawFee, rounding);
 
             if (existing.TryGetValue(billingItemId, out var item))
             {
-                if (item.Fee != computedFee)
+                if (item.Fee != fee)
                 {
-                    item.Fee = computedFee;
+                    item.Fee = fee;
                     item.UpdatedAt = now;
+                    AddHistoryEntry(item, fee, now);
                     affected++;
                 }
             }
             else
             {
-                await _context.FeeScheduleItems.AddAsync(new FeeScheduleItem
+                var newItem = new FeeScheduleItem
                 {
                     FeeScheduleId = feeScheduleId,
                     BillingItemId = billingItemId,
-                    Fee = computedFee,
+                    Fee = fee,
                     CreatedAt = now
-                });
+                };
+                await _context.FeeScheduleItems.AddAsync(newItem);
+                AddHistoryEntry(newItem, fee, now);
                 affected++;
             }
         }
@@ -206,6 +336,26 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
             await _context.SaveChangesAsync();
 
         return affected;
+    }
+
+    /// <summary>Tracks a new history row via the navigation property (not the FK id), so it resolves correctly even for an item that hasn't been saved yet in this same SaveChanges batch.</summary>
+    private void AddHistoryEntry(FeeScheduleItem item, decimal fee, DateTime changedAt)
+    {
+        _context.FeeScheduleItemPriceHistories.Add(new FeeScheduleItemPriceHistory
+        {
+            FeeScheduleItem = item,
+            Fee = fee,
+            ChangedAt = changedAt
+        });
+    }
+
+    public async Task<IEnumerable<FeeScheduleItemHistoryDto>> GetItemHistoryAsync(int feeScheduleItemId)
+    {
+        return await _context.FeeScheduleItemPriceHistories
+            .Where(h => h.FeeScheduleItemId == feeScheduleItemId)
+            .OrderByDescending(h => h.ChangedAt)
+            .Select(h => new FeeScheduleItemHistoryDto { Fee = h.Fee, ChangedAt = h.ChangedAt })
+            .ToListAsync();
     }
 
     private IQueryable<FeeSchedule> BuildSearchQuery(FeeScheduleSearchDto search)

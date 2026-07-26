@@ -35,7 +35,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
     public DbSet<FeeSchedule> FeeSchedules => Set<FeeSchedule>();
     public DbSet<FeeScheduleItem> FeeScheduleItems => Set<FeeScheduleItem>();
+    public DbSet<FeeScheduleItemPriceHistory> FeeScheduleItemPriceHistories => Set<FeeScheduleItemPriceHistory>();
     public DbSet<AccountTypeFeeScheduleMapping> AccountTypeFeeScheduleMappings => Set<AccountTypeFeeScheduleMapping>();
+    public DbSet<DerivedItemConfig> DerivedItemConfigs => Set<DerivedItemConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -436,6 +438,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Code).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Description).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.SourceUrl).HasMaxLength(1000);
+            entity.Property(e => e.LastFetchResult).HasMaxLength(500);
             entity.HasIndex(e => e.Code).IsUnique();
             entity.HasOne(e => e.HealthFund)
                 .WithMany()
@@ -459,6 +463,33 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(e => e.BillingItem)
                 .WithMany()
                 .HasForeignKey(e => e.BillingItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // FeeScheduleItemPriceHistory configuration
+        modelBuilder.Entity<FeeScheduleItemPriceHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.FeeScheduleItemId, e.ChangedAt });
+            entity.HasOne(e => e.FeeScheduleItem)
+                .WithMany()
+                .HasForeignKey(e => e.FeeScheduleItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // DerivedItemConfig configuration
+        modelBuilder.Entity<DerivedItemConfig>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasIndex(e => e.BillingItemId).IsUnique();
+            entity.HasOne(e => e.BillingItem)
+                .WithMany()
+                .HasForeignKey(e => e.BillingItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.AssociatedBillingItem)
+                .WithMany()
+                .HasForeignKey(e => e.AssociatedBillingItemId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

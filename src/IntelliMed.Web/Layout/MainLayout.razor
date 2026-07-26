@@ -127,6 +127,12 @@
                         <i class="bi bi-cash-stack me-2"></i> <span class="mdi-nav-label">Fee Schedules</span>
                     </a>
                 }
+                @if (_accessiblePages.Contains("derived-item-configs"))
+                {
+                    <a href="/derived-item-configs" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-calculator me-2"></i> <span class="mdi-nav-label">Derived Item Rules</span>
+                    </a>
+                }
 
                 @* Admin Section — conditional *@
                 @if (_accessiblePages.Contains("admin/users") || _accessiblePages.Contains("admin/roles"))

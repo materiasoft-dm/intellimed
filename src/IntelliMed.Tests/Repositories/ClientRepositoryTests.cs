@@ -347,7 +347,8 @@ public class ClientRepositoryTests : IDisposable
             AccountTypeEnum.WorkCover,
             AccountTypeEnum.Tac,
             AccountTypeEnum.BulkBill,
-            AccountTypeEnum.Other
+            AccountTypeEnum.Other,
+            AccountTypeEnum.Imc
         };
 
         foreach (var accountType in accountTypes)
@@ -981,7 +982,8 @@ public class ClientRepositoryTests : IDisposable
             AccountTypeEnum.WorkCover,
             AccountTypeEnum.Tac,
             AccountTypeEnum.BulkBill,
-            AccountTypeEnum.Other
+            AccountTypeEnum.Other,
+            AccountTypeEnum.Imc
         };
 
         foreach (var accountType in accountTypes)

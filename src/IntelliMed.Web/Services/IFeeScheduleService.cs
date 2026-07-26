@@ -18,4 +18,8 @@ public interface IFeeScheduleService
     Task<bool> RemoveItemAsync(int itemId);
     Task<int?> CopyFeesFromMbsAsync(int feeScheduleId);
     Task<int?> ImportItemsAsync(int feeScheduleId, ImportFeeScheduleItemsRequest request);
+    Task<SeedBulkBillResultDto?> SeedBulkBillSchedulesAsync();
+    Task<SeedBulkBillResultDto?> SeedDvaScheduleShellsAsync();
+    Task<FeeScheduleFetchResultDto?> FetchNowAsync(int feeScheduleId);
+    Task<List<FeeScheduleItemHistoryDto>> GetItemHistoryAsync(int itemId);
 }

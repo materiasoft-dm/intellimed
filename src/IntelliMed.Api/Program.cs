@@ -272,6 +272,7 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "SuperAdmin", PageKey = "invoices/delete", Category = "Financial" },
         new() { RoleName = "SuperAdmin", PageKey = "payments", Category = "Financial" },
         new() { RoleName = "SuperAdmin", PageKey = "fee-schedules", Category = "Financial" },
+        new() { RoleName = "SuperAdmin", PageKey = "derived-item-configs", Category = "Financial" },
         // Admin
         new() { RoleName = "SuperAdmin", PageKey = "admin/users", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/roles", Category = "Admin" },
@@ -302,6 +303,7 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "Admin", PageKey = "invoices/delete", Category = "Financial" },
         new() { RoleName = "Admin", PageKey = "payments", Category = "Financial" },
         new() { RoleName = "Admin", PageKey = "fee-schedules", Category = "Financial" },
+        new() { RoleName = "Admin", PageKey = "derived-item-configs", Category = "Financial" },
         new() { RoleName = "Admin", PageKey = "admin/users", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/roles", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/audit", Category = "Admin" },

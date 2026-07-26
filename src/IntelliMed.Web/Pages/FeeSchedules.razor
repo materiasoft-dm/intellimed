@@ -89,6 +89,28 @@
             <button class="btn btn-sm btn-outline-danger" @onclick="DeleteSelectedAsync" disabled="@(_selectedSchedule == null)">
                 <i class="bi bi-trash"></i> Delete
             </button>
+            <button class="btn btn-sm btn-outline-success ms-auto" @onclick="SeedBulkBillAsync" disabled="@_seedingBulkBill" title="Creates/refreshes BBGP, BBO and BBI from the MBS catalog's 100% benefit — no external file needed.">
+                @if (_seedingBulkBill)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                else
+                {
+                    <i class="bi bi-magic me-1"></i>
+                }
+                Seed Bulk-Bill Schedules (BBGP/BBO/BBI)
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="SeedDvaAsync" disabled="@_seedingDva" title="Creates the VAGP/VASO/VASI DVA schedule shells — no fee auto-population, since DVA has no MBS-derived proxy. Import fees via CSV or Add Item.">
+                @if (_seedingDva)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                else
+                {
+                    <i class="bi bi-shield-plus me-1"></i>
+                }
+                Seed DVA Schedules (VAGP/VASO/VASI)
+            </button>
         </div>
     </div>
 </div>
@@ -189,6 +211,14 @@
                                 </div>
                             </div>
 
+                            <div class="row g-3 mb-3">
+                                <div class="col-12">
+                                    <label class="form-label">Source URL <span class="text-muted small">(optional)</span></label>
+                                    <InputText @bind-Value="_dialogModel.SourceUrl" class="form-control" placeholder="https://... direct-download link to a CSV of item number + fee" />
+                                    <div class="form-text">When set, a background job re-downloads and re-imports this file daily. Use the "Fetch Now" button on the Items tab to run it immediately.</div>
+                                </div>
+                            </div>
+
                             @if (_isEditing)
                             {
                                 <div class="form-check form-switch mb-2">
@@ -224,7 +254,7 @@
                         }
                         else
                         {
-                            <div class="d-flex flex-wrap gap-2 mb-3">
+                            <div class="d-flex flex-wrap gap-2 mb-2">
                                 <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenItemPicker">
                                     <i class="bi bi-plus-lg"></i> Add Item
                                 </button>
@@ -235,7 +265,34 @@
                                     }
                                     Copy Fees from MBS
                                 </button>
+                                @if (!string.IsNullOrWhiteSpace(_dialogModel.SourceUrl))
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-success" @onclick="FetchNowAsync" disabled="@_fetchingNow">
+                                        @if (_fetchingNow)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-cloud-download me-1"></i>
+                                        }
+                                        Fetch Now
+                                    </button>
+                                }
                             </div>
+                            @if (!string.IsNullOrWhiteSpace(_dialogModel.SourceUrl))
+                            {
+                                <div class="small text-muted mb-3">
+                                    @if (_lastFetchedAt.HasValue)
+                                    {
+                                        <span>Last fetched @_lastFetchedAt.Value.ToLocalTime().ToString("g"): @_lastFetchResult</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Not yet fetched. The background job runs daily, or use "Fetch Now" above.</span>
+                                    }
+                                </div>
+                            }
 
                             <div class="card mb-3">
                                 <div class="card-header py-1"><strong class="small">Import Items From</strong></div>
@@ -287,7 +344,7 @@
                             else
                             {
                                 <table class="table table-sm table-hover">
-                                    <thead><tr><th>Item#</th><th>Description</th><th style="width:120px">Fee</th><th></th></tr></thead>
+                                    <thead><tr><th>Item#</th><th>Description</th><th style="width:120px">Fee</th><th style="width:110px">Last Updated</th><th></th></tr></thead>
                                     <tbody>
                                         @foreach (var item in _items)
                                         {
@@ -297,6 +354,11 @@
                                                 <td>
                                                     <input type="number" step="0.01" class="form-control form-control-sm" value="@item.Fee"
                                                            @onchange="@(e => UpdateItemFeeAsync(item, e.Value))" />
+                                                </td>
+                                                <td class="text-end">
+                                                    <button type="button" class="btn btn-link btn-sm p-0 small" @onclick="@(() => OpenHistoryAsync(item))">
+                                                        @((item.UpdatedAt ?? item.CreatedAt).ToLocalTime().ToString("d MMM yyyy"))
+                                                    </button>
                                                 </td>
                                                 <td class="text-end">
                                                     <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveItemAsync(item))">Delete</button>
@@ -357,6 +419,48 @@
     </div>
 }
 
+@if (_showHistoryModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4); z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Price History — @_historyItemLabel</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showHistoryModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_historyLoading)
+                    {
+                        <div class="text-muted small">Loading history...</div>
+                    }
+                    else if (_history.Count == 0)
+                    {
+                        <div class="text-muted small">No history recorded yet.</div>
+                    }
+                    else
+                    {
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Fee</th><th>Changed</th></tr></thead>
+                            <tbody>
+                                @foreach (var entry in _history)
+                                {
+                                    <tr>
+                                        <td>@entry.Fee.ToString("C")</td>
+                                        <td>@entry.ChangedAt.ToLocalTime().ToString("d MMM yyyy, h:mm tt")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showHistoryModal = false)">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private RadzenDataGrid<FeeScheduleDto>? _grid;
     private List<FeeScheduleDto> _schedules = new();
@@ -387,6 +491,17 @@
     private bool _showBillingItemPickerModal;
     private string _billingItemSearchTerm = string.Empty;
     private List<BillingItemDto> _billingItemSearchResults = new();
+
+    private bool _seedingBulkBill;
+    private bool _seedingDva;
+    private bool _fetchingNow;
+    private DateTime? _lastFetchedAt;
+    private string? _lastFetchResult;
+
+    private bool _showHistoryModal;
+    private bool _historyLoading;
+    private string _historyItemLabel = string.Empty;
+    private List<FeeScheduleItemHistoryDto> _history = new();
 
     private string? _toastMessage;
     private bool _toastIsError;
@@ -459,6 +574,8 @@
         _dialogSaving = false;
         _activeDialogTab = "General";
         _items = new();
+        _lastFetchedAt = null;
+        _lastFetchResult = null;
         _feeTableOptions = (await FeeScheduleService.GetAllActiveAsync());
         _dialogVisible = true;
     }
@@ -478,8 +595,11 @@
             FeeTableId = _selectedSchedule.FeeTableId,
             RoundingType = _selectedSchedule.RoundingType,
             IsArchived = _selectedSchedule.IsArchived,
-            IsHealthFund = _selectedSchedule.IsHealthFund
+            IsHealthFund = _selectedSchedule.IsHealthFund,
+            SourceUrl = _selectedSchedule.SourceUrl
         };
+        _lastFetchedAt = _selectedSchedule.LastFetchedAt;
+        _lastFetchResult = _selectedSchedule.LastFetchResult;
         _dialogSaving = false;
         _activeDialogTab = "General";
         _importSourceId = null;
@@ -508,6 +628,21 @@
         finally
         {
             _itemsLoading = false;
+        }
+    }
+
+    private async Task OpenHistoryAsync(FeeScheduleItemDto item)
+    {
+        _historyItemLabel = $"{item.ItemNumber} — {item.Description}";
+        _showHistoryModal = true;
+        _historyLoading = true;
+        try
+        {
+            _history = await FeeScheduleService.GetItemHistoryAsync(item.Id);
+        }
+        finally
+        {
+            _historyLoading = false;
         }
     }
 
@@ -639,7 +774,8 @@
                     FeeTableId = _dialogModel.FeeTableId,
                     RoundingType = _dialogModel.RoundingType,
                     IsArchived = _dialogModel.IsArchived,
-                    IsHealthFund = _dialogModel.IsHealthFund
+                    IsHealthFund = _dialogModel.IsHealthFund,
+                    SourceUrl = _dialogModel.SourceUrl
                 });
             }
             else
@@ -652,7 +788,8 @@
                     HealthFundId = _dialogModel.HealthFundId,
                     FeeTableId = _dialogModel.FeeTableId,
                     RoundingType = _dialogModel.RoundingType,
-                    IsHealthFund = _dialogModel.IsHealthFund
+                    IsHealthFund = _dialogModel.IsHealthFund,
+                    SourceUrl = _dialogModel.SourceUrl
                 }) != null;
             }
 
@@ -703,6 +840,77 @@
         }
     }
 
+    private async Task SeedBulkBillAsync()
+    {
+        _seedingBulkBill = true;
+        try
+        {
+            var result = await FeeScheduleService.SeedBulkBillSchedulesAsync();
+            if (result != null)
+            {
+                ShowToast($"BBGP/BBO/BBI ready: {result.SchedulesCreated} schedule(s) created, {result.ItemsAffected} item fee(s) updated from the MBS catalog.", false);
+                await RefreshAsync();
+            }
+            else
+            {
+                ShowToast("Failed to seed bulk-bill schedules.", true);
+            }
+        }
+        finally
+        {
+            _seedingBulkBill = false;
+        }
+    }
+
+    private async Task SeedDvaAsync()
+    {
+        _seedingDva = true;
+        try
+        {
+            var result = await FeeScheduleService.SeedDvaScheduleShellsAsync();
+            if (result != null)
+            {
+                ShowToast($"VAGP/VASO/VASI ready: {result.SchedulesCreated} schedule(s) created. Import DVA fees via CSV (Source URL/Fetch Now) or Add Item.", false);
+                await RefreshAsync();
+            }
+            else
+            {
+                ShowToast("Failed to seed DVA schedules.", true);
+            }
+        }
+        finally
+        {
+            _seedingDva = false;
+        }
+    }
+
+    private async Task FetchNowAsync()
+    {
+        _fetchingNow = true;
+        try
+        {
+            var result = await FeeScheduleService.FetchNowAsync(_editingId);
+            if (result != null)
+            {
+                _lastFetchedAt = result.FetchedAt;
+                _lastFetchResult = result.Message;
+                ShowToast(result.Message, !result.Success);
+                if (result.Success)
+                {
+                    await LoadItemsAsync();
+                }
+            }
+            else
+            {
+                ShowToast("Failed to fetch from source URL.", true);
+            }
+        }
+        finally
+        {
+            _fetchingNow = false;
+        }
+    }
+
     private void ShowToast(string message, bool isError)
     {
         _toastMessage = message;
@@ -721,5 +929,6 @@
         public RoundingTypeEnum RoundingType { get; set; } = RoundingTypeEnum.Exact;
         public bool IsArchived { get; set; }
         public bool IsHealthFund { get; set; }
+        public string? SourceUrl { get; set; }
     }
 }

@@ -36,6 +36,18 @@ public static class ServiceExtensions
         services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
         services.AddScoped<IAccountTypeFeeScheduleMappingRepository, AccountTypeFeeScheduleMappingRepository>();
         services.AddScoped<IBillingCalculator, BillingCalculator>();
+        services.AddScoped<IDerivedItemConfigRepository, DerivedItemConfigRepository>();
+        services.AddScoped<IDerivedFeeCalculator, DerivedFeeCalculator>();
+        // A default-less HttpClient (no User-Agent/Accept) gets served an empty body by some CDNs
+        // that front provider-portal fee schedule downloads (e.g. AHSA's Zendesk-hosted attachments)
+        // — set browser-like headers so those direct-download links actually return their content.
+        services.AddHttpClient<IFeeScheduleImportService, FeeScheduleImportService>(client =>
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36");
+            client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
+        });
+        services.AddHostedService<FeeScheduleAutoImportBackgroundService>();
 
         return services;
     }
