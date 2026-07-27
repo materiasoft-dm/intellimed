@@ -12,6 +12,7 @@ public class DerivedItemConfigDto
     public int? AssociatedBillingItemId { get; set; }
     public string? AssociatedItemNumber { get; set; }
     public string? AssociatedDescription { get; set; }
+    public string? AssociatedGroup { get; set; }
     public decimal? Percentage { get; set; }
     public decimal? UnitValue { get; set; }
     public decimal? LimitQuantity { get; set; }
@@ -27,6 +28,7 @@ public class CreateDerivedItemConfigDto
     public int BillingItemId { get; set; }
     public DerivedCalculationType CalculationType { get; set; }
     public int? AssociatedBillingItemId { get; set; }
+    public string? AssociatedGroup { get; set; }
     public decimal? Percentage { get; set; }
     public decimal? UnitValue { get; set; }
     public decimal? LimitQuantity { get; set; }
@@ -38,6 +40,7 @@ public class UpdateDerivedItemConfigDto
 {
     public DerivedCalculationType CalculationType { get; set; }
     public int? AssociatedBillingItemId { get; set; }
+    public string? AssociatedGroup { get; set; }
     public decimal? Percentage { get; set; }
     public decimal? UnitValue { get; set; }
     public decimal? LimitQuantity { get; set; }

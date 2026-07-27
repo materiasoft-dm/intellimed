@@ -43,6 +43,12 @@ public class DerivedFeeCalculator : IDerivedFeeCalculator
             .ToDictionaryAsync(c => c.BillingItemId);
         if (configs.Count == 0) return;
 
+        // Needed for AssociatedGroup matching — looked up once for every billing item on the
+        // invoice (not just configured ones), since any sibling line might be the match.
+        var groupsByBillingItemId = configs.Values.Any(c => c.AssociatedGroup != null)
+            ? await _context.BillingItems.Where(b => billingItemIds.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Group)
+            : new Dictionary<int, string?>();
+
         foreach (var item in items)
         {
             if (!item.BillingItemId.HasValue || !configs.TryGetValue(item.BillingItemId.Value, out var config))
@@ -52,7 +58,7 @@ public class DerivedFeeCalculator : IDerivedFeeCalculator
             {
                 case DerivedCalculationType.PercentageOfAssociatedItem:
                 case DerivedCalculationType.AssistanceAnaesthesia:
-                    ApplyAssociativeFee(item, config, items);
+                    ApplyAssociativeFee(item, config, items, groupsByBillingItemId);
                     break;
 
                 case DerivedCalculationType.BasicUnits:
@@ -65,10 +71,34 @@ public class DerivedFeeCalculator : IDerivedFeeCalculator
         }
     }
 
-    /// <summary>Scales a sibling line's already-resolved (and possibly abated) fee and rebate by a configured flat percentage.</summary>
-    private static void ApplyAssociativeFee(InvoiceItem item, DerivedItemConfig config, ICollection<InvoiceItem> items)
+    /// <summary>
+    /// Scales a sibling line's already-resolved (and possibly abated) fee and rebate by a configured
+    /// flat percentage. AssociatedBillingItemId matches one fixed item; AssociatedGroup instead matches
+    /// the highest-fee sibling in a given MBS Group (e.g. "T8") — the latter is what a real
+    /// assistant-at-surgery rule needs, since it applies to whichever operation was actually performed,
+    /// not one hardcoded procedure. "Highest-fee" mirrors the Multiple Operation Rule's own ranking.
+    /// </summary>
+    private static void ApplyAssociativeFee(InvoiceItem item, DerivedItemConfig config, ICollection<InvoiceItem> items, IReadOnlyDictionary<int, string?> groupsByBillingItemId)
     {
-        var sibling = items.FirstOrDefault(i => i != item && i.BillingItemId == config.AssociatedBillingItemId);
+        InvoiceItem? sibling;
+        if (config.AssociatedBillingItemId.HasValue)
+        {
+            sibling = items.FirstOrDefault(i => i != item && i.BillingItemId == config.AssociatedBillingItemId);
+        }
+        else if (!string.IsNullOrEmpty(config.AssociatedGroup))
+        {
+            sibling = items
+                .Where(i => i != item && i.BillingItemId.HasValue
+                            && groupsByBillingItemId.TryGetValue(i.BillingItemId.Value, out var group)
+                            && group == config.AssociatedGroup)
+                .OrderByDescending(i => i.UnitPrice)
+                .FirstOrDefault();
+        }
+        else
+        {
+            return;
+        }
+
         if (sibling == null) return;
 
         var percentage = (config.Percentage ?? 0m) / 100m;

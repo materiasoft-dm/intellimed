@@ -56,7 +56,7 @@
                         <td>@config.ItemNumber</td>
                         <td>@config.Description</td>
                         <td>@CalculationTypeLabel(config.CalculationType)</td>
-                        <td>@(config.AssociatedItemNumber ?? "—")</td>
+                        <td>@AssociatedItemDisplay(config)</td>
                         <td>@ValueSummary(config)</td>
                         <td>
                             @if (config.IsActive)
@@ -146,26 +146,52 @@
                     @if (IsAssociativeType(_model.CalculationType))
                     {
                         <div class="mb-3">
-                            <label class="form-label">Associated Billing Item</label>
-                            <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
-                                   @bind="_associatedSearchTerm" @bind:event="oninput" @bind:after="SearchAssociatedItemsAsync" />
-                            @if (_associatedSearchResults.Count > 0)
-                            {
-                                <ul class="list-group" style="max-height:150px; overflow-y:auto;">
-                                    @foreach (var candidate in _associatedSearchResults)
-                                    {
-                                        <li class="list-group-item list-group-item-action @(_model.AssociatedBillingItemId == candidate.Id ? "active" : "")"
-                                            style="cursor:pointer" @onclick="() => SelectAssociatedItem(candidate)">
-                                            <strong>@candidate.ItemNumber</strong> — @candidate.Description
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                            @if (_associatedItemLabel != null)
-                            {
-                                <div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>@_associatedItemLabel</div>
-                            }
+                            <label class="form-label d-block">Match Associated Item By</label>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <input type="radio" class="btn-check" name="assocMode" id="assocModeItem" checked="@(_associationMode == AssociationMode.SpecificItem)" @onchange="() => SetAssociationMode(AssociationMode.SpecificItem)" />
+                                <label class="btn btn-outline-primary" for="assocModeItem">Specific Item</label>
+                                <input type="radio" class="btn-check" name="assocMode" id="assocModeGroup" checked="@(_associationMode == AssociationMode.MbsGroup)" @onchange="() => SetAssociationMode(AssociationMode.MbsGroup)" />
+                                <label class="btn btn-outline-primary" for="assocModeGroup">MBS Group</label>
+                            </div>
                         </div>
+
+                        @if (_associationMode == AssociationMode.SpecificItem)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Associated Billing Item</label>
+                                <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
+                                       @bind="_associatedSearchTerm" @bind:event="oninput" @bind:after="SearchAssociatedItemsAsync" />
+                                @if (_associatedSearchResults.Count > 0)
+                                {
+                                    <ul class="list-group" style="max-height:150px; overflow-y:auto;">
+                                        @foreach (var candidate in _associatedSearchResults)
+                                        {
+                                            <li class="list-group-item list-group-item-action @(_model.AssociatedBillingItemId == candidate.Id ? "active" : "")"
+                                                style="cursor:pointer" @onclick="() => SelectAssociatedItem(candidate)">
+                                                <strong>@candidate.ItemNumber</strong> — @candidate.Description
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                                @if (_associatedItemLabel != null)
+                                {
+                                    <div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>@_associatedItemLabel</div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">MBS Group Code</label>
+                                <input class="form-control form-control-sm" placeholder="e.g. T8" @bind="_model.AssociatedGroup" />
+                                <div class="small text-muted mt-1">
+                                    Matches the highest-fee sibling line on the invoice whose MBS Group equals this code — e.g. "T8" (Operations)
+                                    for a real assistant-at-surgery rule, since the assistant fee applies to whichever operation was actually
+                                    performed, not one fixed item.
+                                </div>
+                            </div>
+                        }
+
                         <div class="mb-3">
                             <label class="form-label">Percentage (%)</label>
                             <input type="number" step="0.01" class="form-control" @bind="_model.Percentage" />
@@ -237,6 +263,9 @@
     private string _associatedSearchTerm = string.Empty;
     private List<BillingItemDto> _associatedSearchResults = new();
     private string? _associatedItemLabel;
+    private AssociationMode _associationMode = AssociationMode.SpecificItem;
+
+    private enum AssociationMode { SpecificItem, MbsGroup }
 
     protected override async Task OnInitializedAsync()
     {
@@ -274,6 +303,10 @@
         ? $"{config.Percentage ?? 0}%"
         : $"{config.UnitValue ?? 0:C}/unit";
 
+    private static string AssociatedItemDisplay(DerivedItemConfigDto config) => config.AssociatedGroup != null
+        ? $"Any MBS Group {config.AssociatedGroup}"
+        : config.AssociatedItemNumber ?? "—";
+
     private void OpenCreateDialog()
     {
         _isEditing = false;
@@ -284,6 +317,7 @@
         _associatedSearchTerm = string.Empty;
         _associatedSearchResults = new();
         _associatedItemLabel = null;
+        _associationMode = AssociationMode.SpecificItem;
         _dialogVisible = true;
     }
 
@@ -296,6 +330,7 @@
             BillingItemId = config.BillingItemId,
             CalculationType = config.CalculationType,
             AssociatedBillingItemId = config.AssociatedBillingItemId,
+            AssociatedGroup = config.AssociatedGroup,
             Percentage = config.Percentage,
             UnitValue = config.UnitValue,
             LimitQuantity = config.LimitQuantity,
@@ -307,10 +342,27 @@
         _associatedItemLabel = config.AssociatedItemNumber != null ? $"{config.AssociatedItemNumber} — {config.AssociatedDescription}" : null;
         _associatedSearchTerm = string.Empty;
         _associatedSearchResults = new();
+        _associationMode = config.AssociatedGroup != null ? AssociationMode.MbsGroup : AssociationMode.SpecificItem;
         _dialogVisible = true;
     }
 
     private void CloseDialog() => _dialogVisible = false;
+
+    private void SetAssociationMode(AssociationMode mode)
+    {
+        _associationMode = mode;
+        // Only one of the two association fields may be set at a time — clear the other so a
+        // stale value from switching modes can't silently get saved alongside the new one.
+        if (mode == AssociationMode.SpecificItem)
+        {
+            _model.AssociatedGroup = null;
+        }
+        else
+        {
+            _model.AssociatedBillingItemId = null;
+            _associatedItemLabel = null;
+        }
+    }
 
     private async Task SearchBillingItemsAsync()
     {
@@ -352,6 +404,7 @@
                 {
                     CalculationType = _model.CalculationType,
                     AssociatedBillingItemId = _model.AssociatedBillingItemId,
+                    AssociatedGroup = _model.AssociatedGroup,
                     Percentage = _model.Percentage,
                     UnitValue = _model.UnitValue,
                     LimitQuantity = _model.LimitQuantity,
@@ -367,6 +420,7 @@
                     BillingItemId = _model.BillingItemId,
                     CalculationType = _model.CalculationType,
                     AssociatedBillingItemId = _model.AssociatedBillingItemId,
+                    AssociatedGroup = _model.AssociatedGroup,
                     Percentage = _model.Percentage,
                     UnitValue = _model.UnitValue,
                     LimitQuantity = _model.LimitQuantity,
@@ -413,6 +467,7 @@
         public int BillingItemId { get; set; }
         public DerivedCalculationType CalculationType { get; set; } = DerivedCalculationType.PercentageOfAssociatedItem;
         public int? AssociatedBillingItemId { get; set; }
+        public string? AssociatedGroup { get; set; }
         public decimal? Percentage { get; set; }
         public decimal? UnitValue { get; set; }
         public decimal? LimitQuantity { get; set; }

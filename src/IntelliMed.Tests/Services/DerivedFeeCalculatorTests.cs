@@ -83,6 +83,37 @@ public class DerivedFeeCalculatorTests : IDisposable
     }
 
     [Fact]
+    public async Task ApplyDerivedFeesAsync_AssociatedGroup_PicksHighestFeeSiblingInGroup()
+    {
+        var op1 = new BillingItem { ItemNumber = "30001", Description = "Op 1", Group = "T8", ScheduleFee = 0m, IsActive = true };
+        var op2 = new BillingItem { ItemNumber = "30002", Description = "Op 2", Group = "T8", ScheduleFee = 0m, IsActive = true };
+        var nonOp = new BillingItem { ItemNumber = "104", Description = "Consult", Group = "A3", ScheduleFee = 0m, IsActive = true };
+        _context.BillingItems.AddRange(op1, op2, nonOp);
+        await _context.SaveChangesAsync();
+
+        _context.DerivedItemConfigs.Add(new DerivedItemConfig
+        {
+            BillingItemId = _derivedItem.Id,
+            CalculationType = DerivedCalculationType.PercentageOfAssociatedItem,
+            AssociatedGroup = "T8",
+            Percentage = 20m
+        });
+        await _context.SaveChangesAsync();
+
+        var lowerFeeOp = MakeItem(op1, unitPrice: 300m, rebatePerUnit: 250m);
+        var higherFeeOp = MakeItem(op2, unitPrice: 500m, rebatePerUnit: 400m);
+        var consultLine = MakeItem(nonOp, unitPrice: 80m, rebatePerUnit: 80m);
+        var assistantLine = MakeItem(_derivedItem);
+        var items = new List<InvoiceItem> { lowerFeeOp, higherFeeOp, consultLine, assistantLine };
+
+        await _calculator.ApplyDerivedFeesAsync(items);
+
+        // Must match the highest-fee Group T8 sibling (op2, $500), not op1 or the non-T8 consult line.
+        assistantLine.UnitPrice.Should().Be(100m); // 20% of 500
+        assistantLine.RebatePerUnit.Should().Be(80m); // 20% of 400
+    }
+
+    [Fact]
     public async Task ApplyDerivedFeesAsync_NumberOfPatientsSeen_MultipliesUnitValueByDerivedQuantity()
     {
         _context.DerivedItemConfigs.Add(new DerivedItemConfig

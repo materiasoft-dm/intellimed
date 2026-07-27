@@ -482,6 +482,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.AssociatedGroup).HasMaxLength(10);
             entity.HasIndex(e => e.BillingItemId).IsUnique();
             entity.HasOne(e => e.BillingItem)
                 .WithMany()

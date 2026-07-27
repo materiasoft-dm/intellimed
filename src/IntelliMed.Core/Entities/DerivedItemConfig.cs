@@ -12,8 +12,17 @@ public class DerivedItemConfig
     public int BillingItemId { get; set; }
     public DerivedCalculationType CalculationType { get; set; }
 
-    /// <summary>The sibling item this line's fee is a percentage/loading of. Used by PercentageOfAssociatedItem and AssistanceAnaesthesia.</summary>
+    /// <summary>The sibling item this line's fee is a percentage/loading of. Used by PercentageOfAssociatedItem and AssistanceAnaesthesia. Mutually exclusive with AssociatedGroup — set this for a fixed one-item pairing.</summary>
     public int? AssociatedBillingItemId { get; set; }
+
+    /// <summary>
+    /// Alternative to AssociatedBillingItemId: matches the highest-fee sibling line whose BillingItem.Group
+    /// equals this value (e.g. "T8" for MBS Operations), rather than one fixed item. This is what a real
+    /// MBS assistant-at-surgery rule needs — the assistant fee is a percentage of whichever operation was
+    /// actually performed, not one hardcoded procedure. "Highest-fee" matches the Multiple Operation Rule's
+    /// own ranking (IMultipleOperationRuleCalculator already runs first, so this fee is post-abatement).
+    /// </summary>
+    public string? AssociatedGroup { get; set; }
 
     /// <summary>Percentage of the associated item's fee (e.g. 20 for a 20% assistant fee).</summary>
     public decimal? Percentage { get; set; }

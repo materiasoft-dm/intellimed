@@ -740,6 +740,7 @@ public static class EntityMapper
         AssociatedBillingItemId = entity.AssociatedBillingItemId,
         AssociatedItemNumber = entity.AssociatedBillingItem?.ItemNumber,
         AssociatedDescription = entity.AssociatedBillingItem?.Description,
+        AssociatedGroup = entity.AssociatedGroup,
         Percentage = entity.Percentage,
         UnitValue = entity.UnitValue,
         LimitQuantity = entity.LimitQuantity,
@@ -755,6 +756,7 @@ public static class EntityMapper
         BillingItemId = dto.BillingItemId,
         CalculationType = dto.CalculationType,
         AssociatedBillingItemId = dto.AssociatedBillingItemId,
+        AssociatedGroup = dto.AssociatedGroup,
         Percentage = dto.Percentage,
         UnitValue = dto.UnitValue,
         LimitQuantity = dto.LimitQuantity,
@@ -768,6 +770,7 @@ public static class EntityMapper
     {
         entity.CalculationType = dto.CalculationType;
         entity.AssociatedBillingItemId = dto.AssociatedBillingItemId;
+        entity.AssociatedGroup = dto.AssociatedGroup;
         entity.Percentage = dto.Percentage;
         entity.UnitValue = dto.UnitValue;
         entity.LimitQuantity = dto.LimitQuantity;
