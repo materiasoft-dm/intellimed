@@ -18,7 +18,7 @@ public class InvoiceRepositoryTests : IDisposable
     public InvoiceRepositoryTests()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
-        _repository = new InvoiceRepository(_context, new BillingCalculator(_context), new DerivedFeeCalculator(_context));
+        _repository = new InvoiceRepository(_context, new BillingCalculator(_context), new DerivedFeeCalculator(_context), new MultipleOperationRuleCalculator(_context));
     }
 
     public void Dispose()
@@ -105,6 +105,51 @@ public class InvoiceRepositoryTests : IDisposable
 
         assistantLine.UnitPrice.Should().Be(100m); // 20% of the primary line's $500
         invoice.TotalAmount.Should().Be(600m); // 500 (primary) + 100 (derived), not 500 + 999
+    }
+
+    [Fact]
+    public async Task CreateAsync_MultipleOperationRuleAbatesSecondProcedure_BeforeAssistantFeeIsDerived()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+
+        // Two Group T8 (Operations) items on the same occasion: the multiple operation rule must
+        // abate the lower-fee one to 50% before the assistant fee is derived from it.
+        var primaryProcedure = new BillingItem { ItemNumber = "30001", Description = "Primary op", Group = "T8", ScheduleFee = 600m, Benefit100 = 600m, IsActive = true };
+        var secondaryProcedure = new BillingItem { ItemNumber = "30002", Description = "Secondary op", Group = "T8", ScheduleFee = 400m, Benefit100 = 400m, IsActive = true };
+        var assistantItem = new BillingItem { ItemNumber = "51300", Description = "Assistant at surgery", Group = "T9", ScheduleFee = 0m, Benefit100 = 0m, IsActive = true };
+        _context.BillingItems.AddRange(primaryProcedure, secondaryProcedure, assistantItem);
+        await _context.SaveChangesAsync();
+
+        _context.DerivedItemConfigs.Add(new DerivedItemConfig
+        {
+            BillingItemId = assistantItem.Id,
+            CalculationType = DerivedCalculationType.PercentageOfAssociatedItem,
+            AssociatedBillingItemId = secondaryProcedure.Id,
+            Percentage = 20m
+        });
+        await _context.SaveChangesAsync();
+
+        var dto = new CreateInvoiceDto
+        {
+            ClientId = client.Id,
+            AccountType = AccountTypeEnum.BulkBill,
+            DueDate = DateTime.Today.AddDays(30),
+            Items = new List<CreateInvoiceItemDto>
+            {
+                new() { BillingItemId = primaryProcedure.Id, Description = "Primary", Quantity = 1, UnitPrice = 600m },
+                new() { BillingItemId = secondaryProcedure.Id, Description = "Secondary", Quantity = 1, UnitPrice = 400m },
+                new() { BillingItemId = assistantItem.Id, Description = "Assistant", Quantity = 1, UnitPrice = 999m }
+            }
+        };
+
+        var invoiceId = await _repository.CreateAsync(dto);
+
+        var invoice = await _context.Invoices.Include(i => i.Items).FirstAsync(i => i.Id == invoiceId);
+        invoice.Items.Single(i => i.BillingItemId == primaryProcedure.Id).UnitPrice.Should().Be(600m); // 100% — highest fee
+        invoice.Items.Single(i => i.BillingItemId == secondaryProcedure.Id).UnitPrice.Should().Be(200m); // 50% of 400
+        invoice.Items.Single(i => i.BillingItemId == assistantItem.Id).UnitPrice.Should().Be(40m); // 20% of the ABATED 200, not raw 400
+        invoice.TotalAmount.Should().Be(840m); // 600 + 200 + 40
     }
 
     [Fact]

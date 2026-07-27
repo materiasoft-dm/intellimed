@@ -12,11 +12,17 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
 {
     private readonly IBillingCalculator _billingCalculator;
     private readonly IDerivedFeeCalculator _derivedFeeCalculator;
+    private readonly IMultipleOperationRuleCalculator _multipleOperationRuleCalculator;
 
-    public InvoiceRepository(AppDbContext context, IBillingCalculator billingCalculator, IDerivedFeeCalculator derivedFeeCalculator) : base(context)
+    public InvoiceRepository(
+        AppDbContext context,
+        IBillingCalculator billingCalculator,
+        IDerivedFeeCalculator derivedFeeCalculator,
+        IMultipleOperationRuleCalculator multipleOperationRuleCalculator) : base(context)
     {
         _billingCalculator = billingCalculator;
         _derivedFeeCalculator = derivedFeeCalculator;
+        _multipleOperationRuleCalculator = multipleOperationRuleCalculator;
     }
 
     public async Task<InvoiceDto?> GetByIdAsync(int id)
@@ -143,9 +149,14 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
                 item.Description = resolved.Description;
         }
 
+        // The Multiple Operation Rule abates 2nd/3rd+ same-occasion Group T8 procedures before
+        // anything derived from their fee runs (e.g. an assistant-at-surgery fee is a percentage of
+        // the *abated* fee, not the raw one) — so it must run before the derived-item pass below.
+        await _multipleOperationRuleCalculator.ApplyMultipleOperationRuleAsync(invoice.Items);
+
         // Derived items (assistant-at-surgery, patients-seen, time-loading, etc.) need every line's
-        // normally-resolved fee already in place before their own formulas can run, and must run
-        // before the invoice total is summed so the override is reflected in TotalAmount.
+        // normally-resolved (and now abated) fee already in place before their own formulas can run,
+        // and must run before the invoice total is summed so the override is reflected in TotalAmount.
         await _derivedFeeCalculator.ApplyDerivedFeesAsync(invoice.Items);
 
         invoice.TotalAmount = BillingMath.RoundMoney(invoice.Items.Sum(i => i.TotalPrice));

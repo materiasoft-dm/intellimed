@@ -23,9 +23,12 @@ public enum PlaceOfServiceEnum
 
 /// <summary>
 /// How a derived item's fee is computed from other items on the same invoice, mirroring (a scoped
-/// subset of) legacy's 10-strategy DerivedFeeCalculator. PercentageOfAssociatedItem/AssistanceAnaesthesia
-/// scale off a sibling line's fee; BasicUnits/FieldQuantity/TimeDuration/NumberOfPatientsSeen scale a
-/// per-line manually-entered quantity (InvoiceItem.DerivedQuantity).
+/// subset of) legacy's 10-strategy DerivedFeeCalculator. PercentageOfAssociatedItem and
+/// AssistanceAnaesthesia compute identically — a flat percentage of a sibling line's (possibly
+/// Multiple-Operation-Rule-abated) fee; kept as a separate label only so an after-hours or
+/// anaesthesia-assistance modifier (e.g. MBS item 25030) reads clearly in the admin UI, not because
+/// the formula differs. BasicUnits/FieldQuantity/TimeDuration/NumberOfPatientsSeen scale a per-line
+/// manually-entered quantity (InvoiceItem.DerivedQuantity).
 /// </summary>
 public enum DerivedCalculationType
 {

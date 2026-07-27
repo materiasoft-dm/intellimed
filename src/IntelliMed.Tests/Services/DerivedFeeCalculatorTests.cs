@@ -60,6 +60,29 @@ public class DerivedFeeCalculatorTests : IDisposable
     }
 
     [Fact]
+    public async Task ApplyDerivedFeesAsync_AssistanceAnaesthesia_ComputesPlainPercentage_NoTimeLoading()
+    {
+        _context.DerivedItemConfigs.Add(new DerivedItemConfig
+        {
+            BillingItemId = _derivedItem.Id,
+            CalculationType = DerivedCalculationType.AssistanceAnaesthesia,
+            AssociatedBillingItemId = _primaryItem.Id,
+            Percentage = 50m,
+            UnitValue = 999m // must be ignored — AssistanceAnaesthesia no longer adds a time-loading term
+        });
+        await _context.SaveChangesAsync();
+
+        var primaryLine = MakeItem(_primaryItem, unitPrice: 200m, rebatePerUnit: 160m);
+        var assistantLine = MakeItem(_derivedItem, derivedQuantity: 30m); // must also be ignored
+        var items = new List<InvoiceItem> { primaryLine, assistantLine };
+
+        await _calculator.ApplyDerivedFeesAsync(items);
+
+        assistantLine.UnitPrice.Should().Be(100m); // 50% of 200, not 100 + (999*30)
+        assistantLine.RebatePerUnit.Should().Be(80m);
+    }
+
+    [Fact]
     public async Task ApplyDerivedFeesAsync_NumberOfPatientsSeen_MultipliesUnitValueByDerivedQuantity()
     {
         _context.DerivedItemConfigs.Add(new DerivedItemConfig

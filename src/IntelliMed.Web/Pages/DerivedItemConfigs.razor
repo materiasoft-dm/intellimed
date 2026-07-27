@@ -12,7 +12,10 @@
 <h4 class="mb-2">Derived Item Rules</h4>
 <p class="text-muted small">
     Configures MBS items whose fee is computed from other items on the same invoice (assistant-at-surgery,
-    anaesthesia time-loading, per-patient-seen billing, etc.) instead of a flat fee-schedule lookup.
+    after-hours anaesthesia-assistance modifiers, per-patient-seen billing, etc.) instead of a flat
+    fee-schedule lookup. Assistant/anaesthesia fees are always a flat percentage of the associated item's
+    (Multiple-Operation-Rule-abated) fee — anaesthesia basic/time units are separately-billed MBS items
+    with their own published fee, not something to configure here.
     There's no bulk-import source for this data — add rules one at a time as you identify them.
 </p>
 
@@ -132,7 +135,7 @@
                         <label class="form-label">Calculation Type</label>
                         <InputSelect @bind-Value="_model.CalculationType" class="form-select">
                             <option value="@DerivedCalculationType.PercentageOfAssociatedItem">Percentage of Associated Item</option>
-                            <option value="@DerivedCalculationType.AssistanceAnaesthesia">Assistance / Anaesthesia (percentage + time loading)</option>
+                            <option value="@DerivedCalculationType.AssistanceAnaesthesia">Assistance / Anaesthesia modifier (% of associated item)</option>
                             <option value="@DerivedCalculationType.BasicUnits">Basic Units</option>
                             <option value="@DerivedCalculationType.FieldQuantity">Field Quantity</option>
                             <option value="@DerivedCalculationType.TimeDuration">Time Duration</option>
@@ -169,8 +172,7 @@
                         </div>
                     }
 
-                    @if (_model.CalculationType == DerivedCalculationType.AssistanceAnaesthesia
-                        || !IsAssociativeType(_model.CalculationType))
+                    @if (!IsAssociativeType(_model.CalculationType))
                     {
                         <div class="row g-2 mb-3">
                             <div class="col-md-4">
@@ -269,7 +271,7 @@
     };
 
     private static string ValueSummary(DerivedItemConfigDto config) => IsAssociativeType(config.CalculationType)
-        ? $"{config.Percentage ?? 0}%" + (config.CalculationType == DerivedCalculationType.AssistanceAnaesthesia ? $" + {config.UnitValue ?? 0:C}/unit" : "")
+        ? $"{config.Percentage ?? 0}%"
         : $"{config.UnitValue ?? 0:C}/unit";
 
     private void OpenCreateDialog()

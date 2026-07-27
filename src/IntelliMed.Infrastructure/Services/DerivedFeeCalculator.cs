@@ -7,12 +7,18 @@ namespace IntelliMed.Infrastructure.Services;
 
 /// <summary>
 /// Applies derived-item fee formulas as a post-pass over an invoice's line items — run after every
-/// line has already been resolved normally by IBillingCalculator, since the associative calculation
-/// types need a sibling line's already-resolved fee as input. Covers a scoped subset of legacy's
-/// 10-strategy DerivedFeeCalculator (see BillingEnums.cs' DerivedCalculationType for what's included
-/// and the implementation plan for what's explicitly deferred: ProcedureDiscontinued,
-/// ExcisionMalignantTumour, CombinationOperations, AdditionalFoetusTested/OriginalAmputationFee,
-/// OtherDerivedItemInfo, and DerivedItemRateCalculated overrides).
+/// line has already been resolved normally by IBillingCalculator (and abated by
+/// IMultipleOperationRuleCalculator, if applicable), since the associative calculation types need a
+/// sibling line's already-resolved fee as input. Covers a scoped subset of legacy's 10-strategy
+/// DerivedFeeCalculator (see BillingEnums.cs' DerivedCalculationType for what's included and the
+/// implementation plan for what's explicitly deferred: ProcedureDiscontinued, ExcisionMalignantTumour,
+/// CombinationOperations, AdditionalFoetusTested/OriginalAmputationFee, OtherDerivedItemInfo, and
+/// DerivedItemRateCalculated overrides).
+/// PercentageOfAssociatedItem and AssistanceAnaesthesia compute identically — both are flat-percentage
+/// modifiers (e.g. the assistant-at-surgery fee, or an after-hours assistance-at-anaesthesia loading
+/// like MBS item 25030's "50% of the fee for assistance at anaesthesia"); real MBS anaesthesia time
+/// units are separately-billed items with their own published fee, not a formula, so this deliberately
+/// does not attempt to compute anaesthesia basic/time units.
 /// </summary>
 public class DerivedFeeCalculator : IDerivedFeeCalculator
 {
@@ -59,24 +65,15 @@ public class DerivedFeeCalculator : IDerivedFeeCalculator
         }
     }
 
-    /// <summary>Scales a sibling line's already-resolved fee (and rebate) by a configured percentage; AssistanceAnaesthesia additionally adds a per-unit time-loading on top.</summary>
+    /// <summary>Scales a sibling line's already-resolved (and possibly abated) fee and rebate by a configured flat percentage.</summary>
     private static void ApplyAssociativeFee(InvoiceItem item, DerivedItemConfig config, ICollection<InvoiceItem> items)
     {
         var sibling = items.FirstOrDefault(i => i != item && i.BillingItemId == config.AssociatedBillingItemId);
         if (sibling == null) return;
 
         var percentage = (config.Percentage ?? 0m) / 100m;
-        var fee = percentage * sibling.UnitPrice;
-        var rebate = percentage * sibling.RebatePerUnit;
-
-        if (config.CalculationType == DerivedCalculationType.AssistanceAnaesthesia)
-        {
-            var loading = (config.UnitValue ?? 0m) * (item.DerivedQuantity ?? 0m);
-            fee += loading;
-        }
-
-        item.UnitPrice = fee;
-        item.RebatePerUnit = rebate;
+        item.UnitPrice = percentage * sibling.UnitPrice;
+        item.RebatePerUnit = percentage * sibling.RebatePerUnit;
     }
 
     /// <summary>A manually-entered per-line quantity (minutes/fields/patients/units) times a configured unit value, with an optional over-limit tier.</summary>
