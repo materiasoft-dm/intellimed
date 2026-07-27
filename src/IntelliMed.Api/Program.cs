@@ -3,6 +3,7 @@ using IntelliMed.Core.Entities;
 using IntelliMed.Infrastructure;
 using IntelliMed.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -70,7 +71,14 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Every endpoint requires an authenticated user by default — new controllers are protected
+    // automatically instead of relying on remembering to stamp [Authorize] on each one.
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 // ============================================================================
 // CONTROLLERS & API CONFIGURATION
@@ -183,8 +191,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Fallback to index.html for client-side routing
-app.MapFallbackToFile("index.html");
+// Fallback to index.html for client-side routing — must stay anonymous: every client-side route
+// (including /login itself) is served through this, so the global auth fallback policy would
+// otherwise 401 the SPA shell before the Blazor router ever gets a chance to redirect.
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
 app.Run();
 

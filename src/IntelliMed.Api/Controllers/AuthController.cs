@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -10,8 +11,11 @@ using IdentityCore = IntelliMed.Core.Entities;
 
 namespace IntelliMed.Api.Controllers;
 
+// Must stay reachable without a token — Login/Logout are the entry point before one exists, and
+// the /me* endpoints already do their own User.Identity?.IsAuthenticated checks internally.
 [ApiController]
 [Route("api/[controller]")]
+[AllowAnonymous]
 public class AuthController : ControllerBase
 {
     private readonly UserManager<IdentityCore.ApplicationUser> _userManager;

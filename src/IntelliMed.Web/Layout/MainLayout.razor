@@ -265,6 +265,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         await LoadCurrentUserInfo();
         await LoadCurrentUserRoles();
         await LoadAccessiblePages();

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IntelliMed.Api.Controllers;
@@ -8,6 +9,7 @@ namespace IntelliMed.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[AllowAnonymous] // Front-end errors must be logged even from the public, pre-login Login page.
 public class LogController : ControllerBase
 {
     private readonly ILogger<LogController> _logger;
