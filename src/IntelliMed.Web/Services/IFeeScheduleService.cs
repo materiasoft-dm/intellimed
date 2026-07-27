@@ -23,6 +23,7 @@ public interface IFeeScheduleService
     Task<int?> ImportItemsAsync(int feeScheduleId, ImportFeeScheduleItemsRequest request);
     Task<SeedBulkBillResultDto?> SeedBulkBillSchedulesAsync();
     Task<SeedBulkBillResultDto?> SeedDvaScheduleShellsAsync();
+    Task<SeedBulkBillResultDto?> SeedWorkCoverQldScheduleShellAsync();
     Task<FeeScheduleFetchResultDto?> FetchNowAsync(int feeScheduleId);
     Task<List<FeeScheduleItemHistoryDto>> GetItemHistoryAsync(int itemId);
 }

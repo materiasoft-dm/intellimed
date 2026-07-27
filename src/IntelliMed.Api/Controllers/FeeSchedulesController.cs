@@ -263,6 +263,18 @@ public class FeeSchedulesController : ControllerBase
     }
 
     /// <summary>
+    /// Find-or-creates the WorkCover QLD schedule shell. No fee auto-population — populate via the
+    /// generic CSV importer or manual Add Item once a WorkCover QLD fee list is available.
+    /// </summary>
+    [HttpPost("seed-workcover-qld")]
+    [ProducesResponseType(typeof(SeedBulkBillResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SeedWorkCoverQldScheduleShell()
+    {
+        var result = await _repository.SeedWorkCoverQldScheduleShellAsync();
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Downloads and parses the schedule's configured SourceUrl now, on demand (the same operation
     /// the background auto-import service runs periodically).
     /// </summary>

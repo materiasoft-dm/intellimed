@@ -335,6 +335,33 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
         return result;
     }
 
+    /// <summary>
+    /// Find-or-creates the WorkCover QLD schedule shell. WorkCover QLD publishes its own fee list
+    /// (a PDF, not a machine-readable feed), so — like the DVA shells — this only creates an empty
+    /// schedule for an admin to populate via the generic CSV importer (SourceUrl/Fetch Now) or manual
+    /// Add Item. ItemsAffected is always 0 by design.
+    /// </summary>
+    public async Task<SeedBulkBillResultDto> SeedWorkCoverQldScheduleShellAsync()
+    {
+        var result = new SeedBulkBillResultDto();
+        var schedule = await _dbSet.FirstOrDefaultAsync(f => f.Code == "WCQLD");
+        if (schedule == null)
+        {
+            schedule = new FeeSchedule
+            {
+                Code = "WCQLD",
+                Description = "WorkCover QLD",
+                RoundingType = RoundingTypeEnum.Exact,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _dbSet.AddAsync(schedule);
+            await _context.SaveChangesAsync();
+            result.SchedulesCreated++;
+        }
+
+        return result;
+    }
+
     /// <summary>Shared upsert: writes a BillingItemId-&gt;fee map onto a schedule's FeeScheduleItems, rounded per the given RoundingType.</summary>
     private async Task<int> UpsertItemsAsync(int feeScheduleId, Dictionary<int, decimal> feesByBillingItemId, RoundingTypeEnum rounding)
     {

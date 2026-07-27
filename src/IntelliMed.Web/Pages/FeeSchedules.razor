@@ -111,6 +111,17 @@
                 }
                 Seed DVA Schedules (VAGP/VASO/VASI)
             </button>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="SeedWorkCoverQldAsync" disabled="@_seedingWorkCoverQld" title="Creates the WorkCover QLD schedule shell — no fee auto-population, since the WorkCover QLD fee list is a PDF, not a machine-readable feed. Import fees via CSV or Add Item.">
+                @if (_seedingWorkCoverQld)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                else
+                {
+                    <i class="bi bi-briefcase-fill me-1"></i>
+                }
+                Seed WorkCover QLD Schedule
+            </button>
         </div>
     </div>
 </div>
@@ -573,6 +584,7 @@
 
     private bool _seedingBulkBill;
     private bool _seedingDva;
+    private bool _seedingWorkCoverQld;
     private bool _fetchingNow;
     private DateTime? _lastFetchedAt;
     private string? _lastFetchResult;
@@ -1026,6 +1038,28 @@
         finally
         {
             _seedingDva = false;
+        }
+    }
+
+    private async Task SeedWorkCoverQldAsync()
+    {
+        _seedingWorkCoverQld = true;
+        try
+        {
+            var result = await FeeScheduleService.SeedWorkCoverQldScheduleShellAsync();
+            if (result != null)
+            {
+                ShowToast($"WorkCover QLD ready: {result.SchedulesCreated} schedule(s) created. Import fees via CSV (Source URL/Fetch Now) or Add Item.", false);
+                await RefreshAsync();
+            }
+            else
+            {
+                ShowToast("Failed to seed WorkCover QLD schedule.", true);
+            }
+        }
+        finally
+        {
+            _seedingWorkCoverQld = false;
         }
     }
 

@@ -6,6 +6,7 @@ public class BillingItem
     public string ItemNumber { get; set; } = string.Empty;
     public string? Category { get; set; }
     public string? Group { get; set; }
+    public string? SubGroup { get; set; }
     public string Description { get; set; } = string.Empty;
     public decimal ScheduleFee { get; set; }
     public decimal? Benefit100 { get; set; }

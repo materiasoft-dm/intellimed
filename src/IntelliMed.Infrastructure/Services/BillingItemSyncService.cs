@@ -48,6 +48,7 @@ public class BillingItemSyncService : IBillingItemSyncService
                 ItemNumber = itemNumber,
                 Category = (string?)data.Element("Category"),
                 Group = (string?)data.Element("Group"),
+                SubGroup = (string?)data.Element("SubGroup"),
                 Description = (string?)data.Element("Description") ?? string.Empty,
                 ScheduleFee = ParseDecimal((string?)data.Element("ScheduleFee")),
                 Benefit100 = ParseNullableDecimal((string?)data.Element("Benefit100")),
@@ -70,11 +71,13 @@ public class BillingItemSyncService : IBillingItemSyncService
                     current.Benefit100 != parsed.Benefit100 ||
                     current.Category != parsed.Category ||
                     current.Group != parsed.Group ||
+                    current.SubGroup != parsed.SubGroup ||
                     current.ItemEndDate != parsed.ItemEndDate ||
                     current.IsActive != parsed.IsActive)
                 {
                     current.Category = parsed.Category;
                     current.Group = parsed.Group;
+                    current.SubGroup = parsed.SubGroup;
                     current.Description = parsed.Description;
                     current.ScheduleFee = parsed.ScheduleFee;
                     current.Benefit100 = parsed.Benefit100;

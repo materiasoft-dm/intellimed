@@ -252,6 +252,21 @@ public class FeeScheduleService : IFeeScheduleService
         }
     }
 
+    public async Task<SeedBulkBillResultDto?> SeedWorkCoverQldScheduleShellAsync()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync("api/fee-schedules/seed-workcover-qld", null);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<SeedBulkBillResultDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Seed WorkCover QLD schedule shell error: {ex.Message}");
+            return null;
+        }
+    }
+
     public async Task<FeeScheduleFetchResultDto?> FetchNowAsync(int feeScheduleId)
     {
         try

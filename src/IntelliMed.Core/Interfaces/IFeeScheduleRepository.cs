@@ -31,6 +31,9 @@ public interface IFeeScheduleRepository : IRepository<FeeSchedule>
     /// <summary>Find-or-creates the VAGP/VASO/VASI DVA schedule shells (no fee auto-population — no authoritative source exists).</summary>
     Task<SeedBulkBillResultDto> SeedDvaScheduleShellsAsync();
 
+    /// <summary>Find-or-creates the WorkCover QLD schedule shell (no fee auto-population — the fee list is a PDF, not a machine-readable feed).</summary>
+    Task<SeedBulkBillResultDto> SeedWorkCoverQldScheduleShellAsync();
+
     /// <summary>Every fee this item has held, most recent first.</summary>
     Task<IEnumerable<FeeScheduleItemHistoryDto>> GetItemHistoryAsync(int feeScheduleItemId);
 }
