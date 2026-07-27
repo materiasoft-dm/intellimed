@@ -101,6 +101,9 @@ public class BillingCalculator : IBillingCalculator
         return result;
     }
 
+    public Task<int?> ResolveFeeScheduleIdAsync(int clinicId, AccountTypeEnum accountType, int? healthFundId = null) =>
+        ResolveChargedFeeScheduleIdAsync(clinicId, accountType, healthFundId);
+
     /// <summary>
     /// Picks the charged fee schedule: if the client belongs to a health fund and exactly one active
     /// schedule is tagged with that fund, it wins (mirrors legacy's ParticipantId-match precedence,

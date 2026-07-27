@@ -12,10 +12,8 @@
 <h4 class="mb-2">Derived Item Rules</h4>
 <p class="text-muted small">
     Configures MBS items whose fee is computed from other items on the same invoice (assistant-at-surgery,
-    after-hours anaesthesia-assistance modifiers, per-patient-seen billing, etc.) instead of a flat
-    fee-schedule lookup. Assistant/anaesthesia fees are always a flat percentage of the associated item's
-    (Multiple-Operation-Rule-abated) fee — anaesthesia basic/time units are separately-billed MBS items
-    with their own published fee, not something to configure here.
+    after-hours anaesthesia-assistance modifiers, per-patient-seen billing, discontinued procedures, etc.)
+    instead of a flat fee-schedule lookup. Ported field-for-field from legacy Pracnet's DerivedFeeCalculator.
     There's no bulk-import source for this data — add rules one at a time as you identify them.
 </p>
 
@@ -135,15 +133,18 @@
                         <label class="form-label">Calculation Type</label>
                         <InputSelect @bind-Value="_model.CalculationType" class="form-select">
                             <option value="@DerivedCalculationType.PercentageOfAssociatedItem">Percentage of Associated Item</option>
-                            <option value="@DerivedCalculationType.AssistanceAnaesthesia">Assistance / Anaesthesia modifier (% of associated item)</option>
-                            <option value="@DerivedCalculationType.BasicUnits">Basic Units</option>
+                            <option value="@DerivedCalculationType.ExcisionMalignantTumour">Excision Malignant Tumour (% of associated item)</option>
+                            <option value="@DerivedCalculationType.ProcedureDiscontinued">Procedure Discontinued (% of every other line)</option>
+                            <option value="@DerivedCalculationType.CombinationOperations">Combination Operations (% of invoice total)</option>
+                            <option value="@DerivedCalculationType.AssistanceAnaesthesia">Assistance / Anaesthesia (gated 4-group)</option>
+                            <option value="@DerivedCalculationType.BasicUnits">Basic Units (gated group sum)</option>
+                            <option value="@DerivedCalculationType.NumberOfPatientsSeen">Number of Patients Seen</option>
                             <option value="@DerivedCalculationType.FieldQuantity">Field Quantity</option>
                             <option value="@DerivedCalculationType.TimeDuration">Time Duration</option>
-                            <option value="@DerivedCalculationType.NumberOfPatientsSeen">Number of Patients Seen</option>
                         </InputSelect>
                     </div>
 
-                    @if (IsAssociativeType(_model.CalculationType))
+                    @if (UsesAssociationSelector(_model.CalculationType))
                     {
                         <div class="mb-3">
                             <label class="form-label d-block">Match Associated Item By</label>
@@ -152,6 +153,8 @@
                                 <label class="btn btn-outline-primary" for="assocModeItem">Specific Item</label>
                                 <input type="radio" class="btn-check" name="assocMode" id="assocModeGroup" checked="@(_associationMode == AssociationMode.MbsGroup)" @onchange="() => SetAssociationMode(AssociationMode.MbsGroup)" />
                                 <label class="btn btn-outline-primary" for="assocModeGroup">MBS Group</label>
+                                <input type="radio" class="btn-check" name="assocMode" id="assocModeList" checked="@(_associationMode == AssociationMode.ItemNumberList)" @onchange="() => SetAssociationMode(AssociationMode.ItemNumberList)" />
+                                <label class="btn btn-outline-primary" for="assocModeList">Item Number List</label>
                             </div>
                         </div>
 
@@ -179,16 +182,20 @@
                                 }
                             </div>
                         }
-                        else
+                        else if (_associationMode == AssociationMode.MbsGroup)
                         {
                             <div class="mb-3">
                                 <label class="form-label">MBS Group Code</label>
                                 <input class="form-control form-control-sm" placeholder="e.g. T8" @bind="_model.AssociatedGroup" />
-                                <div class="small text-muted mt-1">
-                                    Sums EVERY sibling line on the invoice whose MBS Group equals this code — e.g. "T8" (Operations) for a
-                                    real assistant-at-surgery rule, since item 51303's fee is 20% of the surgeon's total abated fee across
-                                    every eligible operation performed on the same occasion, not just one procedure.
-                                </div>
+                                <div class="small text-muted mt-1">Sums every sibling line whose MBS Group equals this code.</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Item Numbers</label>
+                                <input class="form-control form-control-sm" placeholder="e.g. 25200-25205, 23010-24136" @bind="_model.AssociatedItemNumbers" />
+                                <div class="small text-muted mt-1">Comma/space-separated item numbers; "X-Y" expands to every number in that range.</div>
                             </div>
                         }
 
@@ -198,20 +205,156 @@
                         </div>
                     }
 
-                    @if (!IsAssociativeType(_model.CalculationType))
+                    @if (_model.CalculationType == DerivedCalculationType.ProcedureDiscontinued)
                     {
+                        <div class="mb-3">
+                            <label class="form-label">Percentage (%)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_model.Percentage" />
+                            <div class="small text-muted mt-1">Applied to every OTHER line on the invoice (no association filter).</div>
+                        </div>
+                    }
+
+                    @if (_model.CalculationType == DerivedCalculationType.CombinationOperations)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Percentage of Invoice Total (%)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_model.PercentageFromInvoiceTotal" />
+                            <div class="small text-muted mt-1">Applied to every OTHER line on the invoice.</div>
+                        </div>
+                    }
+
+                    @if (_model.CalculationType == DerivedCalculationType.AssistanceAnaesthesia)
+                    {
+                        <div class="small text-muted mb-2">Fires only when both Group A and Group B have a matching sibling line; sums every sibling matching any of the 4 groups.</div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small mb-0">Group A Item Numbers</label>
+                                <input class="form-control form-control-sm" @bind="_model.GroupAAssociatedItems" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small mb-0">Group B Item Numbers</label>
+                                <input class="form-control form-control-sm" @bind="_model.GroupBAssociatedItems" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small mb-0">Group C Item Numbers (optional)</label>
+                                <input class="form-control form-control-sm" @bind="_model.GroupCAssociatedItems" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small mb-0">Group D Item Numbers (optional)</label>
+                                <input class="form-control form-control-sm" @bind="_model.GroupDAssociatedItems" />
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Percentage (%)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_model.Percentage" />
+                        </div>
+                    }
+
+                    @if (_model.CalculationType == DerivedCalculationType.BasicUnits)
+                    {
+                        <div class="small text-muted mb-2">Fires only when Group A has a matching sibling line; fee = base + raw sum of sibling fees matching Group A/B/C.</div>
                         <div class="row g-2 mb-3">
                             <div class="col-md-4">
-                                <label class="form-label small mb-0">Unit Value ($)</label>
-                                <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.UnitValue" />
+                                <label class="form-label small mb-0">Group A Item Numbers</label>
+                                <input class="form-control form-control-sm" @bind="_model.GroupAAssociatedItems" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small mb-0">Limit Quantity</label>
-                                <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.LimitQuantity" />
+                                <label class="form-label small mb-0">Group B Item Numbers (optional)</label>
+                                <input class="form-control form-control-sm" @bind="_model.GroupBAssociatedItems" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small mb-0">Over-Limit Unit Value ($)</label>
-                                <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.OverLimitUnitValue" />
+                                <label class="form-label small mb-0">Group C Item Numbers (optional)</label>
+                                <input class="form-control form-control-sm" @bind="_model.GroupCAssociatedItems" />
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Base Fee ($)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_model.CalculateFromFee" />
+                        </div>
+                    }
+
+                    @if (_model.CalculationType == DerivedCalculationType.NumberOfPatientsSeen)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Base Fee ($) — leave blank to use the associated item's fee instead</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_model.CalculateFromFee" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Associated Billing Item (used when Base Fee is blank)</label>
+                            <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
+                                   @bind="_associatedSearchTerm" @bind:event="oninput" @bind:after="SearchAssociatedItemsAsync" />
+                            @if (_associatedSearchResults.Count > 0)
+                            {
+                                <ul class="list-group" style="max-height:150px; overflow-y:auto;">
+                                    @foreach (var candidate in _associatedSearchResults)
+                                    {
+                                        <li class="list-group-item list-group-item-action @(_model.AssociatedBillingItemId == candidate.Id ? "active" : "")"
+                                            style="cursor:pointer" @onclick="() => SelectAssociatedItem(candidate)">
+                                            <strong>@candidate.ItemNumber</strong> — @candidate.Description
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            @if (_associatedItemLabel != null)
+                            {
+                                <div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>@_associatedItemLabel</div>
+                            }
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Patient Limit</label>
+                                <input type="number" class="form-control form-control-sm" @bind="_model.NumOfLimitPatient" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Under-Limit Total ($)</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.UnderNumOfLimitPatientPlusTotal" />
+                                <div class="small text-muted">Divided by patient count when at/under the limit.</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Over-Limit Plus ($)</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.OverNumOfLimitPatientPlus" />
+                            </div>
+                        </div>
+                    }
+
+                    @if (_model.CalculationType is DerivedCalculationType.FieldQuantity or DerivedCalculationType.TimeDuration)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Associated Billing Item</label>
+                            <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
+                                   @bind="_associatedSearchTerm" @bind:event="oninput" @bind:after="SearchAssociatedItemsAsync" />
+                            @if (_associatedSearchResults.Count > 0)
+                            {
+                                <ul class="list-group" style="max-height:150px; overflow-y:auto;">
+                                    @foreach (var candidate in _associatedSearchResults)
+                                    {
+                                        <li class="list-group-item list-group-item-action @(_model.AssociatedBillingItemId == candidate.Id ? "active" : "")"
+                                            style="cursor:pointer" @onclick="() => SelectAssociatedItem(candidate)">
+                                            <strong>@candidate.ItemNumber</strong> — @candidate.Description
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            @if (_associatedItemLabel != null)
+                            {
+                                <div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>@_associatedItemLabel</div>
+                            }
+                        </div>
+                        <div class="row g-2 mb-3">
+                            @if (_model.CalculationType == DerivedCalculationType.FieldQuantity)
+                            {
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-0">Quantity Limit</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.NumberOfLimitQuantity" />
+                                </div>
+                            }
+                            <div class="col-md-6">
+                                <label class="form-label small mb-0">Over-Limit Plus ($/unit)</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm" @bind="_model.OverLimitQuantityPlus" />
+                                @if (_model.CalculationType == DerivedCalculationType.TimeDuration)
+                                {
+                                    <div class="small text-muted">Multiplied by the full quantity, not just the over-limit portion.</div>
+                                }
                             </div>
                         </div>
                     }
@@ -265,7 +408,7 @@
     private string? _associatedItemLabel;
     private AssociationMode _associationMode = AssociationMode.SpecificItem;
 
-    private enum AssociationMode { SpecificItem, MbsGroup }
+    private enum AssociationMode { SpecificItem, MbsGroup, ItemNumberList }
 
     protected override async Task OnInitializedAsync()
     {
@@ -285,12 +428,18 @@
         }
     }
 
-    private static bool IsAssociativeType(DerivedCalculationType type) =>
-        type is DerivedCalculationType.PercentageOfAssociatedItem or DerivedCalculationType.AssistanceAnaesthesia;
+    private static bool UsesAssociationSelector(DerivedCalculationType type) =>
+        type is DerivedCalculationType.PercentageOfAssociatedItem or DerivedCalculationType.ExcisionMalignantTumour;
+
+    private static bool UsesSingleAssociatedItem(DerivedCalculationType type) =>
+        type is DerivedCalculationType.NumberOfPatientsSeen or DerivedCalculationType.FieldQuantity or DerivedCalculationType.TimeDuration;
 
     private static string CalculationTypeLabel(DerivedCalculationType type) => type switch
     {
         DerivedCalculationType.PercentageOfAssociatedItem => "% of Associated Item",
+        DerivedCalculationType.ExcisionMalignantTumour => "Excision Malignant Tumour",
+        DerivedCalculationType.ProcedureDiscontinued => "Procedure Discontinued",
+        DerivedCalculationType.CombinationOperations => "Combination Operations",
         DerivedCalculationType.AssistanceAnaesthesia => "Assistance / Anaesthesia",
         DerivedCalculationType.BasicUnits => "Basic Units",
         DerivedCalculationType.FieldQuantity => "Field Quantity",
@@ -299,12 +448,18 @@
         _ => type.ToString()
     };
 
-    private static string ValueSummary(DerivedItemConfigDto config) => IsAssociativeType(config.CalculationType)
-        ? $"{config.Percentage ?? 0}%"
-        : $"{config.UnitValue ?? 0:C}/unit";
+    private static string ValueSummary(DerivedItemConfigDto config) => config.CalculationType switch
+    {
+        DerivedCalculationType.CombinationOperations => $"{config.PercentageFromInvoiceTotal ?? 0}%",
+        DerivedCalculationType.BasicUnits => $"{config.CalculateFromFee ?? 0:C} base",
+        DerivedCalculationType.NumberOfPatientsSeen => config.CalculateFromFee.HasValue ? $"{config.CalculateFromFee:C} base" : "assoc. item fee",
+        DerivedCalculationType.FieldQuantity or DerivedCalculationType.TimeDuration => $"{config.OverLimitQuantityPlus ?? 0:C}/unit",
+        _ => $"{config.Percentage ?? 0}%"
+    };
 
-    private static string AssociatedItemDisplay(DerivedItemConfigDto config) => config.AssociatedGroup != null
-        ? $"Any MBS Group {config.AssociatedGroup}"
+    private static string AssociatedItemDisplay(DerivedItemConfigDto config) =>
+        !string.IsNullOrEmpty(config.AssociatedGroup) ? $"Any MBS Group {config.AssociatedGroup}"
+        : !string.IsNullOrEmpty(config.AssociatedItemNumbers) ? config.AssociatedItemNumbers
         : config.AssociatedItemNumber ?? "—";
 
     private void OpenCreateDialog()
@@ -331,10 +486,19 @@
             CalculationType = config.CalculationType,
             AssociatedBillingItemId = config.AssociatedBillingItemId,
             AssociatedGroup = config.AssociatedGroup,
+            AssociatedItemNumbers = config.AssociatedItemNumbers,
+            GroupAAssociatedItems = config.GroupAAssociatedItems,
+            GroupBAssociatedItems = config.GroupBAssociatedItems,
+            GroupCAssociatedItems = config.GroupCAssociatedItems,
+            GroupDAssociatedItems = config.GroupDAssociatedItems,
             Percentage = config.Percentage,
-            UnitValue = config.UnitValue,
-            LimitQuantity = config.LimitQuantity,
-            OverLimitUnitValue = config.OverLimitUnitValue,
+            PercentageFromInvoiceTotal = config.PercentageFromInvoiceTotal,
+            CalculateFromFee = config.CalculateFromFee,
+            NumOfLimitPatient = config.NumOfLimitPatient,
+            UnderNumOfLimitPatientPlusTotal = config.UnderNumOfLimitPatientPlusTotal,
+            OverNumOfLimitPatientPlus = config.OverNumOfLimitPatientPlus,
+            NumberOfLimitQuantity = config.NumberOfLimitQuantity,
+            OverLimitQuantityPlus = config.OverLimitQuantityPlus,
             IsActive = config.IsActive,
             Notes = config.Notes
         };
@@ -342,7 +506,9 @@
         _associatedItemLabel = config.AssociatedItemNumber != null ? $"{config.AssociatedItemNumber} — {config.AssociatedDescription}" : null;
         _associatedSearchTerm = string.Empty;
         _associatedSearchResults = new();
-        _associationMode = config.AssociatedGroup != null ? AssociationMode.MbsGroup : AssociationMode.SpecificItem;
+        _associationMode = !string.IsNullOrEmpty(config.AssociatedGroup) ? AssociationMode.MbsGroup
+            : !string.IsNullOrEmpty(config.AssociatedItemNumbers) ? AssociationMode.ItemNumberList
+            : AssociationMode.SpecificItem;
         _dialogVisible = true;
     }
 
@@ -351,13 +517,11 @@
     private void SetAssociationMode(AssociationMode mode)
     {
         _associationMode = mode;
-        // Only one of the two association fields may be set at a time — clear the other so a
+        // Only one of the three association fields may be set at a time — clear the others so a
         // stale value from switching modes can't silently get saved alongside the new one.
-        if (mode == AssociationMode.SpecificItem)
-        {
-            _model.AssociatedGroup = null;
-        }
-        else
+        _model.AssociatedGroup = mode == AssociationMode.MbsGroup ? _model.AssociatedGroup : null;
+        _model.AssociatedItemNumbers = mode == AssociationMode.ItemNumberList ? _model.AssociatedItemNumbers : null;
+        if (mode != AssociationMode.SpecificItem)
         {
             _model.AssociatedBillingItemId = null;
             _associatedItemLabel = null;
@@ -392,6 +556,7 @@
         _associatedSearchResults = new();
     }
 
+
     private async Task SaveAsync()
     {
         _saving = true;
@@ -405,10 +570,19 @@
                     CalculationType = _model.CalculationType,
                     AssociatedBillingItemId = _model.AssociatedBillingItemId,
                     AssociatedGroup = _model.AssociatedGroup,
+                    AssociatedItemNumbers = _model.AssociatedItemNumbers,
+                    GroupAAssociatedItems = _model.GroupAAssociatedItems,
+                    GroupBAssociatedItems = _model.GroupBAssociatedItems,
+                    GroupCAssociatedItems = _model.GroupCAssociatedItems,
+                    GroupDAssociatedItems = _model.GroupDAssociatedItems,
                     Percentage = _model.Percentage,
-                    UnitValue = _model.UnitValue,
-                    LimitQuantity = _model.LimitQuantity,
-                    OverLimitUnitValue = _model.OverLimitUnitValue,
+                    PercentageFromInvoiceTotal = _model.PercentageFromInvoiceTotal,
+                    CalculateFromFee = _model.CalculateFromFee,
+                    NumOfLimitPatient = _model.NumOfLimitPatient,
+                    UnderNumOfLimitPatientPlusTotal = _model.UnderNumOfLimitPatientPlusTotal,
+                    OverNumOfLimitPatientPlus = _model.OverNumOfLimitPatientPlus,
+                    NumberOfLimitQuantity = _model.NumberOfLimitQuantity,
+                    OverLimitQuantityPlus = _model.OverLimitQuantityPlus,
                     IsActive = _model.IsActive,
                     Notes = _model.Notes
                 });
@@ -421,10 +595,19 @@
                     CalculationType = _model.CalculationType,
                     AssociatedBillingItemId = _model.AssociatedBillingItemId,
                     AssociatedGroup = _model.AssociatedGroup,
+                    AssociatedItemNumbers = _model.AssociatedItemNumbers,
+                    GroupAAssociatedItems = _model.GroupAAssociatedItems,
+                    GroupBAssociatedItems = _model.GroupBAssociatedItems,
+                    GroupCAssociatedItems = _model.GroupCAssociatedItems,
+                    GroupDAssociatedItems = _model.GroupDAssociatedItems,
                     Percentage = _model.Percentage,
-                    UnitValue = _model.UnitValue,
-                    LimitQuantity = _model.LimitQuantity,
-                    OverLimitUnitValue = _model.OverLimitUnitValue,
+                    PercentageFromInvoiceTotal = _model.PercentageFromInvoiceTotal,
+                    CalculateFromFee = _model.CalculateFromFee,
+                    NumOfLimitPatient = _model.NumOfLimitPatient,
+                    UnderNumOfLimitPatientPlusTotal = _model.UnderNumOfLimitPatientPlusTotal,
+                    OverNumOfLimitPatientPlus = _model.OverNumOfLimitPatientPlus,
+                    NumberOfLimitQuantity = _model.NumberOfLimitQuantity,
+                    OverLimitQuantityPlus = _model.OverLimitQuantityPlus,
                     Notes = _model.Notes
                 }) != null;
             }
@@ -468,10 +651,19 @@
         public DerivedCalculationType CalculationType { get; set; } = DerivedCalculationType.PercentageOfAssociatedItem;
         public int? AssociatedBillingItemId { get; set; }
         public string? AssociatedGroup { get; set; }
+        public string? AssociatedItemNumbers { get; set; }
+        public string? GroupAAssociatedItems { get; set; }
+        public string? GroupBAssociatedItems { get; set; }
+        public string? GroupCAssociatedItems { get; set; }
+        public string? GroupDAssociatedItems { get; set; }
         public decimal? Percentage { get; set; }
-        public decimal? UnitValue { get; set; }
-        public decimal? LimitQuantity { get; set; }
-        public decimal? OverLimitUnitValue { get; set; }
+        public decimal? PercentageFromInvoiceTotal { get; set; }
+        public decimal? CalculateFromFee { get; set; }
+        public int? NumOfLimitPatient { get; set; }
+        public decimal? UnderNumOfLimitPatientPlusTotal { get; set; }
+        public decimal? OverNumOfLimitPatientPlus { get; set; }
+        public decimal? NumberOfLimitQuantity { get; set; }
+        public decimal? OverLimitQuantityPlus { get; set; }
         public bool IsActive { get; set; } = true;
         public string? Notes { get; set; }
     }

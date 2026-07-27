@@ -9,5 +9,5 @@ namespace IntelliMed.Core.Interfaces;
 /// </summary>
 public interface IDerivedFeeCalculator
 {
-    Task ApplyDerivedFeesAsync(ICollection<InvoiceItem> items);
+    Task ApplyDerivedFeesAsync(ICollection<InvoiceItem> items, int? feeScheduleId = null);
 }

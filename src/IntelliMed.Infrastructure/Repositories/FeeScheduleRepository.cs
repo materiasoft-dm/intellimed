@@ -83,6 +83,7 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
     {
         var items = await _context.FeeScheduleItems
             .Include(i => i.BillingItem)
+            .Include(i => i.DerivedItemRateCalculateds)
             .Where(i => i.FeeScheduleId == feeScheduleId)
             .OrderBy(i => i.BillingItem!.ItemNumber)
             .ToListAsync();
@@ -143,6 +144,46 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
         if (item != null)
         {
             _context.FeeScheduleItems.Remove(item);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task UpdateItemOverridesAsync(int itemId, UpdateFeeScheduleItemOverridesDto dto)
+    {
+        var item = await _context.FeeScheduleItems.FindAsync(itemId);
+        if (item == null)
+            throw new InvalidOperationException($"FeeScheduleItem with ID {itemId} not found");
+
+        item.MedicalGapPercent = dto.MedicalGapPercent;
+        item.PercentageFromAssociatedItemFee = dto.PercentageFromAssociatedItemFee;
+        item.OverLimitQuantityPlus = dto.OverLimitQuantityPlus;
+        item.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<int> AddPrecalculatedRateAsync(int feeScheduleItemId, SaveDerivedItemRateCalculatedDto dto)
+    {
+        var existing = await _context.DerivedItemRateCalculateds
+            .FirstOrDefaultAsync(d => d.FeeScheduleItemId == feeScheduleItemId && d.OrderNum == dto.OrderNum);
+        if (existing != null)
+        {
+            existing.Fee = dto.Fee;
+            await _context.SaveChangesAsync();
+            return existing.Id;
+        }
+
+        var rate = new DerivedItemRateCalculated { FeeScheduleItemId = feeScheduleItemId, OrderNum = dto.OrderNum, Fee = dto.Fee };
+        _context.DerivedItemRateCalculateds.Add(rate);
+        await _context.SaveChangesAsync();
+        return rate.Id;
+    }
+
+    public async Task RemovePrecalculatedRateAsync(int id)
+    {
+        var rate = await _context.DerivedItemRateCalculateds.FindAsync(id);
+        if (rate != null)
+        {
+            _context.DerivedItemRateCalculateds.Remove(rate);
             await _context.SaveChangesAsync();
         }
     }

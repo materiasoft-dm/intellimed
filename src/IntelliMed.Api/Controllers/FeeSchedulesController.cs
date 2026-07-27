@@ -160,6 +160,40 @@ public class FeeSchedulesController : ControllerBase
     }
 
     /// <summary>
+    /// Update a single item's per-schedule derived-item override fields (MedicalGapPercent,
+    /// PercentageFromAssociatedItemFee, OverLimitQuantityPlus).
+    /// </summary>
+    [HttpPut("items/{itemId:int}/overrides")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UpdateItemOverrides(int itemId, [FromBody] UpdateFeeScheduleItemOverridesDto dto)
+    {
+        await _repository.UpdateItemOverridesAsync(itemId, dto);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Upsert a pre-calculated fee override for a specific patient count / field quantity on this item.
+    /// </summary>
+    [HttpPost("items/{itemId:int}/rates")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+    public async Task<IActionResult> AddPrecalculatedRate(int itemId, [FromBody] SaveDerivedItemRateCalculatedDto dto)
+    {
+        var id = await _repository.AddPrecalculatedRateAsync(itemId, dto);
+        return Ok(id);
+    }
+
+    /// <summary>
+    /// Remove a pre-calculated fee override.
+    /// </summary>
+    [HttpDelete("rates/{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemovePrecalculatedRate(int id)
+    {
+        await _repository.RemovePrecalculatedRateAsync(id);
+        return NoContent();
+    }
+
+    /// <summary>
     /// Every fee this item has held, most recent first — lets a user see when a price last moved.
     /// </summary>
     [HttpGet("items/{itemId:int}/history")]

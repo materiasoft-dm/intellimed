@@ -16,6 +16,9 @@ public interface IFeeScheduleService
     Task<bool> AddItemAsync(int feeScheduleId, CreateFeeScheduleItemDto dto);
     Task<bool> UpdateItemFeeAsync(int itemId, decimal fee);
     Task<bool> RemoveItemAsync(int itemId);
+    Task<bool> UpdateItemOverridesAsync(int itemId, UpdateFeeScheduleItemOverridesDto dto);
+    Task<bool> AddPrecalculatedRateAsync(int itemId, SaveDerivedItemRateCalculatedDto dto);
+    Task<bool> RemovePrecalculatedRateAsync(int id);
     Task<int?> CopyFeesFromMbsAsync(int feeScheduleId);
     Task<int?> ImportItemsAsync(int feeScheduleId, ImportFeeScheduleItemsRequest request);
     Task<SeedBulkBillResultDto?> SeedBulkBillSchedulesAsync();

@@ -38,6 +38,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FeeScheduleItemPriceHistory> FeeScheduleItemPriceHistories => Set<FeeScheduleItemPriceHistory>();
     public DbSet<AccountTypeFeeScheduleMapping> AccountTypeFeeScheduleMappings => Set<AccountTypeFeeScheduleMapping>();
     public DbSet<DerivedItemConfig> DerivedItemConfigs => Set<DerivedItemConfig>();
+    public DbSet<DerivedItemRateCalculated> DerivedItemRateCalculateds => Set<DerivedItemRateCalculated>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -492,6 +493,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.AssociatedBillingItemId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // DerivedItemRateCalculated configuration
+        modelBuilder.Entity<DerivedItemRateCalculated>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.FeeScheduleItemId, e.OrderNum }).IsUnique();
+            entity.HasOne(e => e.FeeScheduleItem)
+                .WithMany(f => f.DerivedItemRateCalculateds)
+                .HasForeignKey(e => e.FeeScheduleItemId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // AccountTypeFeeScheduleMapping configuration

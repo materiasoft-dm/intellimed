@@ -150,6 +150,48 @@ public class FeeScheduleService : IFeeScheduleService
         }
     }
 
+    public async Task<bool> UpdateItemOverridesAsync(int itemId, UpdateFeeScheduleItemOverridesDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/fee-schedules/items/{itemId}/overrides", dto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Update fee schedule item overrides error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> AddPrecalculatedRateAsync(int itemId, SaveDerivedItemRateCalculatedDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/fee-schedules/items/{itemId}/rates", dto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Add precalculated rate error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> RemovePrecalculatedRateAsync(int id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/fee-schedules/rates/{id}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Remove precalculated rate error: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<int?> CopyFeesFromMbsAsync(int feeScheduleId)
     {
         try

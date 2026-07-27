@@ -361,6 +361,7 @@
                                                     </button>
                                                 </td>
                                                 <td class="text-end">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" @onclick="@(() => OpenOverridesAsync(item))">Derived</button>
                                                     <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveItemAsync(item))">Delete</button>
                                                 </td>
                                             </tr>
@@ -461,6 +462,84 @@
     </div>
 }
 
+@if (_showOverridesModal && _overridesItem != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4); z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Derived-Item Overrides — @_overridesItem.ItemNumber</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showOverridesModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="small text-muted mb-2">
+                        Per-schedule overrides for this item when it's used as a derived-item's associated item
+                        (see Derived Item Rules). Leave blank to use the rule's own configured values.
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small mb-0">Medical Gap %</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="_overridesModel.MedicalGapPercent" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-0">% From Assoc. Item</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="_overridesModel.PercentageFromAssociatedItemFee" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-0">Over-Limit Plus ($)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="_overridesModel.OverLimitQuantityPlus" />
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary mb-3" @onclick="SaveOverridesAsync" disabled="@_overridesSaving">
+                        @if (_overridesSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        Save Overrides
+                    </button>
+
+                    <hr />
+                    <div class="small text-muted mb-2">
+                        Pre-calculated fee overrides, keyed by patient count / field quantity — takes priority over the formula when a match exists.
+                    </div>
+                    @if (_overridesItem.DerivedItemRateCalculateds.Count > 0)
+                    {
+                        <table class="table table-sm mb-2">
+                            <thead><tr><th>Order#</th><th>Fee</th><th></th></tr></thead>
+                            <tbody>
+                                @foreach (var rate in _overridesItem.DerivedItemRateCalculateds)
+                                {
+                                    <tr>
+                                        <td>@rate.OrderNum</td>
+                                        <td>@rate.Fee.ToString("C")</td>
+                                        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemovePrecalculatedRateAsync(rate))">Delete</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label small mb-0">Order# (count/quantity)</label>
+                            <input type="number" class="form-control form-control-sm" @bind="_newRateOrderNum" />
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small mb-0">Fee ($)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="_newRateFee" />
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100" @onclick="AddPrecalculatedRateAsync">Add</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showOverridesModal = false)">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private RadzenDataGrid<FeeScheduleDto>? _grid;
     private List<FeeScheduleDto> _schedules = new();
@@ -502,6 +581,13 @@
     private bool _historyLoading;
     private string _historyItemLabel = string.Empty;
     private List<FeeScheduleItemHistoryDto> _history = new();
+
+    private bool _showOverridesModal;
+    private bool _overridesSaving;
+    private FeeScheduleItemDto? _overridesItem;
+    private UpdateFeeScheduleItemOverridesDto _overridesModel = new();
+    private int _newRateOrderNum;
+    private decimal _newRateFee;
 
     private string? _toastMessage;
     private bool _toastIsError;
@@ -644,6 +730,65 @@
         {
             _historyLoading = false;
         }
+    }
+
+    private void OpenOverridesAsync(FeeScheduleItemDto item)
+    {
+        _overridesItem = item;
+        _overridesModel = new UpdateFeeScheduleItemOverridesDto
+        {
+            MedicalGapPercent = item.MedicalGapPercent,
+            PercentageFromAssociatedItemFee = item.PercentageFromAssociatedItemFee,
+            OverLimitQuantityPlus = item.OverLimitQuantityPlus
+        };
+        _newRateOrderNum = 0;
+        _newRateFee = 0;
+        _showOverridesModal = true;
+    }
+
+    private async Task SaveOverridesAsync()
+    {
+        if (_overridesItem == null) return;
+        _overridesSaving = true;
+        try
+        {
+            var success = await FeeScheduleService.UpdateItemOverridesAsync(_overridesItem.Id, _overridesModel);
+            ShowToast(success ? "Overrides saved." : "Failed to save overrides.", !success);
+            if (success) await LoadItemsAsync();
+        }
+        finally
+        {
+            _overridesSaving = false;
+        }
+    }
+
+    private async Task AddPrecalculatedRateAsync()
+    {
+        if (_overridesItem == null) return;
+        var success = await FeeScheduleService.AddPrecalculatedRateAsync(_overridesItem.Id, new SaveDerivedItemRateCalculatedDto
+        {
+            OrderNum = _newRateOrderNum,
+            Fee = _newRateFee
+        });
+        if (success)
+        {
+            await LoadItemsAsync();
+            _overridesItem = _items.FirstOrDefault(i => i.Id == _overridesItem.Id) ?? _overridesItem;
+            _newRateOrderNum = 0;
+            _newRateFee = 0;
+        }
+        ShowToast(success ? "Rate added." : "Failed to add rate.", !success);
+    }
+
+    private async Task RemovePrecalculatedRateAsync(DerivedItemRateCalculatedDto rate)
+    {
+        var success = await FeeScheduleService.RemovePrecalculatedRateAsync(rate.Id);
+        if (success)
+        {
+            await LoadItemsAsync();
+            _overridesItem = _items.FirstOrDefault(i => i.Id == _overridesItem?.Id) ?? _overridesItem;
+        }
+        ShowToast(success ? "Rate removed." : "Failed to remove rate.", !success);
     }
 
     private void OpenItemPicker()

@@ -77,6 +77,13 @@ public class FeeScheduleItemDto
     public string ItemNumber { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal Fee { get; set; }
+
+    /// <summary>Per-schedule derived-item overrides — see FeeScheduleItem entity doc comments.</summary>
+    public decimal? MedicalGapPercent { get; set; }
+    public decimal? PercentageFromAssociatedItemFee { get; set; }
+    public decimal? OverLimitQuantityPlus { get; set; }
+    public List<DerivedItemRateCalculatedDto> DerivedItemRateCalculateds { get; set; } = new();
+
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -96,6 +103,29 @@ public class CreateFeeScheduleItemDto
 
 public class UpdateFeeScheduleItemFeeDto
 {
+    public decimal Fee { get; set; }
+}
+
+/// <summary>Updates the per-schedule derived-item override fields for an existing FeeScheduleItem.</summary>
+public class UpdateFeeScheduleItemOverridesDto
+{
+    public decimal? MedicalGapPercent { get; set; }
+    public decimal? PercentageFromAssociatedItemFee { get; set; }
+    public decimal? OverLimitQuantityPlus { get; set; }
+}
+
+/// <summary>A pre-calculated fee override for a specific patient count / field quantity, taking priority over the formula.</summary>
+public class DerivedItemRateCalculatedDto
+{
+    public int Id { get; set; }
+    public int FeeScheduleItemId { get; set; }
+    public int OrderNum { get; set; }
+    public decimal Fee { get; set; }
+}
+
+public class SaveDerivedItemRateCalculatedDto
+{
+    public int OrderNum { get; set; }
     public decimal Fee { get; set; }
 }
 

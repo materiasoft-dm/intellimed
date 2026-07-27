@@ -17,4 +17,7 @@ public interface IBillingCalculator
         int billingItemId,
         DateTime? serviceDate,
         int? healthFundId = null);
+
+    /// <summary>Resolves the same charged fee schedule ResolveLineAsync would use, for callers (e.g. the derived-item engine) that need it without resolving a specific line.</summary>
+    Task<int?> ResolveFeeScheduleIdAsync(int clinicId, AccountTypeEnum accountType, int? healthFundId = null);
 }

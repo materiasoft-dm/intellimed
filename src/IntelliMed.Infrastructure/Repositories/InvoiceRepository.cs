@@ -157,7 +157,10 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         // Derived items (assistant-at-surgery, patients-seen, time-loading, etc.) need every line's
         // normally-resolved (and now abated) fee already in place before their own formulas can run,
         // and must run before the invoice total is summed so the override is reflected in TotalAmount.
-        await _derivedFeeCalculator.ApplyDerivedFeesAsync(invoice.Items);
+        // The fee schedule is resolved separately (not per-line) since it's needed for per-schedule
+        // derived-fee overrides (MedicalGapPercent etc.), not for a specific billing item.
+        var feeScheduleId = await _billingCalculator.ResolveFeeScheduleIdAsync(dto.ClinicId, dto.AccountType, healthFundId);
+        await _derivedFeeCalculator.ApplyDerivedFeesAsync(invoice.Items, feeScheduleId);
 
         invoice.TotalAmount = BillingMath.RoundMoney(invoice.Items.Sum(i => i.TotalPrice));
 
