@@ -60,17 +60,52 @@ public class BillingCalculatorTests : IDisposable
     }
 
     [Fact]
-    public async Task ResolveLineAsync_Private_UsesAccountTypeMapping_And_BbgpRebate()
+    public async Task ResolveLineAsync_Private_UsesAccountTypeMapping_And_Benefit100Rebate()
     {
         var privateScheduleId = CreateSchedule("PRIV", 62.10m);
         MapAccountType(AccountTypeEnum.PrivatePatient, privateScheduleId);
-        CreateSchedule("BBGP", 41.40m);
         _context.SaveChanges();
 
         var result = await _calculator.ResolveLineAsync(ClinicId, AccountTypeEnum.PrivatePatient, ProviderServiceType.GeneralPractitioner, PlaceOfServiceEnum.Rooms, _billingItemId, null);
 
         result.Fee.Should().Be(62.10m);
         result.RebatePerUnit.Should().Be(41.40m);
+    }
+
+    [Fact]
+    public async Task ResolveLineAsync_Private_Gp_Rooms_UsesBenefit100()
+    {
+        var result = await _calculator.ResolveLineAsync(ClinicId, AccountTypeEnum.PrivatePatient, ProviderServiceType.GeneralPractitioner, PlaceOfServiceEnum.Rooms, _billingItemId, null);
+
+        result.RebatePerUnit.Should().Be(41.40m); // 100% — GP attendance item, Benefit100 populated
+    }
+
+    [Fact]
+    public async Task ResolveLineAsync_Private_Specialist_Rooms_Uses85Percent()
+    {
+        var result = await _calculator.ResolveLineAsync(ClinicId, AccountTypeEnum.PrivatePatient, ProviderServiceType.Specialist, PlaceOfServiceEnum.Rooms, _billingItemId, null);
+
+        result.RebatePerUnit.Should().Be(41.40m * 0.85m);
+    }
+
+    [Fact]
+    public async Task ResolveLineAsync_Private_Hospital_Uses75Percent_RegardlessOfProviderType()
+    {
+        var result = await _calculator.ResolveLineAsync(ClinicId, AccountTypeEnum.PrivatePatient, ProviderServiceType.GeneralPractitioner, PlaceOfServiceEnum.Hospital, _billingItemId, null);
+
+        result.RebatePerUnit.Should().Be(41.40m * 0.75m); // hospital priority overrides GP/100%
+    }
+
+    [Fact]
+    public async Task ResolveLineAsync_Private_GpItemWithNoBenefit100_FallsBackTo85Percent()
+    {
+        var proceduralItem = new BillingItem { ItemNumber = "30001", Description = "GP procedure", ScheduleFee = 100.00m, Benefit100 = null, IsActive = true };
+        _context.BillingItems.Add(proceduralItem);
+        await _context.SaveChangesAsync();
+
+        var result = await _calculator.ResolveLineAsync(ClinicId, AccountTypeEnum.PrivatePatient, ProviderServiceType.GeneralPractitioner, PlaceOfServiceEnum.Rooms, proceduralItem.Id, null);
+
+        result.RebatePerUnit.Should().Be(85.00m);
     }
 
     [Fact]

@@ -12,17 +12,12 @@ namespace IntelliMed.Infrastructure.Services;
 /// (falling back to the clinic's generic account-type mapping, then the MBS ScheduleFee), with
 /// FeeTableId parent-schedule inheritance (e.g. a health fund borrowing from its state's gap-cover
 /// schedule) resolved along the way. BulkBill and DVA (Veteran) are both fee=rebate, no-gap paths;
-/// everything else's rebate is the bulk-bill-equivalent fee from the BBGP/BBO/BBI schedules by
-/// provider service-type + place of service.
+/// everything else's rebate follows the MBS Medicare benefit percentage rule (75%/85%/100% of the
+/// Schedule Fee — see ResolveMedicareBenefit).
 /// </summary>
 public class BillingCalculator : IBillingCalculator
 {
     private readonly AppDbContext _context;
-
-    // Reserved bulk-bill schedule codes, matching legacy's string-based lookup.
-    private const string BbGpCode = "BBGP";   // GP, rooms
-    private const string BbOutCode = "BBO";   // Specialist/other, rooms
-    private const string BbInCode = "BBI";    // Hospital (in-patient)
 
     // Reserved DVA schedule codes. Unlike BBGP/BBO/BBI (a bulk-bill-equivalent lookup used to
     // compute a private patient's gap), these are DVA's own fixed, published fees — authoritative
@@ -99,10 +94,8 @@ public class BillingCalculator : IBillingCalculator
         var chargedFee = chargedScheduleFee ?? billingItem.ScheduleFee;
         result.Fee = BillingMath.ApplyScheduleRounding(chargedFee, chargedRounding);
 
-        // Rebate = bulk-bill-equivalent fee, resolved by service-type + place of service.
-        var rebate = await ResolveBulkBillEquivalentAsync(providerServiceType, placeOfService, billingItemId)
-                     ?? billingItem.Benefit100
-                     ?? 0m;
+        // Rebate = MBS Medicare benefit percentage rule.
+        var rebate = ResolveMedicareBenefit(billingItem, providerServiceType, placeOfService);
         result.RebatePerUnit = BillingMath.ApplyScheduleRounding(rebate, chargedRounding);
 
         return result;
@@ -174,20 +167,22 @@ public class BillingCalculator : IBillingCalculator
                ?? await FeeForCodeAsync(DvaGpCode, billingItemId);
     }
 
-    /// <summary>Legacy BBGP/BBO/BBI selection matrix (Private_RebateCalculator).</summary>
-    private async Task<decimal?> ResolveBulkBillEquivalentAsync(
-        ProviderServiceType providerServiceType, PlaceOfServiceEnum placeOfService, int billingItemId)
+    /// <summary>
+    /// MBS benefit percentage rule: 75% of the Schedule Fee for any service during an admitted hospital
+    /// episode (takes priority over provider type); otherwise 100% for GP attendance items that MBS
+    /// marks as 100%-eligible (Benefit100 populated), 85% of the Schedule Fee for everything else in
+    /// the community. The MBS feed doesn't publish separate 85%/75% amounts — they're a flat percentage
+    /// of ScheduleFee, not a lookup (unlike Benefit100, which mbsonline publishes per-item).
+    /// </summary>
+    private static decimal ResolveMedicareBenefit(BillingItem billingItem, ProviderServiceType providerServiceType, PlaceOfServiceEnum placeOfService)
     {
-        if (providerServiceType == ProviderServiceType.GeneralPractitioner)
-        {
-            // GP: prefer BBGP, then fall back to BBO (rooms) / BBI (hospital).
-            return await FeeForCodeAsync(BbGpCode, billingItemId)
-                   ?? await FeeForCodeAsync(placeOfService == PlaceOfServiceEnum.Hospital ? BbInCode : BbOutCode, billingItemId);
-        }
+        if (placeOfService == PlaceOfServiceEnum.Hospital)
+            return billingItem.ScheduleFee * 0.75m;
 
-        // Specialist / Pathology: BBO (rooms) or BBI (hospital), falling back to BBGP.
-        return await FeeForCodeAsync(placeOfService == PlaceOfServiceEnum.Hospital ? BbInCode : BbOutCode, billingItemId)
-               ?? await FeeForCodeAsync(BbGpCode, billingItemId);
+        if (providerServiceType == ProviderServiceType.GeneralPractitioner && billingItem.Benefit100.HasValue)
+            return billingItem.Benefit100.Value;
+
+        return billingItem.ScheduleFee * 0.85m;
     }
 
     private async Task<decimal?> FeeForCodeAsync(string scheduleCode, int billingItemId)
