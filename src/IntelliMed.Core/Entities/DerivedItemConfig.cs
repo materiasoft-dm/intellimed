@@ -16,11 +16,11 @@ public class DerivedItemConfig
     public int? AssociatedBillingItemId { get; set; }
 
     /// <summary>
-    /// Alternative to AssociatedBillingItemId: matches the highest-fee sibling line whose BillingItem.Group
-    /// equals this value (e.g. "T8" for MBS Operations), rather than one fixed item. This is what a real
-    /// MBS assistant-at-surgery rule needs — the assistant fee is a percentage of whichever operation was
-    /// actually performed, not one hardcoded procedure. "Highest-fee" matches the Multiple Operation Rule's
-    /// own ranking (IMultipleOperationRuleCalculator already runs first, so this fee is post-abatement).
+    /// Alternative to AssociatedBillingItemId: sums every sibling line whose BillingItem.Group equals
+    /// this value (e.g. "T8" for MBS Operations), rather than matching one fixed item. This is what a
+    /// real MBS assistant-at-surgery rule needs — item 51303's fee is 20% of the surgeon's *total*
+    /// abated fee across every eligible operation performed on the same occasion, not just one procedure.
+    /// IMultipleOperationRuleCalculator already runs first, so each sibling's fee is post-abatement.
     /// </summary>
     public string? AssociatedGroup { get; set; }
 

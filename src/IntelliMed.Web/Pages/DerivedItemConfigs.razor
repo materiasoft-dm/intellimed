@@ -185,9 +185,9 @@
                                 <label class="form-label">MBS Group Code</label>
                                 <input class="form-control form-control-sm" placeholder="e.g. T8" @bind="_model.AssociatedGroup" />
                                 <div class="small text-muted mt-1">
-                                    Matches the highest-fee sibling line on the invoice whose MBS Group equals this code — e.g. "T8" (Operations)
-                                    for a real assistant-at-surgery rule, since the assistant fee applies to whichever operation was actually
-                                    performed, not one fixed item.
+                                    Sums EVERY sibling line on the invoice whose MBS Group equals this code — e.g. "T8" (Operations) for a
+                                    real assistant-at-surgery rule, since item 51303's fee is 20% of the surgeon's total abated fee across
+                                    every eligible operation performed on the same occasion, not just one procedure.
                                 </div>
                             </div>
                         }

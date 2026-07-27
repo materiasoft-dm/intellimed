@@ -72,38 +72,42 @@ public class DerivedFeeCalculator : IDerivedFeeCalculator
     }
 
     /// <summary>
-    /// Scales a sibling line's already-resolved (and possibly abated) fee and rebate by a configured
-    /// flat percentage. AssociatedBillingItemId matches one fixed item; AssociatedGroup instead matches
-    /// the highest-fee sibling in a given MBS Group (e.g. "T8") — the latter is what a real
-    /// assistant-at-surgery rule needs, since it applies to whichever operation was actually performed,
-    /// not one hardcoded procedure. "Highest-fee" mirrors the Multiple Operation Rule's own ranking.
+    /// Scales an already-resolved (and possibly abated) base fee/rebate by a configured flat percentage.
+    /// AssociatedBillingItemId matches one fixed sibling item. AssociatedGroup instead sums EVERY sibling
+    /// line in a given MBS Group (e.g. "T8") — this is what the real assistant-at-surgery rule needs:
+    /// MBS defines the item 51303 fee as 20% of the surgeon's *total* abated fee across every eligible
+    /// operation performed on the same occasion, not just the single highest-fee one. Picking only the
+    /// top item would understate the fee whenever more than one operation in the group was billed.
     /// </summary>
     private static void ApplyAssociativeFee(InvoiceItem item, DerivedItemConfig config, ICollection<InvoiceItem> items, IReadOnlyDictionary<int, string?> groupsByBillingItemId)
     {
-        InvoiceItem? sibling;
+        decimal baseFee, baseRebate;
         if (config.AssociatedBillingItemId.HasValue)
         {
-            sibling = items.FirstOrDefault(i => i != item && i.BillingItemId == config.AssociatedBillingItemId);
+            var sibling = items.FirstOrDefault(i => i != item && i.BillingItemId == config.AssociatedBillingItemId);
+            if (sibling == null) return;
+            baseFee = sibling.UnitPrice;
+            baseRebate = sibling.RebatePerUnit;
         }
         else if (!string.IsNullOrEmpty(config.AssociatedGroup))
         {
-            sibling = items
+            var siblings = items
                 .Where(i => i != item && i.BillingItemId.HasValue
                             && groupsByBillingItemId.TryGetValue(i.BillingItemId.Value, out var group)
                             && group == config.AssociatedGroup)
-                .OrderByDescending(i => i.UnitPrice)
-                .FirstOrDefault();
+                .ToList();
+            if (siblings.Count == 0) return;
+            baseFee = siblings.Sum(i => i.UnitPrice);
+            baseRebate = siblings.Sum(i => i.RebatePerUnit);
         }
         else
         {
             return;
         }
 
-        if (sibling == null) return;
-
         var percentage = (config.Percentage ?? 0m) / 100m;
-        item.UnitPrice = percentage * sibling.UnitPrice;
-        item.RebatePerUnit = percentage * sibling.RebatePerUnit;
+        item.UnitPrice = percentage * baseFee;
+        item.RebatePerUnit = percentage * baseRebate;
     }
 
     /// <summary>A manually-entered per-line quantity (minutes/fields/patients/units) times a configured unit value, with an optional over-limit tier.</summary>

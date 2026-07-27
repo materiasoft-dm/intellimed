@@ -153,6 +153,56 @@ public class InvoiceRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateAsync_ThreeOperationAssistantScenario_MatchesWorkedMbsExample()
+    {
+        // Real-world worked example: a surgeon performs three Group T8 operations on one occasion
+        // (Laparotomy $1,200, small bowel resection $800, haemostasis $400) with an assistant
+        // claiming item 51303. MBS defines the assistant fee as 20% of the surgeon's TOTAL abated
+        // fee across every eligible operation, not just the highest-fee one.
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+
+        var laparotomy = new BillingItem { ItemNumber = "30515", Description = "Laparotomy", Group = "T8", ScheduleFee = 1200m, Benefit100 = 1200m, IsActive = true };
+        var bowelResection = new BillingItem { ItemNumber = "30375", Description = "Small bowel resection", Group = "T8", ScheduleFee = 800m, Benefit100 = 800m, IsActive = true };
+        var haemostasis = new BillingItem { ItemNumber = "30390", Description = "Haemostasis", Group = "T8", ScheduleFee = 400m, Benefit100 = 400m, IsActive = true };
+        var assistantItem = new BillingItem { ItemNumber = "51303", Description = "Assistant at surgery", Group = "T9", ScheduleFee = 0m, Benefit100 = 0m, IsActive = true };
+        _context.BillingItems.AddRange(laparotomy, bowelResection, haemostasis, assistantItem);
+        await _context.SaveChangesAsync();
+
+        _context.DerivedItemConfigs.Add(new DerivedItemConfig
+        {
+            BillingItemId = assistantItem.Id,
+            CalculationType = DerivedCalculationType.PercentageOfAssociatedItem,
+            AssociatedGroup = "T8",
+            Percentage = 20m
+        });
+        await _context.SaveChangesAsync();
+
+        var dto = new CreateInvoiceDto
+        {
+            ClientId = client.Id,
+            AccountType = AccountTypeEnum.BulkBill,
+            DueDate = DateTime.Today.AddDays(30),
+            Items = new List<CreateInvoiceItemDto>
+            {
+                new() { BillingItemId = laparotomy.Id, Description = "Laparotomy", Quantity = 1, UnitPrice = 1200m },
+                new() { BillingItemId = bowelResection.Id, Description = "Bowel resection", Quantity = 1, UnitPrice = 800m },
+                new() { BillingItemId = haemostasis.Id, Description = "Haemostasis", Quantity = 1, UnitPrice = 400m },
+                new() { BillingItemId = assistantItem.Id, Description = "Assistant", Quantity = 1, UnitPrice = 999m }
+            }
+        };
+
+        var invoiceId = await _repository.CreateAsync(dto);
+
+        var invoice = await _context.Invoices.Include(i => i.Items).FirstAsync(i => i.Id == invoiceId);
+        invoice.Items.Single(i => i.BillingItemId == laparotomy.Id).UnitPrice.Should().Be(1200m); // 100% — highest fee
+        invoice.Items.Single(i => i.BillingItemId == bowelResection.Id).UnitPrice.Should().Be(400m); // 50% of 800
+        invoice.Items.Single(i => i.BillingItemId == haemostasis.Id).UnitPrice.Should().Be(100m); // 25% of 400
+        invoice.Items.Single(i => i.BillingItemId == assistantItem.Id).UnitPrice.Should().Be(340m); // 20% of (1200+400+100)=1700
+        invoice.TotalAmount.Should().Be(2040m); // 1200 + 400 + 100 + 340
+    }
+
+    [Fact]
     public async Task GetByIdAsync_WithExistingInvoice_ReturnsInvoiceDto()
     {
         // Arrange

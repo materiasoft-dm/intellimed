@@ -83,12 +83,17 @@ public class DerivedFeeCalculatorTests : IDisposable
     }
 
     [Fact]
-    public async Task ApplyDerivedFeesAsync_AssociatedGroup_PicksHighestFeeSiblingInGroup()
+    public async Task ApplyDerivedFeesAsync_AssociatedGroup_SumsAllMatchingSiblings_ExcludingNonGroupLines()
     {
-        var op1 = new BillingItem { ItemNumber = "30001", Description = "Op 1", Group = "T8", ScheduleFee = 0m, IsActive = true };
-        var op2 = new BillingItem { ItemNumber = "30002", Description = "Op 2", Group = "T8", ScheduleFee = 0m, IsActive = true };
+        // Worked example: three T8 operations abated by the Multiple Operation Rule to
+        // $1,200 / $400 / $100 (already applied upstream — this test supplies the abated fees
+        // directly). The real MBS item 51303 rule is 20% of the SUM of all eligible operations
+        // ($1,700), not just the highest-fee one ($1,200).
+        var op1 = new BillingItem { ItemNumber = "30515", Description = "Laparotomy", Group = "T8", ScheduleFee = 0m, IsActive = true };
+        var op2 = new BillingItem { ItemNumber = "30375", Description = "Small bowel resection", Group = "T8", ScheduleFee = 0m, IsActive = true };
+        var op3 = new BillingItem { ItemNumber = "30390", Description = "Haemostasis", Group = "T8", ScheduleFee = 0m, IsActive = true };
         var nonOp = new BillingItem { ItemNumber = "104", Description = "Consult", Group = "A3", ScheduleFee = 0m, IsActive = true };
-        _context.BillingItems.AddRange(op1, op2, nonOp);
+        _context.BillingItems.AddRange(op1, op2, op3, nonOp);
         await _context.SaveChangesAsync();
 
         _context.DerivedItemConfigs.Add(new DerivedItemConfig
@@ -100,17 +105,17 @@ public class DerivedFeeCalculatorTests : IDisposable
         });
         await _context.SaveChangesAsync();
 
-        var lowerFeeOp = MakeItem(op1, unitPrice: 300m, rebatePerUnit: 250m);
-        var higherFeeOp = MakeItem(op2, unitPrice: 500m, rebatePerUnit: 400m);
-        var consultLine = MakeItem(nonOp, unitPrice: 80m, rebatePerUnit: 80m);
+        var primary = MakeItem(op1, unitPrice: 1200m, rebatePerUnit: 900m);
+        var second = MakeItem(op2, unitPrice: 400m, rebatePerUnit: 300m);
+        var third = MakeItem(op3, unitPrice: 100m, rebatePerUnit: 75m);
+        var consultLine = MakeItem(nonOp, unitPrice: 80m, rebatePerUnit: 80m); // must be excluded — Group A3, not T8
         var assistantLine = MakeItem(_derivedItem);
-        var items = new List<InvoiceItem> { lowerFeeOp, higherFeeOp, consultLine, assistantLine };
+        var items = new List<InvoiceItem> { primary, second, third, consultLine, assistantLine };
 
         await _calculator.ApplyDerivedFeesAsync(items);
 
-        // Must match the highest-fee Group T8 sibling (op2, $500), not op1 or the non-T8 consult line.
-        assistantLine.UnitPrice.Should().Be(100m); // 20% of 500
-        assistantLine.RebatePerUnit.Should().Be(80m); // 20% of 400
+        assistantLine.UnitPrice.Should().Be(340m); // 20% of (1200 + 400 + 100) = 20% of 1700
+        assistantLine.RebatePerUnit.Should().Be(255m); // 20% of (900 + 300 + 75) = 20% of 1275
     }
 
     [Fact]
