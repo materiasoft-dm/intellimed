@@ -3,6 +3,7 @@ using System;
 using IntelliMed.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IntelliMed.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260728032058_AddLegacyGuidColumns")]
+    partial class AddLegacyGuidColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.6");
@@ -1451,9 +1454,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("LegacyGuid")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Notes")
                         .HasColumnType("TEXT");
 
@@ -1481,9 +1481,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.HasIndex("ClinicId");
 
                     b.HasIndex("InvoiceNumber")
-                        .IsUnique();
-
-                    b.HasIndex("LegacyGuid")
                         .IsUnique();
 
                     b.HasIndex("PractitionerId");
@@ -1523,9 +1520,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<int>("InvoiceId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("LegacyGuid")
-                        .HasColumnType("TEXT");
-
                     b.Property<decimal>("PercentGst")
                         .HasColumnType("TEXT");
 
@@ -1549,9 +1543,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
 
                     b.HasIndex("InvoiceId");
 
-                    b.HasIndex("LegacyGuid")
-                        .IsUnique();
-
                     b.ToTable("InvoiceItems");
                 });
 
@@ -1570,9 +1561,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<int>("InvoiceId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("LegacyGuid")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("Method")
                         .HasColumnType("INTEGER");
 
@@ -1586,9 +1574,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("InvoiceId");
-
-                    b.HasIndex("LegacyGuid")
-                        .IsUnique();
 
                     b.ToTable("Payments");
                 });

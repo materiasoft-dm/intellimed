@@ -80,6 +80,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Client>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(255);
@@ -257,6 +258,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => new { e.ClientId, e.AddressType });
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
         });
 
         // ClientReferral configuration
@@ -273,6 +275,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => e.ClientId);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
         });
 
         // ClientCompensationClaim configuration
@@ -290,6 +293,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => e.ClientId);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
         });
 
         // ClientOccupation configuration
@@ -304,6 +308,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => e.ClientId);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
         });
 
         // ClientFamilyRelationship configuration
@@ -320,6 +325,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.RelativeClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => e.ClientId);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
         });
 
         // UserDefinedFieldType configuration
@@ -387,6 +393,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasKey(e => e.Id);
             entity.Property(e => e.InvoiceNumber).IsRequired().HasMaxLength(50);
             entity.HasIndex(e => e.InvoiceNumber).IsUnique();
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
             entity.HasOne(e => e.Client)
                 .WithMany()
                 .HasForeignKey(e => e.ClientId)
@@ -411,6 +418,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Description).IsRequired().HasMaxLength(500);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
             entity.HasOne(e => e.Invoice)
                 .WithMany(i => i.Items)
                 .HasForeignKey(e => e.InvoiceId)
@@ -526,6 +534,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Reference).HasMaxLength(100);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
             entity.HasOne(e => e.Invoice)
                 .WithMany(i => i.Payments)
                 .HasForeignKey(e => e.InvoiceId)

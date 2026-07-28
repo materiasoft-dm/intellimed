@@ -104,6 +104,9 @@ public class Client
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
+    /// <summary>The legacy Pracnet Contacts.GUID this record was imported from (PrimaryClinic Migrator) — the idempotency key for re-imports. Null for clients created natively in IntelliMed.</summary>
+    public string? LegacyGuid { get; set; }
+
     // Navigation properties
     public Client? NextOfKinClient { get; set; }
     public Client? EmergencyContactClient { get; set; }

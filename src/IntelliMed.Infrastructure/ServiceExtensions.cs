@@ -39,6 +39,7 @@ public static class ServiceExtensions
         services.AddScoped<IDerivedItemConfigRepository, DerivedItemConfigRepository>();
         services.AddScoped<IDerivedFeeCalculator, DerivedFeeCalculator>();
         services.AddScoped<IMultipleOperationRuleCalculator, MultipleOperationRuleCalculator>();
+        services.AddScoped<IPrimaryClinicMigratorService, PrimaryClinicMigratorService>();
         // A default-less HttpClient (no User-Agent/Accept) gets served an empty body by some CDNs
         // that front provider-portal fee schedule downloads (e.g. AHSA's Zendesk-hosted attachments)
         // — set browser-like headers so those direct-download links actually return their content.

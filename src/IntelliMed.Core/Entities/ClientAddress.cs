@@ -20,5 +20,8 @@ public class ClientAddress
     public string? Community { get; set; }
     public bool SendToMedicare { get; set; }
 
+    /// <summary>The legacy Pracnet ContactAddresses.GUID this record was imported from (PrimaryClinic Migrator).</summary>
+    public string? LegacyGuid { get; set; }
+
     public Client? Client { get; set; }
 }

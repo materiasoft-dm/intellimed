@@ -61,3 +61,10 @@ Thumbs.db
 [Dd]ebugPublic/
 [Rr]eleasePublic/
 *.log.playwright-mcp/
+
+# SQLite journal files (transient, checkpoint into the main .db before committing)
+*.db-shm
+*.db-wal
+
+# Scratch publish output (may contain live secrets, never meant for version control)
+publish-freeasp/

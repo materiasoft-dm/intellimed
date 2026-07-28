@@ -16,5 +16,8 @@ public class ClientCompensationClaim
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
+    /// <summary>The legacy Pracnet WorkcoverTACClaims.ClaimGUID this record was imported from (PrimaryClinic Migrator).</summary>
+    public string? LegacyGuid { get; set; }
+
     public Client? Client { get; set; }
 }

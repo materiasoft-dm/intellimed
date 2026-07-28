@@ -22,6 +22,9 @@ public class Invoice
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
+    /// <summary>The legacy Pracnet Invoices.GUID this record was imported from (PrimaryClinic Migrator).</summary>
+    public string? LegacyGuid { get; set; }
+
     // Navigation properties
     public Client? Client { get; set; }
     public Appointment? Appointment { get; set; }
@@ -69,6 +72,9 @@ public class InvoiceItem
     [NotMapped]
     public decimal Gap => TotalPrice - LineRebate;
 
+    /// <summary>The legacy Pracnet InvoiceItems.GUID this record was imported from (PrimaryClinic Migrator).</summary>
+    public string? LegacyGuid { get; set; }
+
     // Navigation properties
     public Invoice? Invoice { get; set; }
     public BillingItem? BillingItem { get; set; }
@@ -84,7 +90,14 @@ public class Payment
     public string? Reference { get; set; }
     public DateTime PaymentDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    
+
+    /// <summary>
+    /// Idempotency key for PrimaryClinic Migrator re-imports. Not a raw legacy GUID — legacy Receipts
+    /// can pay off multiple invoices at once, so this is an opaque "{ReceiptGUID}:{InvoiceLegacyGuid}"
+    /// composite, unique per (receipt, invoice) pair produced by the aggregation.
+    /// </summary>
+    public string? LegacyGuid { get; set; }
+
     // Navigation property
     public Invoice? Invoice { get; set; }
 }
