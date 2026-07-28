@@ -419,6 +419,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.BillingItemId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.FeeSchedule)
+                .WithMany()
+                .HasForeignKey(e => e.FeeScheduleId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // BillingItem configuration

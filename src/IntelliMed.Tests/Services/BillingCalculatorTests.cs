@@ -73,6 +73,23 @@ public class BillingCalculatorTests : IDisposable
     }
 
     [Fact]
+    public async Task ResolveLineAsync_OverrideFeeScheduleId_WinsOverAccountTypeMapping()
+    {
+        // Mirrors legacy's per-line "Schedule" column: a line can pin its own schedule regardless
+        // of what the invoice's account type is mapped to.
+        var privateScheduleId = CreateSchedule("PRIV", 62.10m);
+        MapAccountType(AccountTypeEnum.PrivatePatient, privateScheduleId);
+        var overrideScheduleId = CreateSchedule("BBGP", 41.40m);
+        _context.SaveChanges();
+
+        var result = await _calculator.ResolveLineAsync(
+            ClinicId, AccountTypeEnum.PrivatePatient, ProviderServiceType.GeneralPractitioner, PlaceOfServiceEnum.Rooms,
+            _billingItemId, null, overrideFeeScheduleId: overrideScheduleId);
+
+        result.Fee.Should().Be(41.40m); // the override schedule's fee, not PRIV's 62.10
+    }
+
+    [Fact]
     public async Task ResolveLineAsync_Private_Gp_Rooms_UsesBenefit100()
     {
         var result = await _calculator.ResolveLineAsync(ClinicId, AccountTypeEnum.PrivatePatient, ProviderServiceType.GeneralPractitioner, PlaceOfServiceEnum.Rooms, _billingItemId, null);

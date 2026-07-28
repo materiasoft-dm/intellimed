@@ -35,6 +35,10 @@ public class InvoiceItem
     public int Id { get; set; }
     public int InvoiceId { get; set; }
     public int? BillingItemId { get; set; }
+
+    /// <summary>Per-line fee schedule override — legacy lets each invoice line pick its own schedule (e.g. bulk-bill one service, privately bill another on the same invoice). Null falls back to the invoice-level default (ClinicId + AccountType + HealthFundId).</summary>
+    public int? FeeScheduleId { get; set; }
+
     public string Description { get; set; } = string.Empty;
     public DateTime? ServiceDate { get; set; }
     public int Quantity { get; set; } = 1;
@@ -68,6 +72,7 @@ public class InvoiceItem
     // Navigation properties
     public Invoice? Invoice { get; set; }
     public BillingItem? BillingItem { get; set; }
+    public FeeSchedule? FeeSchedule { get; set; }
 }
 
 public class Payment

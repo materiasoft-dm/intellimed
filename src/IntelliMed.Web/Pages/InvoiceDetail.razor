@@ -92,6 +92,7 @@ else
                         <th style="width:60px">Item#</th>
                         <th>Description</th>
                         <th style="width:100px">Service Date</th>
+                        <th style="width:110px">Schedule</th>
                         <th style="width:50px">Qty</th>
                         <th style="width:90px" class="text-end">Fee</th>
                         <th style="width:90px" class="text-end">Rebate</th>
@@ -107,6 +108,7 @@ else
                             <td>@(item.ItemNumber ?? "-")</td>
                             <td>@item.Description</td>
                             <td>@(item.ServiceDate?.ToString("dd/MM/yyyy") ?? "-")</td>
+                            <td>@(item.FeeScheduleCode ?? "Default")</td>
                             <td>@item.Quantity</td>
                             <td class="text-end">@item.UnitPrice.ToString("C")</td>
                             <td class="text-end">@item.LineRebate.ToString("C")</td>

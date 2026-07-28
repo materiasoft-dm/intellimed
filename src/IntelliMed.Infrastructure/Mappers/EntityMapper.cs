@@ -592,6 +592,8 @@ public static class EntityMapper
         Id = entity.Id,
         InvoiceId = entity.InvoiceId,
         BillingItemId = entity.BillingItemId,
+        FeeScheduleId = entity.FeeScheduleId,
+        FeeScheduleCode = entity.FeeSchedule?.Code,
         ItemNumber = entity.BillingItem?.ItemNumber,
         Description = entity.Description,
         ServiceDate = entity.ServiceDate,
@@ -636,6 +638,7 @@ public static class EntityMapper
         Items = dto.Items.Select(i => new InvoiceItem
         {
             BillingItemId = i.BillingItemId,
+            FeeScheduleId = i.FeeScheduleId,
             Description = i.Description,
             ServiceDate = i.ServiceDate,
             Quantity = i.Quantity,

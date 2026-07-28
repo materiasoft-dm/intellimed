@@ -35,6 +35,8 @@ public class InvoiceItemDto
     public int Id { get; set; }
     public int InvoiceId { get; set; }
     public int? BillingItemId { get; set; }
+    public int? FeeScheduleId { get; set; }
+    public string? FeeScheduleCode { get; set; }
     public string? ItemNumber { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateTime? ServiceDate { get; set; }
@@ -80,6 +82,10 @@ public class CreateInvoiceDto
 public class CreateInvoiceItemDto
 {
     public int? BillingItemId { get; set; }
+
+    /// <summary>Per-line fee schedule override — null falls back to the invoice-level default.</summary>
+    public int? FeeScheduleId { get; set; }
+
     public string Description { get; set; } = string.Empty;
     public DateTime? ServiceDate { get; set; }
     public int Quantity { get; set; } = 1;
@@ -98,6 +104,9 @@ public class ResolveLineRequest
     public int BillingItemId { get; set; }
     public DateTime? ServiceDate { get; set; }
     public int? HealthFundId { get; set; }
+
+    /// <summary>Per-line fee schedule override for the live preview — null falls back to the invoice-level default.</summary>
+    public int? FeeScheduleId { get; set; }
 }
 
 public class ResolveLineResult

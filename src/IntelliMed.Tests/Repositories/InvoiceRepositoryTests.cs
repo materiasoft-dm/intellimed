@@ -66,6 +66,53 @@ public class InvoiceRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateAsync_TwoLinesWithDifferentFeeScheduleOverrides_EachResolvesAgainstItsOwnSchedule()
+    {
+        // Mirrors the legacy per-line "Schedule" column: one invoice, two lines, each billed
+        // against a different fee schedule regardless of the invoice's account-type mapping.
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+
+        var itemA = new BillingItem { ItemNumber = "104", Description = "Item A", ScheduleFee = 999m, IsActive = true };
+        var itemB = new BillingItem { ItemNumber = "105", Description = "Item B", ScheduleFee = 999m, IsActive = true };
+        _context.BillingItems.AddRange(itemA, itemB);
+        await _context.SaveChangesAsync();
+
+        var scheduleBbgp = new FeeSchedule { Code = "BBGP", Description = "Bulk Bill GP", RoundingType = RoundingTypeEnum.Exact };
+        var scheduleBbo = new FeeSchedule { Code = "BBO", Description = "Bulk Bill Specialist", RoundingType = RoundingTypeEnum.Exact };
+        _context.FeeSchedules.AddRange(scheduleBbgp, scheduleBbo);
+        await _context.SaveChangesAsync();
+
+        _context.FeeScheduleItems.AddRange(
+            new FeeScheduleItem { FeeScheduleId = scheduleBbgp.Id, BillingItemId = itemA.Id, Fee = 76.80m },
+            new FeeScheduleItem { FeeScheduleId = scheduleBbo.Id, BillingItemId = itemB.Id, Fee = 38.60m });
+        await _context.SaveChangesAsync();
+
+        // BulkBill is used because its Fee=Rebate resolution is authoritatively recomputed server-side
+        // from the schedule in CreateAsync; UnitPrice itself is always trusted from what the client
+        // submits (already resolved client-side via the same per-line override through the live
+        // /resolve-line preview — see AddInvoice.razor's ResolveLineAsync), so it isn't the field that
+        // proves server-side per-line schedule resolution.
+        var dto = new CreateInvoiceDto
+        {
+            ClientId = client.Id,
+            AccountType = AccountTypeEnum.BulkBill,
+            DueDate = DateTime.Today.AddDays(30),
+            Items = new List<CreateInvoiceItemDto>
+            {
+                new() { BillingItemId = itemA.Id, Description = "Item A", Quantity = 1, UnitPrice = 0, FeeScheduleId = scheduleBbgp.Id },
+                new() { BillingItemId = itemB.Id, Description = "Item B", Quantity = 1, UnitPrice = 0, FeeScheduleId = scheduleBbo.Id }
+            }
+        };
+
+        var invoiceId = await _repository.CreateAsync(dto);
+
+        var invoice = await _context.Invoices.Include(i => i.Items).FirstAsync(i => i.Id == invoiceId);
+        invoice.Items.Single(i => i.BillingItemId == itemA.Id).RebatePerUnit.Should().Be(76.80m);
+        invoice.Items.Single(i => i.BillingItemId == itemB.Id).RebatePerUnit.Should().Be(38.60m);
+    }
+
+    [Fact]
     public async Task CreateAsync_WithDerivedItemLine_AppliesDerivedFeeBeforeTotal()
     {
         var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };

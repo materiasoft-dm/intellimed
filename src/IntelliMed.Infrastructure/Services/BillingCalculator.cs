@@ -42,7 +42,8 @@ public class BillingCalculator : IBillingCalculator
         PlaceOfServiceEnum placeOfService,
         int billingItemId,
         DateTime? serviceDate,
-        int? healthFundId = null)
+        int? healthFundId = null,
+        int? overrideFeeScheduleId = null)
     {
         var billingItem = await _context.BillingItems.FirstOrDefaultAsync(b => b.Id == billingItemId);
         var result = new ResolveLineResult
@@ -52,9 +53,11 @@ public class BillingCalculator : IBillingCalculator
         if (billingItem == null)
             return result;
 
-        // Resolve the charged fee schedule: a fund-specific schedule (matched by the client's
-        // HealthFundId) takes precedence over the generic per-clinic account-type mapping.
-        var scheduleId = await ResolveChargedFeeScheduleIdAsync(clinicId, accountType, healthFundId);
+        // Resolve the charged fee schedule: a per-line override (the user picking a specific schedule
+        // for this one item, mirroring legacy's per-line Schedule column) takes precedence over the
+        // fund-matched schedule, which in turn takes precedence over the generic per-clinic account-type
+        // mapping.
+        var scheduleId = overrideFeeScheduleId ?? await ResolveChargedFeeScheduleIdAsync(clinicId, accountType, healthFundId);
 
         var chargedRounding = RoundingTypeEnum.Exact;
         decimal? chargedScheduleFee = null;

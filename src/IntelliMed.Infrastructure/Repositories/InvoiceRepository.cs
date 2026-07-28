@@ -39,6 +39,8 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             .Include(i => i.Practitioner)
             .Include(i => i.Items)
                 .ThenInclude(item => item.BillingItem)
+            .Include(i => i.Items)
+                .ThenInclude(item => item.FeeSchedule)
             .Include(i => i.Payments)
             .FirstOrDefaultAsync(i => i.Id == id);
         return invoice == null ? null : EntityMapper.ToDto(invoice);
@@ -140,7 +142,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         {
             var resolved = await _billingCalculator.ResolveLineAsync(
                 dto.ClinicId, dto.AccountType, providerServiceType, dto.PlaceOfService,
-                item.BillingItemId!.Value, item.ServiceDate, healthFundId);
+                item.BillingItemId!.Value, item.ServiceDate, healthFundId, item.FeeScheduleId);
 
             item.RebatePerUnit = resolved.RebatePerUnit;
             item.GstAmount = resolved.GstAmount;
@@ -182,7 +184,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
 
         return await _billingCalculator.ResolveLineAsync(
             request.ClinicId, request.AccountType, providerServiceType, request.PlaceOfService,
-            request.BillingItemId, request.ServiceDate, request.HealthFundId);
+            request.BillingItemId, request.ServiceDate, request.HealthFundId, request.FeeScheduleId);
     }
 
     public async Task AddPaymentAsync(int invoiceId, CreatePaymentDto dto)
