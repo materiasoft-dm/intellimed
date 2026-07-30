@@ -5,6 +5,8 @@
 @using IntelliMed.Web.Services
 @inject IAppointmentService AppointmentService
 @inject IPractitionerService PractitionerService
+@inject IClinicSettingsService ClinicSettingsService
+@inject IAuthService AuthService
 @inject NavigationManager Navigation
 
 <PageTitle>Appointment Calendar - IntelliMed</PageTitle>
@@ -46,6 +48,8 @@
         border-radius: var(--imed-card-radius);
         box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
 
         /* Re-theme RadzenScheduler with the app's brand palette instead of stock Material blue/gray. */
         --rz-scheduler-border-radius: var(--imed-card-radius);
@@ -80,6 +84,18 @@
         transform: translateY(-1px);
         box-shadow: 0 4px 10px rgba(15, 23, 42, 0.28);
         cursor: pointer;
+    }
+
+    /* The card is a flex column reaching the bottom of the viewport; let the scheduler (and its
+       own internal time-grid scroll area) fill that instead of capping at a small default height. */
+    .imed-calendar-card .card-body {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+    }
+    .imed-calendar-card .rz-scheduler {
+        flex: 1;
+        min-height: 0;
     }
 
     /* Today / view-switch buttons pick up the brand color instead of stock Material outline. */
@@ -126,6 +142,7 @@
 <div class="card imed-calendar-card">
     <div class="card-body p-0">
         <RadzenScheduler @ref="_scheduler" TItem="SchedulerAppointmentVm" Data="@_events"
+                          Style="height: calc(100vh - 280px); width: 100%;"
                           StartProperty="Start" EndProperty="End" TextProperty="Text"
                           SelectedIndex="1"
                           LoadData="@OnLoadDataAsync"
@@ -133,8 +150,8 @@
                           AppointmentSelect="@OnAppointmentSelect"
                           AppointmentMove="@OnAppointmentMoveAsync"
                           AppointmentRender="@OnAppointmentRender">
-            <RadzenDayView StartTime="@_dayStart" EndTime="@_dayEnd" MinutesPerSlot="15" />
-            <RadzenWeekView StartTime="@_dayStart" EndTime="@_dayEnd" MinutesPerSlot="15" />
+            <RadzenDayView StartTime="@_dayStart" EndTime="@_dayEnd" MinutesPerSlot="@_slotMinutes" />
+            <RadzenWeekView StartTime="@_dayStart" EndTime="@_dayEnd" MinutesPerSlot="@_slotMinutes" />
             <RadzenMonthView />
         </RadzenScheduler>
     </div>
@@ -160,6 +177,10 @@
     private readonly TimeSpan _dayStart = new(7, 0, 0);
     private readonly TimeSpan _dayEnd = new(19, 0, 0);
 
+    // The user's own override wins; otherwise the clinic-wide default; otherwise a hardcoded fallback
+    // (also what a role without clinic-settings access falls back to, since that endpoint is gated).
+    private int _slotMinutes = 15;
+
     private string? _statusMessage;
     private bool _statusIsError;
 
@@ -167,6 +188,10 @@
     {
         _practitioners = await PractitionerService.GetAllActiveAsync();
         _selectedPractitionerIds = _practitioners.Select(p => p.Id).ToHashSet();
+
+        var profile = await AuthService.GetMyProfileAsync();
+        var clinicSettings = await ClinicSettingsService.GetAsync();
+        _slotMinutes = profile?.DefaultAppointmentTimeslotMinutes ?? clinicSettings?.MinimumTimeslotMinutes ?? 15;
     }
 
     private async Task OnLoadDataAsync(SchedulerLoadDataEventArgs args)

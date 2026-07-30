@@ -30,6 +30,9 @@ public class ApplicationUser : IdentityUser
     public bool InternalProvider { get; set; }
     public bool EPrescribingEnabled { get; set; }
 
+    /// <summary>Overrides the clinic-wide default appointment calendar slot granularity for this user. Null falls back to ClinicSettings.MinimumTimeslotMinutes.</summary>
+    public int? DefaultAppointmentTimeslotMinutes { get; set; }
+
     public int? GroupId { get; set; }
     public ProviderGroup? Group { get; set; }
 

@@ -16,4 +16,7 @@ public class ClinicSettings
     public string? Suburb { get; set; }
     public string? Postcode { get; set; }
     public string? State { get; set; }
+
+    /// <summary>Default appointment calendar slot granularity, in minutes. Users can override this in their own Profile Settings.</summary>
+    public int MinimumTimeslotMinutes { get; set; } = 15;
 }

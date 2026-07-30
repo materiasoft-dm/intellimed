@@ -222,6 +222,7 @@ public class AuthController : ControllerBase
             VocationallyRegistered = user.VocationallyRegistered,
             InternalProvider = user.InternalProvider,
             EPrescribingEnabled = user.EPrescribingEnabled,
+            DefaultAppointmentTimeslotMinutes = user.DefaultAppointmentTimeslotMinutes,
             GroupId = user.GroupId,
             GroupName = group?.Name,
             ResidentialAddress = user.ResidentialAddress,
@@ -266,6 +267,7 @@ public class AuthController : ControllerBase
         user.VocationallyRegistered = request.VocationallyRegistered;
         user.InternalProvider = request.InternalProvider;
         user.EPrescribingEnabled = request.EPrescribingEnabled;
+        user.DefaultAppointmentTimeslotMinutes = request.DefaultAppointmentTimeslotMinutes;
         user.GroupId = request.GroupId;
         user.ResidentialAddress = request.ResidentialAddress;
         user.ResidentialSuburb = request.ResidentialSuburb;

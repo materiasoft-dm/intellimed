@@ -63,6 +63,7 @@ public class UserProfileDto
     public bool VocationallyRegistered { get; set; }
     public bool InternalProvider { get; set; }
     public bool EPrescribingEnabled { get; set; }
+    public int? DefaultAppointmentTimeslotMinutes { get; set; }
 
     public int? GroupId { get; set; }
     public string? GroupName { get; set; }
@@ -104,6 +105,10 @@ public class UpdateProfileRequest
     public bool VocationallyRegistered { get; set; }
     public bool InternalProvider { get; set; }
     public bool EPrescribingEnabled { get; set; }
+
+    /// <summary>Overrides the clinic-wide default appointment calendar slot granularity. Null (blank) falls back to the clinic setting.</summary>
+    [Range(1, 240)]
+    public int? DefaultAppointmentTimeslotMinutes { get; set; }
 
     public int? GroupId { get; set; }
 

@@ -26,7 +26,8 @@ public class ClinicSettingsRepository : Repository<ClinicSettings>, IClinicSetti
             Address = settings.Address,
             Suburb = settings.Suburb,
             Postcode = settings.Postcode,
-            State = settings.State
+            State = settings.State,
+            MinimumTimeslotMinutes = settings.MinimumTimeslotMinutes
         };
     }
 
@@ -43,6 +44,7 @@ public class ClinicSettingsRepository : Repository<ClinicSettings>, IClinicSetti
         settings.Suburb = request.Suburb;
         settings.Postcode = request.Postcode;
         settings.State = request.State;
+        settings.MinimumTimeslotMinutes = request.MinimumTimeslotMinutes;
         await _context.SaveChangesAsync();
     }
 }

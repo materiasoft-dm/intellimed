@@ -14,6 +14,7 @@ public class ClinicSettingsDto
     public string? Suburb { get; set; }
     public string? Postcode { get; set; }
     public string? State { get; set; }
+    public int MinimumTimeslotMinutes { get; set; }
 }
 
 public class UpdateClinicSettingsRequest
@@ -29,4 +30,6 @@ public class UpdateClinicSettingsRequest
     public string? Suburb { get; set; }
     public string? Postcode { get; set; }
     public string? State { get; set; }
+    [Range(1, 240)]
+    public int MinimumTimeslotMinutes { get; set; } = 15;
 }

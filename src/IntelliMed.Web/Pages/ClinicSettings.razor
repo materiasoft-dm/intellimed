@@ -76,6 +76,16 @@ else
                         </div>
 
                         <hr class="my-4" />
+                        <h6 class="mb-3">Scheduling</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Minimum Appointment Timeslot (minutes)</label>
+                                <InputNumber @bind-Value="_model.MinimumTimeslotMinutes" class="form-control" />
+                                <div class="form-text">Granularity of the appointment calendar's time grid. Staff can override this for themselves in Profile Settings.</div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
                         <h6 class="mb-3">Address</h6>
                         <div class="row g-3 mb-2">
                             <div class="col-md-12">
@@ -219,7 +229,8 @@ else
                 Address = _settings.Address,
                 Suburb = _settings.Suburb,
                 Postcode = _settings.Postcode,
-                State = _settings.State
+                State = _settings.State,
+                MinimumTimeslotMinutes = _settings.MinimumTimeslotMinutes
             };
 
             _feeSchedules = await FeeScheduleService.GetAllActiveAsync();
@@ -268,7 +279,8 @@ else
                 Address = _model.Address,
                 Suburb = _model.Suburb,
                 Postcode = _model.Postcode,
-                State = _model.State
+                State = _model.State,
+                MinimumTimeslotMinutes = _model.MinimumTimeslotMinutes
             };
 
             var success = await ClinicSettingsService.UpdateAsync(request);
@@ -326,5 +338,7 @@ else
         public string? Suburb { get; set; }
         public string? Postcode { get; set; }
         public string? State { get; set; }
+        [Range(1, 240)]
+        public int MinimumTimeslotMinutes { get; set; } = 15;
     }
 }

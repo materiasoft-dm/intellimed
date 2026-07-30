@@ -150,6 +150,14 @@ else
                             </div>
                         </div>
 
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">My Appointment Timeslot (minutes)</label>
+                                <InputNumber @bind-Value="_model.DefaultAppointmentTimeslotMinutes" class="form-control" placeholder="Clinic default" />
+                                <div class="form-text">Overrides the clinic's default calendar slot size just for your bookings. Leave blank to use the clinic setting.</div>
+                            </div>
+                        </div>
+
                         <hr class="my-4" />
                         <h6 class="mb-3">Residential Address</h6>
                         <div class="row g-3 mb-2">
@@ -325,6 +333,7 @@ else
                 VocationallyRegistered = _profile.VocationallyRegistered,
                 InternalProvider = _profile.InternalProvider,
                 EPrescribingEnabled = _profile.EPrescribingEnabled,
+                DefaultAppointmentTimeslotMinutes = _profile.DefaultAppointmentTimeslotMinutes,
                 GroupId = _profile.GroupId,
                 ResidentialAddress = _profile.ResidentialAddress,
                 ResidentialSuburb = _profile.ResidentialSuburb,
@@ -363,6 +372,7 @@ else
                 VocationallyRegistered = _model.VocationallyRegistered,
                 InternalProvider = _model.InternalProvider,
                 EPrescribingEnabled = _model.EPrescribingEnabled,
+                DefaultAppointmentTimeslotMinutes = _model.DefaultAppointmentTimeslotMinutes,
                 GroupId = _model.GroupId,
                 ResidentialAddress = _model.ResidentialAddress,
                 ResidentialSuburb = _model.ResidentialSuburb,
@@ -440,6 +450,8 @@ else
         public bool VocationallyRegistered { get; set; }
         public bool InternalProvider { get; set; }
         public bool EPrescribingEnabled { get; set; }
+        [Range(1, 240)]
+        public int? DefaultAppointmentTimeslotMinutes { get; set; }
         public int? GroupId { get; set; }
 
         public string? ResidentialAddress { get; set; }
