@@ -60,23 +60,15 @@ else
             <div class="card h-100">
                 <div class="card-header py-1"><strong>Status</strong></div>
                 <div class="card-body py-2">
-                    <div class="row g-1 small mb-2">
+                    <div class="row g-1 small">
+                        <div class="col-6 text-muted">Status</div>
+                        <div class="col-6"><span class="badge bg-primary">@_invoice.StatusName</span></div>
                         <div class="col-6 text-muted">Total</div>
                         <div class="col-6">@_invoice.TotalAmount.ToString("C")</div>
                         <div class="col-6 text-muted">Paid</div>
                         <div class="col-6">@_invoice.AmountPaid.ToString("C")</div>
                         <div class="col-6 text-muted fw-semibold">Owing</div>
                         <div class="col-6 fw-semibold">@_invoice.AmountOwing.ToString("C")</div>
-                    </div>
-                    <label class="form-label small mb-0">Change Status</label>
-                    <div class="d-flex gap-2">
-                        <select class="form-select form-select-sm" @bind="_selectedStatus">
-                            @foreach (var status in Enum.GetValues<InvoiceStatus>())
-                            {
-                                <option value="@status">@status</option>
-                            }
-                        </select>
-                        <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" @onclick="UpdateStatusAsync" disabled="@(_selectedStatus == _invoice.Status)">Apply</button>
                     </div>
                 </div>
             </div>
@@ -106,7 +98,13 @@ else
                     {
                         <tr>
                             <td>@(item.ItemNumber ?? "-")</td>
-                            <td>@item.Description</td>
+                            <td>
+                                @item.Description
+                                @if (!string.IsNullOrWhiteSpace(item.Note))
+                                {
+                                    <i class="bi bi-info-circle text-primary ms-1" title="@item.Note" style="cursor:help"></i>
+                                }
+                            </td>
                             <td>@(item.ServiceDate?.ToString("dd/MM/yyyy") ?? "-")</td>
                             <td>@(item.FeeScheduleCode ?? "Default")</td>
                             <td>@item.Quantity</td>
@@ -221,7 +219,6 @@ else
 
     private InvoiceDto? _invoice;
     private bool _isLoading = true;
-    private InvoiceStatus _selectedStatus;
 
     private bool _showPaymentModal;
     private decimal _paymentAmount;
@@ -241,26 +238,7 @@ else
     {
         _isLoading = true;
         _invoice = await InvoiceService.GetInvoiceByIdAsync(Id);
-        if (_invoice != null)
-        {
-            _selectedStatus = _invoice.Status;
-        }
         _isLoading = false;
-    }
-
-    private async Task UpdateStatusAsync()
-    {
-        if (_invoice == null) return;
-        var success = await InvoiceService.UpdateInvoiceStatusAsync(_invoice.Id, _selectedStatus);
-        if (success)
-        {
-            ShowStatus("Status updated.", false);
-            await LoadAsync();
-        }
-        else
-        {
-            ShowStatus("Failed to update status.", true);
-        }
     }
 
     private void OpenPaymentModal()

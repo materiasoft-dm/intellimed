@@ -107,6 +107,12 @@
                 <a href="/appointments/calendar" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
                     <i class="bi bi-calendar3 me-2"></i> <span class="mdi-nav-label">Calendar View</span>
                 </a>
+                @if (_accessiblePages.Contains("appointments/waiting-room"))
+                {
+                    <a href="/appointments/waiting-room" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-people me-2"></i> <span class="mdi-nav-label">Waiting Room</span>
+                    </a>
+                }
 
                 <hr class="my-2" />
 
@@ -149,6 +155,12 @@
                     {
                         <a href="/admin/roles" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
                             <i class="bi bi-shield-lock me-2"></i> <span class="mdi-nav-label">Role Configuration</span>
+                        </a>
+                    }
+                    @if (_accessiblePages.Contains("admin/appointment-types"))
+                    {
+                        <a href="/admin/appointment-types" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <i class="bi bi-tags me-2"></i> <span class="mdi-nav-label">Appointment Types</span>
                         </a>
                     }
                     @if (_accessiblePages.Contains("admin/audit"))

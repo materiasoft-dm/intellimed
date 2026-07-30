@@ -16,6 +16,8 @@ public interface IAuthService
     Task<CurrentUserResponse?> GetCurrentUserAsync();
     Task<UserProfileDto?> GetMyProfileAsync();
     Task<bool> UpdateMyProfileAsync(UpdateProfileRequest request);
+    Task<List<ProviderScheduleDayDto>> GetMyScheduleAsync();
+    Task<bool> SetMyScheduleAsync(SetProviderScheduleRequest request);
 }
 
 public class AuthService : IAuthService
@@ -173,6 +175,37 @@ public class AuthService : IAuthService
         catch (Exception ex)
         {
             Console.Error.WriteLine($"UpdateMyProfile error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<List<ProviderScheduleDayDto>> GetMyScheduleAsync()
+    {
+        try
+        {
+            await AttachTokenAsync();
+            var response = await _httpClient.GetAsync("api/auth/me/schedule");
+            if (!response.IsSuccessStatusCode) return new List<ProviderScheduleDayDto>();
+            return await response.Content.ReadFromJsonAsync<List<ProviderScheduleDayDto>>() ?? new List<ProviderScheduleDayDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"GetMySchedule error: {ex.Message}");
+            return new List<ProviderScheduleDayDto>();
+        }
+    }
+
+    public async Task<bool> SetMyScheduleAsync(SetProviderScheduleRequest request)
+    {
+        try
+        {
+            await AttachTokenAsync();
+            var response = await _httpClient.PutAsJsonAsync("api/auth/me/schedule", request);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"SetMySchedule error: {ex.Message}");
             return false;
         }
     }

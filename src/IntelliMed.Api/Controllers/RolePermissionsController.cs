@@ -187,6 +187,7 @@ public class RolePermissionsController : ControllerBase
             new() { PageKey = "appointments/create", PageName = "New Appointment", Category = "Clinical", Description = "Schedule new appointments" },
             new() { PageKey = "appointments/edit", PageName = "Edit Appointment", Category = "Clinical", Description = "Modify existing appointments" },
             new() { PageKey = "appointments/delete", PageName = "Delete Appointment", Category = "Clinical", Description = "Cancel appointments" },
+            new() { PageKey = "appointments/waiting-room", PageName = "Waiting Room", Category = "Clinical", Description = "View and manage the waiting room" },
             new() { PageKey = "practitioners", PageName = "Practitioners", Category = "Clinical", Description = "View practitioner directory" },
             new() { PageKey = "practitioners/create", PageName = "Add Practitioner", Category = "Clinical", Description = "Register new practitioners" },
             new() { PageKey = "practitioners/edit", PageName = "Edit Practitioner", Category = "Clinical", Description = "Update practitioner details" },
@@ -205,6 +206,7 @@ public class RolePermissionsController : ControllerBase
             new() { PageKey = "admin/roles", PageName = "Role Configuration", Category = "Admin", Description = "Configure role permissions" },
             new() { PageKey = "admin/audit", PageName = "Audit Log", Category = "Admin", Description = "View system audit trail" },
             new() { PageKey = "admin/settings", PageName = "System Settings", Category = "Admin", Description = "Configure system parameters" },
+            new() { PageKey = "admin/appointment-types", PageName = "Appointment Types", Category = "Admin", Description = "Configure the appointment-type/duration-preset catalogue" },
 
             // Practice
             new() { PageKey = "clinic-settings", PageName = "Clinic Settings", Category = "Practice", Description = "Configure practice-wide identity and contact information" },

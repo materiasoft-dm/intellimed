@@ -1,0 +1,153 @@
+@page "/admin/appointment-types"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject IAppointmentTypeSettingService TypeSettingService
+
+<PageTitle>Appointment Types - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Appointment Types</h4>
+<p class="text-muted small">Configure the appointment types staff can pick when booking, each with a default duration used to prefill the end time.</p>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <strong>Types</strong>
+        <button class="btn btn-sm btn-primary" @onclick="OpenNew"><i class="bi bi-plus-lg"></i> New Type</button>
+    </div>
+    <div class="card-body py-2">
+        @if (_types.Count == 0)
+        {
+            <div class="text-muted small">No appointment types configured yet.</div>
+        }
+        else
+        {
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Default Duration</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in _types)
+                    {
+                        <tr>
+                            <td><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:@t.ColorHex"></span></td>
+                            <td>@t.Name</td>
+                            <td>@t.DefaultDurationMinutes min</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEdit(t)">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ArchiveAsync(t)">Archive</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@if (_showModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">@(_editingId.HasValue ? "Edit" : "New") Appointment Type</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small mb-0">Name</label>
+                        <input class="form-control form-control-sm" @bind="_form.Name" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-0">Default Duration (minutes)</label>
+                        <input type="number" min="1" class="form-control form-control-sm" @bind="_form.DefaultDurationMinutes" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-0">Color</label>
+                        <input type="color" class="form-control form-control-sm form-control-color" @bind="_form.ColorHex" />
+                    </div>
+                    @if (_editingId.HasValue)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="chkActive" @bind="_form.IsActive" />
+                            <label class="form-check-label small" for="chkActive">Active</label>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showModal = false)">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-primary" @onclick="SaveAsync">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<AppointmentTypeSettingDto> _types = new();
+    private bool _showModal;
+    private int? _editingId;
+    private UpdateAppointmentTypeSettingDto _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _types = await TypeSettingService.GetAllActiveAsync();
+    }
+
+    private void OpenNew()
+    {
+        _editingId = null;
+        _form = new UpdateAppointmentTypeSettingDto { DefaultDurationMinutes = 15, ColorHex = "#4272d7", IsActive = true };
+        _showModal = true;
+    }
+
+    private void OpenEdit(AppointmentTypeSettingDto t)
+    {
+        _editingId = t.Id;
+        _form = new UpdateAppointmentTypeSettingDto
+        {
+            Name = t.Name,
+            DefaultDurationMinutes = t.DefaultDurationMinutes,
+            ColorHex = t.ColorHex,
+            IsActive = t.IsActive,
+            SortOrder = t.SortOrder
+        };
+        _showModal = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editingId.HasValue)
+        {
+            await TypeSettingService.UpdateAsync(_editingId.Value, _form);
+        }
+        else
+        {
+            await TypeSettingService.CreateAsync(new CreateAppointmentTypeSettingDto
+            {
+                Name = _form.Name,
+                DefaultDurationMinutes = _form.DefaultDurationMinutes,
+                ColorHex = _form.ColorHex,
+                SortOrder = _form.SortOrder
+            });
+        }
+        _showModal = false;
+        await LoadAsync();
+    }
+
+    private async Task ArchiveAsync(AppointmentTypeSettingDto t)
+    {
+        await TypeSettingService.ArchiveAsync(t.Id);
+        await LoadAsync();
+    }
+}

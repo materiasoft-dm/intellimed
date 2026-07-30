@@ -529,18 +529,27 @@ public static class EntityMapper
         Notes = entity.Notes,
         IsBulkBill = entity.IsBulkBill,
         Fee = entity.Fee,
+        ArrivedAt = entity.ArrivedAt,
+        SeenAt = entity.SeenAt,
+        CompletedAt = entity.CompletedAt,
+        RecurrenceSeriesId = entity.RecurrenceSeriesId,
+        AppointmentTypeSettingId = entity.AppointmentTypeSettingId,
+        AppointmentTypeSettingName = entity.AppointmentTypeSetting?.Name,
+        AppointmentTypeSettingColorHex = entity.AppointmentTypeSetting?.ColorHex,
         CreatedAt = entity.CreatedAt,
         UpdatedAt = entity.UpdatedAt
     };
 
     public static Appointment ToEntity(CreateAppointmentDto dto) => new()
     {
+        ClinicId = dto.ClinicId,
         ClientId = dto.ClientId,
         PractitionerId = dto.PractitionerId,
         AppointmentDate = dto.AppointmentDate,
         StartTime = dto.StartTime,
         EndTime = dto.EndTime,
         Type = dto.Type,
+        AppointmentTypeSettingId = dto.AppointmentTypeSettingId,
         Notes = dto.Notes,
         IsBulkBill = dto.IsBulkBill,
         Fee = dto.Fee,
@@ -557,10 +566,42 @@ public static class EntityMapper
         entity.EndTime = dto.EndTime;
         entity.Status = dto.Status;
         entity.Type = dto.Type;
+        entity.AppointmentTypeSettingId = dto.AppointmentTypeSettingId;
         entity.Notes = dto.Notes;
         entity.IsBulkBill = dto.IsBulkBill;
         entity.Fee = dto.Fee;
         entity.UpdatedAt = DateTime.UtcNow;
+    }
+
+    // AppointmentTypeSetting mappings
+    public static AppointmentTypeSettingDto ToDto(AppointmentTypeSetting entity) => new()
+    {
+        Id = entity.Id,
+        ClinicId = entity.ClinicId,
+        Name = entity.Name,
+        DefaultDurationMinutes = entity.DefaultDurationMinutes,
+        ColorHex = entity.ColorHex,
+        IsActive = entity.IsActive,
+        SortOrder = entity.SortOrder
+    };
+
+    public static AppointmentTypeSetting ToEntity(CreateAppointmentTypeSettingDto dto) => new()
+    {
+        ClinicId = dto.ClinicId,
+        Name = dto.Name,
+        DefaultDurationMinutes = dto.DefaultDurationMinutes,
+        ColorHex = dto.ColorHex,
+        SortOrder = dto.SortOrder,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    public static void UpdateEntity(AppointmentTypeSetting entity, UpdateAppointmentTypeSettingDto dto)
+    {
+        entity.Name = dto.Name;
+        entity.DefaultDurationMinutes = dto.DefaultDurationMinutes;
+        entity.ColorHex = dto.ColorHex;
+        entity.IsActive = dto.IsActive;
+        entity.SortOrder = dto.SortOrder;
     }
 
     // Invoice mappings
@@ -603,7 +644,8 @@ public static class EntityMapper
         Discount = entity.Discount,
         GstAmount = entity.GstAmount,
         PercentGst = entity.PercentGst,
-        DerivedQuantity = entity.DerivedQuantity
+        DerivedQuantity = entity.DerivedQuantity,
+        Note = entity.Note
     };
 
     public static PaymentDto ToDto(Payment entity) => new()
@@ -644,7 +686,8 @@ public static class EntityMapper
             Quantity = i.Quantity,
             UnitPrice = i.UnitPrice,
             Discount = i.Discount,
-            DerivedQuantity = i.DerivedQuantity
+            DerivedQuantity = i.DerivedQuantity,
+            Note = i.Note
         }).ToList()
     };
 

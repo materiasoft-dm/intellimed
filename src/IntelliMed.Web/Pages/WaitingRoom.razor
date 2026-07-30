@@ -1,0 +1,117 @@
+@page "/appointments/waiting-room"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IAppointmentService AppointmentService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Waiting Room - IntelliMed</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0">Waiting Room</h4>
+    <button class="btn btn-sm btn-outline-primary" @onclick="LoadAsync">
+        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+    </button>
+</div>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-3">
+        <div class="card-body py-2">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading...
+        </div>
+    </div>
+}
+else if (_appointments.Count == 0)
+{
+    <div class="alert alert-secondary">No one is currently waiting or with a practitioner.</div>
+}
+else
+{
+    <div class="card">
+        <table class="table table-sm mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th>Practitioner</th>
+                    <th>Appointment Time</th>
+                    <th>Status</th>
+                    <th>Wait Time</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in _appointments)
+                {
+                    <tr>
+                        <td>@a.ClientName</td>
+                        <td>@a.PractitionerName</td>
+                        <td>@a.TimeRangeFormatted</td>
+                        <td><span class="badge @StatusBadgeClass(a.Status)">@a.StatusName</span></td>
+                        <td>@WaitTime(a)</td>
+                        <td class="text-end">
+                            @if (a.Status == AppointmentStatus.Arrived)
+                            {
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => AdvanceAsync(a, AppointmentStatus.InProgress)">Start</button>
+                            }
+                            else if (a.Status == AppointmentStatus.InProgress)
+                            {
+                                <button class="btn btn-sm btn-outline-success" @onclick="() => AdvanceAsync(a, AppointmentStatus.Completed)">Complete</button>
+                            }
+                            <button class="btn btn-sm btn-link" @onclick="@(() => Navigation.NavigateTo($"/appointments/edit/{a.Id}"))">Details</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<AppointmentDto> _appointments = new();
+    private bool _isLoading = true;
+    private System.Threading.Timer? _tickTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        // Re-render every 30s so wait-time durations stay current without a manual refresh.
+        _tickTimer = new System.Threading.Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _appointments = await AppointmentService.GetWaitingRoomAsync();
+        _isLoading = false;
+    }
+
+    private async Task AdvanceAsync(AppointmentDto appointment, AppointmentStatus status)
+    {
+        await AppointmentService.UpdateStatusAsync(appointment.Id, status);
+        await LoadAsync();
+    }
+
+    private static string WaitTime(AppointmentDto a)
+    {
+        if (!a.ArrivedAt.HasValue) return "-";
+        var end = a.SeenAt ?? DateTime.UtcNow;
+        var span = end - a.ArrivedAt.Value;
+        return span.TotalHours >= 1 ? $"{(int)span.TotalHours}h {span.Minutes}m" : $"{span.Minutes}m";
+    }
+
+    private static string StatusBadgeClass(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Arrived => "bg-warning text-dark",
+        AppointmentStatus.InProgress => "bg-primary",
+        _ => "bg-secondary"
+    };
+
+    public void Dispose()
+    {
+        _tickTimer?.Dispose();
+    }
+}

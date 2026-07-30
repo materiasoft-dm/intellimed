@@ -39,6 +39,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AccountTypeFeeScheduleMapping> AccountTypeFeeScheduleMappings => Set<AccountTypeFeeScheduleMapping>();
     public DbSet<DerivedItemConfig> DerivedItemConfigs => Set<DerivedItemConfig>();
     public DbSet<DerivedItemRateCalculated> DerivedItemRateCalculateds => Set<DerivedItemRateCalculated>();
+    public DbSet<AppointmentTypeSetting> AppointmentTypeSettings => Set<AppointmentTypeSetting>();
+    public DbSet<ProviderSchedule> ProviderSchedules => Set<ProviderSchedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -382,9 +384,34 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.ClinicId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.AppointmentTypeSetting)
+                .WithMany()
+                .HasForeignKey(e => e.AppointmentTypeSettingId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(e => e.AppointmentDate);
             entity.HasIndex(e => new { e.PractitionerId, e.AppointmentDate });
             entity.HasIndex(e => e.ClinicId);
+            entity.HasIndex(e => e.RecurrenceSeriesId);
+        });
+
+        // AppointmentTypeSetting configuration
+        modelBuilder.Entity<AppointmentTypeSetting>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ColorHex).IsRequired().HasMaxLength(20);
+            entity.HasIndex(e => e.ClinicId);
+        });
+
+        // ProviderSchedule configuration (self-service weekly hours, keyed on ApplicationUserId)
+        modelBuilder.Entity<ProviderSchedule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.ApplicationUser)
+                .WithMany()
+                .HasForeignKey(e => e.ApplicationUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.ApplicationUserId, e.DayOfWeek }).IsUnique();
         });
 
         // Invoice configuration

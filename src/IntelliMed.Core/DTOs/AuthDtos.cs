@@ -118,3 +118,17 @@ public class UpdateProfileRequest
     public string? PostalPostcode { get; set; }
     public string? PostalState { get; set; }
 }
+/// <summary>One day's working hours in the current user's self-service weekly schedule.</summary>
+public class ProviderScheduleDayDto
+{
+    public DayOfWeek DayOfWeek { get; set; }
+    public bool IsActive { get; set; }
+    public TimeSpan StartTime { get; set; }
+    public TimeSpan EndTime { get; set; }
+}
+
+/// <summary>Bulk-replaces the current user's whole weekly schedule (Profile Settings &gt; Weekly Schedule).</summary>
+public class SetProviderScheduleRequest
+{
+    public List<ProviderScheduleDayDto> Days { get; set; } = new();
+}

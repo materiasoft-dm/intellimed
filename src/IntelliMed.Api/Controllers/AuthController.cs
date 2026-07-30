@@ -21,6 +21,7 @@ public class AuthController : ControllerBase
     private readonly UserManager<IdentityCore.ApplicationUser> _userManager;
     private readonly SignInManager<IdentityCore.ApplicationUser> _signInManager;
     private readonly IProviderGroupRepository _providerGroupRepository;
+    private readonly IProviderScheduleRepository _providerScheduleRepository;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
 
@@ -28,12 +29,14 @@ public class AuthController : ControllerBase
         UserManager<IdentityCore.ApplicationUser> userManager,
         SignInManager<IdentityCore.ApplicationUser> signInManager,
         IProviderGroupRepository providerGroupRepository,
+        IProviderScheduleRepository providerScheduleRepository,
         IConfiguration configuration,
         ILogger<AuthController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _providerGroupRepository = providerGroupRepository;
+        _providerScheduleRepository = providerScheduleRepository;
         _configuration = configuration;
         _logger = logger;
     }
@@ -282,6 +285,37 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Get the current user's self-service weekly working hours (Profile Settings &gt; Weekly Schedule).
+    /// Always returns all 7 days — days never configured come back with IsActive = false.
+    /// </summary>
+    [HttpGet("me/schedule")]
+    [ProducesResponseType(typeof(List<ProviderScheduleDayDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMySchedule()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized();
+
+        var schedule = await _providerScheduleRepository.GetByUserIdAsync(user.Id);
+        return Ok(schedule);
+    }
+
+    /// <summary>
+    /// Bulk-replace the current user's weekly working hours.
+    /// </summary>
+    [HttpPut("me/schedule")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SetMySchedule([FromBody] SetProviderScheduleRequest request)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized();
+
+        await _providerScheduleRepository.SetScheduleAsync(user.Id, request);
         return NoContent();
     }
 

@@ -17,9 +17,21 @@ public class Appointment
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
+    // Waiting-room / visit-lifecycle timestamps
+    public DateTime? ArrivedAt { get; set; }
+    public DateTime? SeenAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+
+    // Recurring series — occurrences are materialized up front and share this id
+    public Guid? RecurrenceSeriesId { get; set; }
+
+    // Optional link to a clinic-configurable duration preset
+    public int? AppointmentTypeSettingId { get; set; }
+
     // Navigation properties
     public Client? Client { get; set; }
     public Practitioner? Practitioner { get; set; }
+    public AppointmentTypeSetting? AppointmentTypeSetting { get; set; }
 }
 
 public enum AppointmentStatus
@@ -29,7 +41,10 @@ public enum AppointmentStatus
     InProgress,
     Completed,
     Cancelled,
-    NoShow
+    NoShow,
+    // Appended at the end — EF stores this enum as int, so inserting a value earlier
+    // in the sequence would silently reinterpret every existing row's stored status.
+    Arrived
 }
 
 public enum AppointmentType

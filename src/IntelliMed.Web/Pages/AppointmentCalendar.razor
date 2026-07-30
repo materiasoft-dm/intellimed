@@ -1,0 +1,186 @@
+@page "/appointments/calendar"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IAppointmentService AppointmentService
+@inject IPractitionerService PractitionerService
+@inject NavigationManager Navigation
+
+<PageTitle>Appointment Calendar - IntelliMed</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0">Appointment Calendar</h4>
+    <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo($"/appointments/print?date={_lastLoadStart:yyyy-MM-dd}"))">
+            <i class="bi bi-printer"></i> Print Day List
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo("/appointments"))">
+            <i class="bi bi-list-ul"></i> List View
+        </button>
+        <button class="btn btn-sm btn-primary" @onclick="@(() => Navigation.NavigateTo("/appointments/new"))">
+            <i class="bi bi-plus-lg"></i> New Appointment
+        </button>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <span class="small text-muted me-2">Practitioners:</span>
+        @foreach (var p in _practitioners)
+        {
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="@("prac" + p.Id)" checked="@_selectedPractitionerIds.Contains(p.Id)" @onchange="@(e => TogglePractitioner(p.Id, (bool)e.Value!))" />
+                <label class="form-check-label small" for="@("prac" + p.Id)">@p.FullName</label>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <RadzenScheduler @ref="_scheduler" TItem="SchedulerAppointmentVm" Data="@_events"
+                          StartProperty="Start" EndProperty="End" TextProperty="Text"
+                          SelectedIndex="1"
+                          LoadData="@OnLoadDataAsync"
+                          SlotSelect="@OnSlotSelect"
+                          AppointmentSelect="@OnAppointmentSelect"
+                          AppointmentMove="@OnAppointmentMoveAsync"
+                          AppointmentRender="@OnAppointmentRender">
+            <RadzenDayView StartTime="@_dayStart" EndTime="@_dayEnd" MinutesPerSlot="15" />
+            <RadzenWeekView StartTime="@_dayStart" EndTime="@_dayEnd" MinutesPerSlot="15" />
+            <RadzenMonthView />
+        </RadzenScheduler>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_statusMessage))
+{
+    <div class="alert @(_statusIsError ? "alert-danger" : "alert-success") mt-2 py-2 small">@_statusMessage</div>
+}
+
+@code {
+    private RadzenScheduler<SchedulerAppointmentVm>? _scheduler;
+    private List<PractitionerDto> _practitioners = new();
+    private HashSet<int> _selectedPractitionerIds = new();
+
+    private List<AppointmentDto> _allAppointments = new();
+    private List<SchedulerAppointmentVm> _events = new();
+    private DateTime _lastLoadStart = DateTime.Today;
+    private DateTime _lastLoadEnd = DateTime.Today;
+
+    private readonly TimeSpan _dayStart = new(7, 0, 0);
+    private readonly TimeSpan _dayEnd = new(19, 0, 0);
+
+    private string? _statusMessage;
+    private bool _statusIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _practitioners = await PractitionerService.GetAllActiveAsync();
+        _selectedPractitionerIds = _practitioners.Select(p => p.Id).ToHashSet();
+    }
+
+    private async Task OnLoadDataAsync(SchedulerLoadDataEventArgs args)
+    {
+        _lastLoadStart = args.Start;
+        _lastLoadEnd = args.End;
+
+        var result = await AppointmentService.SearchAppointmentsAsync(new AppointmentSearchDto
+        {
+            FromDate = args.Start,
+            ToDate = args.End,
+            PageSize = 500
+        });
+
+        _allAppointments = result.Items.ToList();
+        RebuildEvents();
+    }
+
+    private void TogglePractitioner(int practitionerId, bool isChecked)
+    {
+        if (isChecked) _selectedPractitionerIds.Add(practitionerId);
+        else _selectedPractitionerIds.Remove(practitionerId);
+        RebuildEvents();
+    }
+
+    private void RebuildEvents()
+    {
+        _events = _allAppointments
+            .Where(a => _selectedPractitionerIds.Contains(a.PractitionerId))
+            .Select(a => new SchedulerAppointmentVm
+            {
+                Start = a.AppointmentDate.Date + a.StartTime,
+                End = a.AppointmentDate.Date + a.EndTime,
+                Text = $"{a.StartTimeFormatted} {a.ClientName} ({a.PractitionerName})",
+                Appointment = a
+            }).ToList();
+        StateHasChanged();
+    }
+
+    private void OnSlotSelect(SchedulerSlotSelectEventArgs args)
+    {
+        var practitionerId = _selectedPractitionerIds.Count == 1 ? _selectedPractitionerIds.First() : (int?)null;
+        var url = $"/appointments/new?date={args.Start:yyyy-MM-dd}" + (practitionerId.HasValue ? $"&practitionerId={practitionerId}" : "");
+        Navigation.NavigateTo(url);
+    }
+
+    private void OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<SchedulerAppointmentVm> args)
+    {
+        Navigation.NavigateTo($"/appointments/edit/{args.Data.Appointment.Id}");
+    }
+
+    private async Task OnAppointmentMoveAsync(SchedulerAppointmentMoveEventArgs args)
+    {
+        if (args.Appointment.Data is not SchedulerAppointmentVm vm) return;
+
+        // Snap to the dropped slot and preserve the original duration, rather than trying to
+        // interpret AppointmentMove's sub-slot TimeSpan offset (undocumented sign/direction).
+        var duration = vm.Appointment.EndTime - vm.Appointment.StartTime;
+        var newStart = args.SlotDate;
+
+        var (success, error) = await AppointmentService.RescheduleAsync(vm.Appointment.Id, new RescheduleAppointmentDto
+        {
+            AppointmentDate = newStart.Date,
+            StartTime = newStart.TimeOfDay,
+            EndTime = newStart.TimeOfDay + duration
+        });
+
+        if (success)
+        {
+            _statusMessage = "Appointment rescheduled.";
+            _statusIsError = false;
+            if (_scheduler != null) await _scheduler.Reload();
+        }
+        else
+        {
+            _statusMessage = error ?? "Failed to reschedule.";
+            _statusIsError = true;
+        }
+    }
+
+    private void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<SchedulerAppointmentVm> args)
+    {
+        var color = args.Data.Appointment.Status switch
+        {
+            AppointmentStatus.Scheduled => "#6c757d",
+            AppointmentStatus.Confirmed => "#0dcaf0",
+            AppointmentStatus.Arrived => "#ffc107",
+            AppointmentStatus.InProgress => "#4272d7",
+            AppointmentStatus.Completed => "#198754",
+            AppointmentStatus.Cancelled => "#343a40",
+            AppointmentStatus.NoShow => "#b02a37",
+            _ => "#6c757d"
+        };
+        args.Attributes["style"] = $"background-color: {color}; border-color: {color};";
+    }
+
+    /// <summary>Flattens an AppointmentDto into the Start/End/Text shape RadzenScheduler binds via StartProperty/EndProperty/TextProperty.</summary>
+    public class SchedulerAppointmentVm
+    {
+        public DateTime Start { get; set; }
+        public DateTime End { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public AppointmentDto Appointment { get; set; } = null!;
+    }
+}

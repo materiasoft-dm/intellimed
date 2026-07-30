@@ -22,6 +22,7 @@ public class AuthControllerTests
     private readonly Mock<IConfiguration> _configurationMock;
     private readonly Mock<ILogger<AuthController>> _loggerMock;
     private readonly Mock<IProviderGroupRepository> _providerGroupRepositoryMock;
+    private readonly Mock<IProviderScheduleRepository> _providerScheduleRepositoryMock;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
@@ -50,10 +51,14 @@ public class AuthControllerTests
         // Setup ProviderGroupRepository mock
         _providerGroupRepositoryMock = new Mock<IProviderGroupRepository>();
 
+        // Setup ProviderScheduleRepository mock
+        _providerScheduleRepositoryMock = new Mock<IProviderScheduleRepository>();
+
         _controller = new AuthController(
             _userManagerMock.Object,
             _signInManagerMock.Object,
             _providerGroupRepositoryMock.Object,
+            _providerScheduleRepositoryMock.Object,
             _configurationMock.Object,
             _loggerMock.Object);
 

@@ -1,0 +1,105 @@
+@page "/appointments/print"
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject IAppointmentService AppointmentService
+@inject IPractitionerService PractitionerService
+@inject IJSRuntime JS
+
+<PageTitle>Day List - IntelliMed</PageTitle>
+
+<style>
+    .no-print { }
+    @@media print {
+        .no-print { display: none !important; }
+        body { margin: 0; }
+    }
+</style>
+
+<div class="no-print p-3 d-flex gap-2">
+    <input type="date" class="form-control" style="max-width: 200px" @bind="_date" @bind:after="LoadAsync" />
+    <select class="form-select" style="max-width: 260px" @bind="_practitionerId" @bind:after="LoadAsync">
+        <option value="">All Practitioners</option>
+        @foreach (var p in _practitioners)
+        {
+            <option value="@p.Id">@p.FullName</option>
+        }
+    </select>
+    <button class="btn btn-primary" @onclick="Print"><i class="bi bi-printer"></i> Print</button>
+</div>
+
+<div class="p-4">
+    <h4>Day List — @_date.ToString("dddd, d MMMM yyyy")</h4>
+    @if (_practitionerId.HasValue)
+    {
+        <p class="text-muted">@(_practitioners.FirstOrDefault(p => p.Id == _practitionerId)?.FullName)</p>
+    }
+
+    @if (_appointments.Count == 0)
+    {
+        <p class="text-muted">No appointments scheduled.</p>
+    }
+    else
+    {
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Client</th>
+                    <th>Practitioner</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in _appointments.OrderBy(a => a.StartTime))
+                {
+                    <tr>
+                        <td>@a.TimeRangeFormatted</td>
+                        <td>@a.ClientName</td>
+                        <td>@a.PractitionerName</td>
+                        <td>@a.TypeName</td>
+                        <td>@a.StatusName</td>
+                        <td>@a.Notes</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Date { get; set; }
+    [SupplyParameterFromQuery] public int? PractitionerId { get; set; }
+
+    private DateTime _date = DateTime.Today;
+    private int? _practitionerId;
+    private List<PractitionerDto> _practitioners = new();
+    private List<AppointmentDto> _appointments = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out var parsed)) _date = parsed;
+        _practitionerId = PractitionerId;
+
+        _practitioners = await PractitionerService.GetAllActiveAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await AppointmentService.SearchAppointmentsAsync(new AppointmentSearchDto
+        {
+            FromDate = _date,
+            ToDate = _date,
+            PractitionerId = _practitionerId,
+            PageSize = 500
+        });
+        _appointments = result.Items.ToList();
+    }
+
+    private async Task Print()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+}

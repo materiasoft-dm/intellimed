@@ -1,0 +1,355 @@
+@page "/appointments/new"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IAppointmentService AppointmentService
+@inject IAppointmentTypeSettingService AppointmentTypeSettingService
+@inject IClientService ClientService
+@inject IPractitionerService PractitionerService
+@inject NavigationManager Navigation
+
+<PageTitle>New Appointment - IntelliMed</PageTitle>
+
+<h4 class="mb-4">New Appointment</h4>
+
+<div class="row">
+    <div class="col-12 col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header"><strong>Booking Details</strong></div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small mb-0">Client</label>
+                    <div class="input-group">
+                        <input class="form-control" value="@_clientDisplayName" readonly placeholder="Search for a client..." />
+                        <button type="button" class="btn btn-outline-secondary" @onclick="OpenClientPicker">Find</button>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small mb-0">Practitioner</label>
+                        <select class="form-select" @bind="_model.PractitionerId" @bind:after="OnPractitionerOrDateChangedAsync">
+                            <option value="0">Select...</option>
+                            @foreach (var p in _practitioners)
+                            {
+                                <option value="@p.Id">@p.FullName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small mb-0">Appointment Type</label>
+                        <select class="form-select" @bind="_selectedTypeSettingId" @bind:after="OnTypeSettingChanged">
+                            <option value="">Custom duration</option>
+                            @foreach (var t in _typeSettings)
+                            {
+                                <option value="@t.Id">@t.Name (@t.DefaultDurationMinutes min)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label small mb-0">Date</label>
+                        <input type="date" class="form-control" @bind="_model.AppointmentDate" @bind:after="OnPractitionerOrDateChangedAsync" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label small mb-0">Start Time</label>
+                        <input type="time" class="form-control" value="@_startTimeText" @onchange="OnStartTimeChanged" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label small mb-0">End Time</label>
+                        <input type="time" class="form-control" value="@_endTimeText" @onchange="OnEndTimeChanged" />
+                    </div>
+                </div>
+
+                @if (_availabilityChecked && !_isAvailable)
+                {
+                    <div class="alert alert-danger py-2 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i> This overlaps with another appointment for this practitioner.
+                    </div>
+                }
+                @if (_outsideWorkingHours)
+                {
+                    <div class="alert alert-warning py-2 small">
+                        <i class="bi bi-info-circle me-1"></i> This falls outside the practitioner's usual working hours (set in their Profile Settings). You can still book it.
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label small mb-0">Notes</label>
+                    <textarea class="form-control" rows="2" @bind="_model.Notes"></textarea>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="chkBulkBill" @bind="_model.IsBulkBill" />
+                    <label class="form-check-label" for="chkBulkBill">Bulk Bill</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="chkRepeat" @bind="_repeat" />
+                    <label class="form-check-label" for="chkRepeat"><strong>Repeat this appointment</strong></label>
+                </div>
+            </div>
+            @if (_repeat)
+            {
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label small mb-0">Frequency</label>
+                            <select class="form-select form-select-sm" @bind="_series.Frequency">
+                                @foreach (var f in Enum.GetValues<RecurrenceFrequency>())
+                                {
+                                    <option value="@f">@f</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label small mb-0">Ends after (occurrences)</label>
+                            <input type="number" min="1" max="104" class="form-control form-control-sm" @bind="_occurrences" @bind:after="@(() => _untilDate = null)" />
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label small mb-0">Or ends by date</label>
+                            <input type="date" class="form-control form-control-sm" @bind="_untilDate" @bind:after="@(() => _occurrences = null)" />
+                        </div>
+                    </div>
+                    <div class="small text-muted">Set exactly one of "occurrences" or "ends by date".</div>
+                </div>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_statusMessage))
+        {
+            <div class="alert @(_statusIsError ? "alert-danger" : "alert-success") py-2 small">@_statusMessage</div>
+        }
+
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/appointments"))">Cancel</button>
+            <button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@(_isSaving || _model.ClientId == 0 || _model.PractitionerId == 0)">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                Save
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (_showClientPickerModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Find Client</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showClientPickerModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <input class="form-control form-control-sm mb-2" placeholder="Search by name..."
+                           @bind="_clientSearchTerm" @bind:event="oninput" @bind:after="SearchClientCandidatesAsync" />
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        @if (_clientSearchResults.Count == 0)
+                        {
+                            <div class="text-muted small">No matches.</div>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var candidate in _clientSearchResults)
+                                {
+                                    <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectClient(candidate))">
+                                        @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showClientPickerModal = false)">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery] public int? ClientId { get; set; }
+    [SupplyParameterFromQuery] public string? Date { get; set; }
+    [SupplyParameterFromQuery] public int? PractitionerId { get; set; }
+
+    private CreateAppointmentDto _model = new()
+    {
+        AppointmentDate = DateTime.Today,
+        StartTime = new TimeSpan(9, 0, 0),
+        EndTime = new TimeSpan(9, 15, 0)
+    };
+
+    private string? _clientDisplayName;
+    private bool _showClientPickerModal;
+    private string _clientSearchTerm = string.Empty;
+    private List<ClientDto> _clientSearchResults = new();
+
+    private List<PractitionerDto> _practitioners = new();
+    private List<AppointmentTypeSettingDto> _typeSettings = new();
+    private int? _selectedTypeSettingId;
+
+    private bool _repeat;
+    private CreateAppointmentSeriesDto _series = new();
+    private int? _occurrences = 4;
+    private DateTime? _untilDate;
+
+    private bool _availabilityChecked;
+    private bool _isAvailable = true;
+    private bool _outsideWorkingHours;
+
+    private bool _isSaving;
+    private string? _statusMessage;
+    private bool _statusIsError;
+
+    private string _startTimeText => _model.StartTime.ToString(@"hh\:mm");
+    private string _endTimeText => _model.EndTime.ToString(@"hh\:mm");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _practitioners = await PractitionerService.GetAllActiveAsync();
+        _typeSettings = await AppointmentTypeSettingService.GetAllActiveAsync();
+
+        if (ClientId.HasValue) _model.ClientId = ClientId.Value;
+        if (PractitionerId.HasValue) _model.PractitionerId = PractitionerId.Value;
+        if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out var parsed)) _model.AppointmentDate = parsed;
+
+        await OnPractitionerOrDateChangedAsync();
+    }
+
+    private void OpenClientPicker()
+    {
+        _clientSearchTerm = string.Empty;
+        _clientSearchResults = new();
+        _showClientPickerModal = true;
+    }
+
+    private async Task SearchClientCandidatesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_clientSearchTerm))
+        {
+            _clientSearchResults = new();
+            return;
+        }
+        var result = await ClientService.SearchClientsAsync(new ClientSearchDto { Query = _clientSearchTerm, PageSize = 10 });
+        _clientSearchResults = result.Items.ToList();
+    }
+
+    private void SelectClient(ClientDto candidate)
+    {
+        _model.ClientId = candidate.Id;
+        _clientDisplayName = candidate.FullName;
+        _showClientPickerModal = false;
+    }
+
+    private void OnTypeSettingChanged()
+    {
+        _model.AppointmentTypeSettingId = _selectedTypeSettingId;
+        var setting = _typeSettings.FirstOrDefault(t => t.Id == _selectedTypeSettingId);
+        if (setting != null)
+        {
+            _model.EndTime = _model.StartTime.Add(TimeSpan.FromMinutes(setting.DefaultDurationMinutes));
+        }
+    }
+
+    private async Task OnStartTimeChanged(ChangeEventArgs e)
+    {
+        if (TimeSpan.TryParse(e.Value?.ToString(), out var t))
+        {
+            var duration = _model.EndTime - _model.StartTime;
+            if (duration <= TimeSpan.Zero) duration = TimeSpan.FromMinutes(15);
+            _model.StartTime = t;
+            _model.EndTime = t.Add(duration);
+            await CheckSlotAsync();
+        }
+    }
+
+    private async Task OnEndTimeChanged(ChangeEventArgs e)
+    {
+        if (TimeSpan.TryParse(e.Value?.ToString(), out var t))
+        {
+            _model.EndTime = t;
+            await CheckSlotAsync();
+        }
+    }
+
+    private async Task OnPractitionerOrDateChangedAsync()
+    {
+        await CheckSlotAsync();
+    }
+
+    private async Task CheckSlotAsync()
+    {
+        _availabilityChecked = false;
+        _outsideWorkingHours = false;
+        if (_model.PractitionerId == 0 || _model.EndTime <= _model.StartTime) return;
+
+        _isAvailable = await AppointmentService.CheckAvailabilityAsync(_model.PractitionerId, _model.AppointmentDate, _model.StartTime, _model.EndTime);
+        _availabilityChecked = true;
+
+        var schedule = await AppointmentService.GetPractitionerScheduleAsync(_model.PractitionerId, _model.AppointmentDate);
+        if (schedule != null)
+        {
+            _outsideWorkingHours = !schedule.IsActive || _model.StartTime < schedule.StartTime || _model.EndTime > schedule.EndTime;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _statusMessage = null;
+        try
+        {
+            if (_repeat)
+            {
+                _series.ClientId = _model.ClientId;
+                _series.PractitionerId = _model.PractitionerId;
+                _series.AppointmentDate = _model.AppointmentDate;
+                _series.StartTime = _model.StartTime;
+                _series.EndTime = _model.EndTime;
+                _series.Type = _model.Type;
+                _series.AppointmentTypeSettingId = _model.AppointmentTypeSettingId;
+                _series.Notes = _model.Notes;
+                _series.IsBulkBill = _model.IsBulkBill;
+                _series.Fee = _model.Fee;
+                _series.Occurrences = _occurrences;
+                _series.UntilDate = _untilDate;
+
+                var ids = await AppointmentService.CreateAppointmentSeriesAsync(_series);
+                if (ids != null && ids.Count > 0)
+                {
+                    Navigation.NavigateTo("/appointments");
+                    return;
+                }
+                _statusMessage = "Failed to create the appointment series.";
+                _statusIsError = true;
+            }
+            else
+            {
+                var id = await AppointmentService.CreateAppointmentAsync(_model);
+                if (id.HasValue)
+                {
+                    Navigation.NavigateTo($"/appointments/edit/{id.Value}");
+                    return;
+                }
+                _statusMessage = "Failed to create the appointment.";
+                _statusIsError = true;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

@@ -221,6 +221,52 @@ else
             </div>
         </div>
     </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header"><strong>Weekly Schedule</strong></div>
+                <div class="card-body">
+                    <p class="text-muted small">Your usual working hours — used to flag bookings outside your normal hours on the appointment calendar.</p>
+                    @if (_scheduleLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm text-primary"></span>
+                    }
+                    else
+                    {
+                        <table class="table table-sm align-middle mb-2">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px"></th>
+                                    <th>Day</th>
+                                    <th>Start</th>
+                                    <th>End</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var day in _scheduleDays)
+                                {
+                                    <tr>
+                                        <td><input type="checkbox" class="form-check-input" @bind="day.IsActive" /></td>
+                                        <td>@day.DayOfWeek</td>
+                                        <td><input type="time" class="form-control form-control-sm" value="@day.StartTime.ToString(@"hh\:mm")" disabled="@(!day.IsActive)" @onchange="@(e => SetTime(day, true, e.Value?.ToString()))" /></td>
+                                        <td><input type="time" class="form-control form-control-sm" value="@day.EndTime.ToString(@"hh\:mm")" disabled="@(!day.IsActive)" @onchange="@(e => SetTime(day, false, e.Value?.ToString()))" /></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-primary btn-sm" disabled="@_scheduleSaving" @onclick="SaveScheduleAsync">
+                            @if (_scheduleSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            Save Schedule
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @if (_toastMessage != null)
@@ -244,11 +290,21 @@ else
     private string? _toastMessage;
     private bool _toastIsError;
 
+    private List<ProviderScheduleDayDto> _scheduleDays = new();
+    private bool _scheduleLoading = true;
+    private bool _scheduleSaving;
+
     protected override async Task OnInitializedAsync()
     {
         var profileTask = AuthService.GetMyProfileAsync();
+        var scheduleTask = AuthService.GetMyScheduleAsync();
         _providerGroups = await ProviderGroupService.GetAllActiveAsync();
         _profile = await profileTask;
+
+        var days = await scheduleTask;
+        // Present Monday-first regardless of the DayOfWeek enum's Sunday-first storage order.
+        _scheduleDays = days.OrderBy(d => ((int)d.DayOfWeek + 6) % 7).ToList();
+        _scheduleLoading = false;
         if (_profile != null)
         {
             _model = new ProfileFormModel
@@ -344,6 +400,22 @@ else
     private void DismissToast()
     {
         _toastMessage = null;
+    }
+
+    private void SetTime(ProviderScheduleDayDto day, bool isStart, string? value)
+    {
+        if (TimeSpan.TryParse(value, out var t))
+        {
+            if (isStart) day.StartTime = t; else day.EndTime = t;
+        }
+    }
+
+    private async Task SaveScheduleAsync()
+    {
+        _scheduleSaving = true;
+        var success = await AuthService.SetMyScheduleAsync(new SetProviderScheduleRequest { Days = _scheduleDays });
+        _scheduleSaving = false;
+        ShowToast(success ? "Schedule saved." : "Failed to save schedule.", !success);
     }
 
     private class ProfileFormModel

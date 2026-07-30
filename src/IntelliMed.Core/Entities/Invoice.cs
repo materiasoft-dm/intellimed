@@ -75,6 +75,9 @@ public class InvoiceItem
     /// <summary>The legacy Pracnet InvoiceItems.GUID this record was imported from (PrimaryClinic Migrator).</summary>
     public string? LegacyGuid { get; set; }
 
+    /// <summary>Free-text note attached to this line item — shown via the "i" icon in the line-items table.</summary>
+    public string? Note { get; set; }
+
     // Navigation properties
     public Invoice? Invoice { get; set; }
     public BillingItem? BillingItem { get; set; }

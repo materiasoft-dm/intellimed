@@ -47,6 +47,7 @@ public class InvoiceItemDto
     public decimal GstAmount { get; set; }
     public decimal PercentGst { get; set; }
     public decimal? DerivedQuantity { get; set; }
+    public string? Note { get; set; }
     public decimal LineRebate => RebatePerUnit * Quantity;
     public decimal NetAmount => UnitPrice * Quantity + GstAmount;
     public decimal TotalPrice => NetAmount - Discount;
@@ -92,6 +93,7 @@ public class CreateInvoiceItemDto
     public decimal UnitPrice { get; set; }
     public decimal Discount { get; set; }
     public decimal? DerivedQuantity { get; set; }
+    public string? Note { get; set; }
 }
 
 /// <summary>Request to resolve a line item's fee/rebate/GST for the given billing context (live UI preview).</summary>
