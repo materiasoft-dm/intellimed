@@ -4,7 +4,6 @@
 @using IntelliMed.Core.Entities
 @using IntelliMed.Web.Services
 @inject IAppointmentService AppointmentService
-@inject NavigationManager Navigation
 @implements IDisposable
 
 <PageTitle>Waiting Room - IntelliMed</PageTitle>
@@ -61,7 +60,7 @@ else
                             {
                                 <button class="btn btn-sm btn-outline-success" @onclick="() => AdvanceAsync(a, AppointmentStatus.Completed)">Complete</button>
                             }
-                            <button class="btn btn-sm btn-link" @onclick="@(() => Navigation.NavigateTo($"/appointments/edit/{a.Id}"))">Details</button>
+                            <button class="btn btn-sm btn-link" @onclick="@(() => _selectedAppointmentId = a.Id)">Details</button>
                         </td>
                     </tr>
                 }
@@ -70,7 +69,11 @@ else
     </div>
 }
 
+<AppointmentDetailsModal AppointmentId="_selectedAppointmentId" OnClose="@(() => _selectedAppointmentId = null)" OnChanged="LoadAsync" />
+
 @code {
+    private int? _selectedAppointmentId;
+
     private List<AppointmentDto> _appointments = new();
     private bool _isLoading = true;
     private System.Threading.Timer? _tickTimer;

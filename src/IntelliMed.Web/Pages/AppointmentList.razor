@@ -115,6 +115,8 @@
     </div>
 </div>
 
+<AppointmentDetailsModal AppointmentId="_selectedAppointmentId" OnClose="CloseDetails" OnChanged="HandleAppointmentChanged" />
+
 @if (_showClientPickerModal)
 {
     <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
@@ -267,9 +269,21 @@
         _clientDisplayName = null;
     }
 
+    private int? _selectedAppointmentId;
+
     private void ViewAppointment(AppointmentDto appointment)
     {
-        Navigation.NavigateTo($"/appointments/edit/{appointment.Id}");
+        _selectedAppointmentId = appointment.Id;
+    }
+
+    private void CloseDetails()
+    {
+        _selectedAppointmentId = null;
+    }
+
+    private async Task HandleAppointmentChanged()
+    {
+        if (_grid != null) await _grid.Reload();
     }
 
     private static string StatusBadgeClass(AppointmentStatus status) => status switch

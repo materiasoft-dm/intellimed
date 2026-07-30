@@ -9,8 +9,94 @@
 
 <PageTitle>Appointment Calendar - IntelliMed</PageTitle>
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <h4 class="mb-0">Appointment Calendar</h4>
+<style>
+    .imed-calendar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+    .imed-calendar-header h4 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+        color: var(--imed-neutral-900);
+    }
+    .imed-calendar-header h4 i {
+        color: var(--imed-primary);
+    }
+
+    .imed-practitioner-bar {
+        border: none;
+        border-radius: var(--imed-card-radius);
+        background: linear-gradient(135deg, var(--imed-primary-light) 0%, #fff 65%);
+        box-shadow: var(--imed-card-shadow);
+    }
+    .imed-practitioner-bar .form-check-input:checked {
+        background-color: var(--imed-primary);
+        border-color: var(--imed-primary);
+    }
+    .imed-practitioner-bar .form-check-label {
+        font-weight: 500;
+    }
+
+    .imed-calendar-card {
+        border: none;
+        border-radius: var(--imed-card-radius);
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+
+        /* Re-theme RadzenScheduler with the app's brand palette instead of stock Material blue/gray. */
+        --rz-scheduler-border-radius: var(--imed-card-radius);
+        --rz-scheduler-border-color: var(--imed-neutral-300);
+        --rz-scheduler-minor-border-color: #eef1f6;
+        --rz-scheduler-header-background-color: var(--imed-neutral-100);
+        --rz-scheduler-header-color: var(--imed-neutral-700);
+        --rz-scheduler-header-font-size: 0.7rem;
+        --rz-scheduler-toolbar-background-color: #fff;
+        --rz-scheduler-toolbar-title-color: var(--imed-neutral-900);
+        --rz-scheduler-toolbar-title-font-size: 1.15rem;
+        --rz-scheduler-prev-next-button-color: var(--imed-primary);
+        --rz-scheduler-today-button-padding: 0.4rem 0.9rem;
+        --rz-scheduler-slot-title-font-size: 0.75rem;
+        --rz-scheduler-other-month-background-color: #fafbfc;
+        --rz-scheduler-highlight-background-color: rgba(66, 114, 215, 0.08);
+        --rz-scheduler-event-content-padding: 0.3rem 0.5rem;
+        --rz-scheduler-event-font-size: 0.78rem;
+        --rz-scheduler-event-line-height: 1.2rem;
+    }
+
+    /* Appointment chips: rounded, gently shadowed, lift a bit on hover to feel clickable. */
+    .imed-calendar-card .rz-event {
+        border: none !important;
+        border-radius: 8px !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+        font-weight: 500;
+        letter-spacing: 0.1px;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .imed-calendar-card .rz-event:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.28);
+        cursor: pointer;
+    }
+
+    /* Today / view-switch buttons pick up the brand color instead of stock Material outline. */
+    .imed-calendar-card .rz-scheduler-today-button {
+        background: var(--imed-primary) !important;
+        color: #fff !important;
+        border: none !important;
+        font-weight: 600;
+    }
+    .imed-calendar-card .rz-selectbutton .rz-button.rz-state-active {
+        background: var(--imed-primary) !important;
+        border-color: var(--imed-primary) !important;
+    }
+</style>
+
+<div class="imed-calendar-header">
+    <h4><i class="bi bi-calendar3"></i> Appointment Calendar</h4>
     <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo($"/appointments/print?date={_lastLoadStart:yyyy-MM-dd}"))">
             <i class="bi bi-printer"></i> Print Day List
@@ -24,9 +110,9 @@
     </div>
 </div>
 
-<div class="card mb-3">
+<div class="card imed-practitioner-bar mb-3">
     <div class="card-body py-2">
-        <span class="small text-muted me-2">Practitioners:</span>
+        <span class="small text-muted me-2"><i class="bi bi-people-fill me-1"></i>Practitioners:</span>
         @foreach (var p in _practitioners)
         {
             <div class="form-check form-check-inline">
@@ -37,8 +123,8 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
+<div class="card imed-calendar-card">
+    <div class="card-body p-0">
         <RadzenScheduler @ref="_scheduler" TItem="SchedulerAppointmentVm" Data="@_events"
                           StartProperty="Start" EndProperty="End" TextProperty="Text"
                           SelectedIndex="1"
@@ -58,6 +144,8 @@
 {
     <div class="alert @(_statusIsError ? "alert-danger" : "alert-success") mt-2 py-2 small">@_statusMessage</div>
 }
+
+<AppointmentDetailsModal AppointmentId="_selectedAppointmentId" OnClose="CloseDetails" OnChanged="HandleAppointmentChanged" />
 
 @code {
     private RadzenScheduler<SchedulerAppointmentVm>? _scheduler;
@@ -125,9 +213,21 @@
         Navigation.NavigateTo(url);
     }
 
+    private int? _selectedAppointmentId;
+
     private void OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<SchedulerAppointmentVm> args)
     {
-        Navigation.NavigateTo($"/appointments/edit/{args.Data.Appointment.Id}");
+        _selectedAppointmentId = args.Data.Appointment.Id;
+    }
+
+    private void CloseDetails()
+    {
+        _selectedAppointmentId = null;
+    }
+
+    private async Task HandleAppointmentChanged()
+    {
+        if (_scheduler != null) await _scheduler.Reload();
     }
 
     private async Task OnAppointmentMoveAsync(SchedulerAppointmentMoveEventArgs args)
@@ -161,18 +261,19 @@
 
     private void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<SchedulerAppointmentVm> args)
     {
-        var color = args.Data.Appointment.Status switch
+        // (background, text) pairs chosen for contrast — status color-coding doubles as an at-a-glance legend.
+        var (bg, text) = args.Data.Appointment.Status switch
         {
-            AppointmentStatus.Scheduled => "#6c757d",
-            AppointmentStatus.Confirmed => "#0dcaf0",
-            AppointmentStatus.Arrived => "#ffc107",
-            AppointmentStatus.InProgress => "#4272d7",
-            AppointmentStatus.Completed => "#198754",
-            AppointmentStatus.Cancelled => "#343a40",
-            AppointmentStatus.NoShow => "#b02a37",
-            _ => "#6c757d"
+            AppointmentStatus.Scheduled => ("#8b95a5", "#fff"),
+            AppointmentStatus.Confirmed => ("#3aa8c1", "#fff"),
+            AppointmentStatus.Arrived => ("#f5b400", "#1a1a1a"),
+            AppointmentStatus.InProgress => ("#4272d7", "#fff"),
+            AppointmentStatus.Completed => ("#0f9d6e", "#fff"),
+            AppointmentStatus.Cancelled => ("#4b5563", "#e5e7eb"),
+            AppointmentStatus.NoShow => ("#c2434f", "#fff"),
+            _ => ("#8b95a5", "#fff")
         };
-        args.Attributes["style"] = $"background-color: {color}; border-color: {color};";
+        args.Attributes["style"] = $"background-color: {bg}; border-color: {bg}; color: {text};";
     }
 
     /// <summary>Flattens an AppointmentDto into the Start/End/Text shape RadzenScheduler binds via StartProperty/EndProperty/TextProperty.</summary>
