@@ -859,4 +859,25 @@ public static class EntityMapper
         entity.Notes = dto.Notes;
         entity.UpdatedAt = DateTime.UtcNow;
     }
+
+    // Notification mappings
+    public static NotificationDto ToDto(Notification entity) => new()
+    {
+        Id = entity.Id,
+        Type = entity.Type,
+        Message = entity.Message,
+        LinkUrl = entity.LinkUrl,
+        IsRead = entity.IsRead,
+        ReadAt = entity.ReadAt,
+        CreatedAt = entity.CreatedAt
+    };
+
+    public static Notification ToEntity(CreateNotificationDto dto) => new()
+    {
+        RecipientUserId = dto.RecipientUserId,
+        Type = dto.Type,
+        Message = dto.Message,
+        LinkUrl = dto.LinkUrl,
+        CreatedAt = DateTime.UtcNow
+    };
 }
