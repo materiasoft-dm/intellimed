@@ -54,7 +54,10 @@ else if (_clinics != null)
                     @foreach (var clinic in _clinics)
                     {
                         <tr>
-                            <td><i class="bi bi-building me-2 text-muted"></i>@clinic.Name</td>
+                            <td>
+                                <i class="bi bi-building me-2 text-muted"></i>
+                                <a href="javascript:void(0)" class="link-primary" @onclick="() => OpenEditDialog(clinic)">@clinic.Name</a>
+                            </td>
                             <td>@clinic.Phone</td>
                             <td>@(string.IsNullOrWhiteSpace(clinic.Suburb) ? clinic.Address : $"{clinic.Address}, {clinic.Suburb}")</td>
                             <td>@clinic.UserCount</td>
@@ -69,9 +72,6 @@ else if (_clinics != null)
                                 }
                             </td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary me-1" title="Edit" @onclick="() => OpenEditDialog(clinic)">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
                                 <button class="btn btn-sm btn-outline-secondary" title="Manage Users" @onclick="() => OpenUsersDialog(clinic)">
                                     <i class="bi bi-people"></i>
                                 </button>

@@ -1267,7 +1267,7 @@ else
                 @foreach (var r in _referrals.Where(x => _includeArchivedReferrals || !x.IsArchived))
                 {
                     <tr class="@(r.IsArchived ? "text-muted" : "")">
-                        <td>@r.ReferringProviderName</td>
+                        <td><a href="javascript:void(0)" class="link-primary" @onclick="@(() => OpenEditReferralModal(r))">@r.ReferringProviderName</a></td>
                         <td>@(r.IsGP ? "✓" : "")</td>
                         <td>@r.ReferralDate.ToString("d/M/yy")</td>
                         <td>@r.ReferralPeriod</td>
@@ -1276,7 +1276,6 @@ else
                         <td>@(r.IsDefault ? "✓" : "")</td>
                         <td>@r.Note</td>
                         <td class="text-end text-nowrap">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => OpenEditReferralModal(r))">Edit</button>
                             @if (!r.IsArchived)
                             {
                                 <button type="button" class="btn btn-sm btn-outline-warning" @onclick="@(() => ArchiveReferralAsync(r.Id))">Archive</button>
@@ -1426,14 +1425,13 @@ else
                 @foreach (var c in _claims.Where(x => _includeArchivedClaims || !x.IsArchived))
                 {
                     <tr class="@(c.IsArchived ? "text-muted" : "")">
-                        <td>@c.ClaimNum</td>
+                        <td><a href="javascript:void(0)" class="link-primary" @onclick="@(() => OpenEditClaimModal(c))">@c.ClaimNum</a></td>
                         <td>@(c.DateOfInjury?.ToString("d/M/yy"))</td>
                         <td>@c.EmployerName</td>
                         <td>@c.CaseManagerName</td>
                         <td>@c.PayerName</td>
                         <td>@(c.IsDefault ? "✓" : "")</td>
                         <td class="text-end text-nowrap">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => OpenEditClaimModal(c))">Edit</button>
                             @if (!c.IsArchived)
                             {
                                 <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => ArchiveClaimAsync(c.Id))">Archive</button>
@@ -1612,14 +1610,13 @@ else
                 @foreach (var o in _occupations.Where(x => _includeArchivedOccupations || !x.IsArchived))
                 {
                     <tr class="@(o.IsArchived ? "text-muted" : "")">
-                        <td>@o.Occupation</td>
+                        <td><a href="javascript:void(0)" class="link-primary" @onclick="@(() => OpenEditOccupationModal(o))">@o.Occupation</a></td>
                         <td>@o.Employer</td>
                         <td>@o.StartedYear</td>
                         <td>@o.StoppedYear</td>
                         <td>@HazardSummary(o)</td>
                         <td>@o.Comment</td>
                         <td class="text-end text-nowrap">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => OpenEditOccupationModal(o))">Edit</button>
                             @if (!o.IsArchived)
                             {
                                 <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => ArchiveOccupationAsync(o.Id))">Archive</button>
@@ -1807,11 +1804,10 @@ else
                 @foreach (var v in _udfValues)
                 {
                     <tr>
-                        <td>@v.FieldName</td>
+                        <td><a href="javascript:void(0)" class="link-primary" @onclick="@(() => OpenEditUdfModal(v))">@v.FieldName</a></td>
                         <td>@v.Value</td>
                         <td>@v.Note</td>
                         <td class="text-end text-nowrap">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => OpenEditUdfModal(v))">Edit</button>
                             <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => DeleteUdfValueAsync(v.Id))">Delete</button>
                         </td>
                     </tr>

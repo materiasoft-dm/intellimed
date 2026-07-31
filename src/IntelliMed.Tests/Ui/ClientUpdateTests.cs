@@ -17,7 +17,7 @@ public class ClientUpdateTests
     /// <summary>Creates a client through the real UI flow and returns the page (now on the edit route) plus its new id.</summary>
     private static async Task<(IPage Page, string Id)> CreateClientAsync(PlaywrightServerFixture fixture, string surname, string given)
     {
-        var page = await fixture.NewPageAsync();
+        var page = await fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
         await page.Field("Surname").FillAsync(surname);
@@ -162,17 +162,23 @@ public class ClientUpdateTests
     [Fact]
     public async Task NewFamily_LinkExistingMode_LinksClientAndShowsInFamilyTab()
     {
+        // Surname "Relative", given "Candidate" — but the app renders/searches names as
+        // "{FirstName} {LastName}" (see ClientDto.FullName / ClientFamilyRelationshipDto.RelativeName),
+        // so the candidate shows up as "Candidate Relative", not "Relative Candidate". The search
+        // endpoint also only matches FirstName OR LastName individually (BuildSearchQuery in
+        // ClientRepository), not the concatenated full name, so the search term must be a single
+        // name part, not "Relative Candidate" as a whole.
         var (page, _) = await CreateClientAsync(_fixture, "Relative", "Candidate");
         var (headPage, _) = await CreateClientAsync(_fixture, "Family", "Head");
 
         await headPage.GetByRole(AriaRole.Button, new() { Name = "New Family" }).ClickAsync();
         // Link Existing is the default mode — no toggle click needed.
         await headPage.GetByPlaceholder("e.g. Spouse, Child, Parent").FillAsync("Sibling");
-        await headPage.GetByPlaceholder("Search by name...").FillAsync("Relative Candidate");
-        await headPage.GetByText("Relative Candidate", new() { Exact = false }).ClickAsync();
+        await headPage.GetByPlaceholder("Search by name...").FillAsync("Relative");
+        await headPage.GetByText("Candidate Relative", new() { Exact = false }).ClickAsync();
 
         await headPage.TabLink("Family").ClickAsync();
-        await Assertions.Expect(headPage.GetByText("Relative Candidate")).ToBeVisibleAsync();
+        await Assertions.Expect(headPage.GetByText("Candidate Relative")).ToBeVisibleAsync();
         await Assertions.Expect(headPage.GetByRole(AriaRole.Cell, new() { Name = "Sibling", Exact = true })).ToBeVisibleAsync();
     }
 
@@ -200,10 +206,15 @@ public class ClientUpdateTests
         // via the API, the same way an admin screen would. Enums round-trip as their numeric
         // value over the wire (default System.Text.Json behavior, no string converter
         // configured), so fieldType: 0 here means UdfFieldTypeEnum.Text.
+        // page.Context.APIRequest is a separate context from the browser page — it doesn't carry
+        // the JWT Blazor attached in-memory to its own HttpClient, so the token has to be pulled
+        // from localStorage and attached explicitly or this 401s.
+        var token = await page.EvaluateAsync<string>("localStorage.getItem('intellimed_token')");
         var api = page.Context.APIRequest;
         var response = await api.PostAsync($"{_fixture.BaseUrl}/api/udf-definitions", new()
         {
-            DataObject = new { name = "Preferred Pharmacy", fieldType = 0, displayOrder = 1 }
+            DataObject = new { name = "Preferred Pharmacy", fieldType = 0, displayOrder = 1 },
+            Headers = new Dictionary<string, string> { ["Authorization"] = $"Bearer {token}" }
         });
         Assert.True(response.Ok, $"Failed to seed UDF definition: {response.Status}");
 

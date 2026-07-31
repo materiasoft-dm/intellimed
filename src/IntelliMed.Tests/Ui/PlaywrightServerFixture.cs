@@ -129,6 +129,23 @@ public class PlaywrightServerFixture : IAsyncLifetime
         return await context.NewPageAsync();
     }
 
+    /// <summary>
+    /// Every page under MainLayout redirects to /login when unauthenticated (checked client-side in
+    /// MainLayout.OnInitializedAsync), so any UI test that navigates to a protected page must log in
+    /// first or it will hang waiting for content that never renders. Logs in as the seeded SuperAdmin.
+    /// </summary>
+    public async Task<IPage> NewAuthenticatedPageAsync(string email = "admin@clinic.com", string password = "IntelliMed2024!")
+    {
+        var page = await NewPageAsync();
+        await page.GotoAsync("/login");
+        await page.WaitForSelectorAsync("#email");
+        await page.Locator("#email").FillAsync(email);
+        await page.Locator("#password").FillAsync(password);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Sign In" }).ClickAsync();
+        await page.WaitForURLAsync(url => !url.Contains("/login"));
+        return page;
+    }
+
     public async Task DisposeAsync()
     {
         if (Browser is not null) await Browser.CloseAsync();

@@ -54,7 +54,11 @@
                              RowSelect="@(s => _selectedSchedule = s)"
                              EmptyText="No fee schedules found.">
                 <Columns>
-                    <RadzenDataGridColumn TItem="FeeScheduleDto" Property="Code" Title="Code" Width="100px" />
+                    <RadzenDataGridColumn TItem="FeeScheduleDto" Property="Code" Title="Code" Width="100px">
+                        <Template Context="s">
+                            <a href="javascript:void(0)" class="link-primary" @onclick="@(() => OpenEditDialogFor(s))" @onclick:stopPropagation>@s.Code</a>
+                        </Template>
+                    </RadzenDataGridColumn>
                     <RadzenDataGridColumn TItem="FeeScheduleDto" Property="Description" Title="Description" Width="220px" />
                     <RadzenDataGridColumn TItem="FeeScheduleDto" Property="Note" Title="Note" Width="160px" />
                     <RadzenDataGridColumn TItem="FeeScheduleDto" Property="HealthFundCode" Title="Health Fund" Width="110px" />
@@ -79,9 +83,6 @@
         <div class="d-flex flex-wrap gap-2 mt-3">
             <button class="btn btn-sm btn-primary" @onclick="OpenCreateDialog">
                 <i class="bi bi-plus-lg"></i> New
-            </button>
-            <button class="btn btn-sm btn-outline-primary" @onclick="OpenEditDialog" disabled="@(_selectedSchedule == null)">
-                <i class="bi bi-pencil"></i> Edit
             </button>
             <button class="btn btn-sm btn-outline-secondary" @onclick="ArchiveSelectedAsync" disabled="@(_selectedSchedule == null || _selectedSchedule.IsArchived)">
                 <i class="bi bi-archive"></i> Archive
@@ -676,6 +677,12 @@
         _lastFetchResult = null;
         _feeTableOptions = (await FeeScheduleService.GetAllActiveAsync());
         _dialogVisible = true;
+    }
+
+    private async Task OpenEditDialogFor(FeeScheduleDto schedule)
+    {
+        _selectedSchedule = schedule;
+        await OpenEditDialog();
     }
 
     private async Task OpenEditDialog()

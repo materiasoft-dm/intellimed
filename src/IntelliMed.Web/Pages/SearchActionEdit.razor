@@ -1,0 +1,207 @@
+@page "/admin/search-actions/edit"
+@page "/admin/search-actions/edit/{Id:int}"
+@layout MainLayout
+@using System.ComponentModel.DataAnnotations
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject ISearchActionService SearchActionService
+@inject NavigationManager Navigation
+
+<PageTitle>@(Id.HasValue ? "Edit" : "New") Command Palette Action - IntelliMed</PageTitle>
+
+<h4 class="mb-4">@(Id.HasValue ? "Edit Action" : "New Action")</h4>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading action...
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-body">
+                    <EditForm Model="@_model" OnValidSubmit="SaveAsync" FormName="searchActionForm">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-3" />
+
+                        <div class="mb-3">
+                            <label class="form-label">Title <span class="text-danger">*</span></label>
+                            <InputText @bind-Value="_model.Title" class="form-control" placeholder="e.g. Add Client" />
+                            <ValidationMessage For="() => _model.Title" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Keywords</label>
+                            <InputText @bind-Value="_model.Keywords" class="form-control" placeholder="e.g. patient create new register" />
+                            <div class="form-text">Space-separated synonym terms that should also match this action.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <InputText @bind-Value="_model.Description" class="form-control" placeholder="Subtitle shown under the title in results" />
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Category <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="_model.Category" class="form-control" placeholder="e.g. Clinical" />
+                                <ValidationMessage For="() => _model.Category" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Action Type</label>
+                                <select class="form-select" @bind="_model.ActionType">
+                                    <option value="@SearchActionType.Navigate">Navigate</option>
+                                    <option value="@SearchActionType.Modal">Modal</option>
+                                    <option value="@SearchActionType.Info">Info</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Target <span class="text-danger">*</span></label>
+                            <InputText @bind-Value="_model.Target" class="form-control" placeholder="e.g. /clients/add" />
+                            <div class="form-text">Route path for Navigate actions, or a modal identifier for Modal actions.</div>
+                            <ValidationMessage For="() => _model.Target" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Page Key (optional)</label>
+                            <InputText @bind-Value="_model.PageKey" class="form-control" placeholder="e.g. clients/create" />
+                            <div class="form-text">Ties this action to a Role Configuration page key so it only shows for users with access. Leave blank to show to everyone.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Sort Order</label>
+                            <InputNumber @bind-Value="_model.SortOrder" class="form-control" style="max-width: 120px;" />
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                                @if (_isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <span><i class="bi bi-save me-1"></i>Save</span>
+                                }
+                            </button>
+                            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_toastMessage != null)
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        <div class="toast show align-items-center text-bg-danger border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@_toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => _toastMessage = null" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private ActionFormModel _model = new();
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _toastMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id.HasValue)
+        {
+            var existing = await SearchActionService.GetByIdAsync(Id.Value);
+            if (existing != null)
+            {
+                _model = new ActionFormModel
+                {
+                    Title = existing.Title,
+                    Keywords = existing.Keywords,
+                    Description = existing.Description,
+                    Category = existing.Category,
+                    ActionType = existing.ActionType,
+                    Target = existing.Target,
+                    PageKey = existing.PageKey,
+                    SortOrder = existing.SortOrder
+                };
+            }
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new SaveSearchActionRequest
+            {
+                Title = _model.Title,
+                Keywords = string.IsNullOrWhiteSpace(_model.Keywords) ? null : _model.Keywords,
+                Description = string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description,
+                Category = _model.Category,
+                ActionType = _model.ActionType,
+                Target = _model.Target,
+                PageKey = string.IsNullOrWhiteSpace(_model.PageKey) ? null : _model.PageKey,
+                SortOrder = _model.SortOrder
+            };
+
+            var success = Id.HasValue
+                ? await SearchActionService.UpdateAsync(Id.Value, request)
+                : await SearchActionService.CreateAsync(request);
+
+            if (success)
+            {
+                Navigation.NavigateTo("/admin/search-actions");
+            }
+            else
+            {
+                _toastMessage = "Failed to save action.";
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => Navigation.NavigateTo("/admin/search-actions");
+
+    private class ActionFormModel
+    {
+        [Required]
+        public string Title { get; set; } = string.Empty;
+
+        public string? Keywords { get; set; }
+        public string? Description { get; set; }
+
+        [Required]
+        public string Category { get; set; } = string.Empty;
+
+        public SearchActionType ActionType { get; set; } = SearchActionType.Navigate;
+
+        [Required]
+        public string Target { get; set; } = string.Empty;
+
+        public string? PageKey { get; set; }
+        public int SortOrder { get; set; }
+    }
+}

@@ -35,10 +35,9 @@
                     {
                         <tr>
                             <td><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:@t.ColorHex"></span></td>
-                            <td>@t.Name</td>
+                            <td><a href="javascript:void(0)" class="link-primary" @onclick="() => OpenEdit(t)">@t.Name</a></td>
                             <td>@t.DefaultDurationMinutes min</td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEdit(t)">Edit</button>
                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => ArchiveAsync(t)">Archive</button>
                             </td>
                         </tr>

@@ -23,7 +23,13 @@ public class ClientListTests
 
     private async Task<int> GetTotalClientCountAsync(IPage page)
     {
-        var response = await page.APIRequest.GetAsync($"{_fixture.BaseUrl}/api/clients/search?page=1&pageSize=1");
+        // page.APIRequest is a separate context from the browser page — it doesn't carry the JWT
+        // Blazor attached in-memory to its own HttpClient, so the bearer token has to be pulled
+        // from localStorage and attached explicitly or the API 401s with an empty body.
+        var token = await page.EvaluateAsync<string>("localStorage.getItem('intellimed_token')");
+        var response = await page.APIRequest.GetAsync(
+            $"{_fixture.BaseUrl}/api/clients/search?page=1&pageSize=1",
+            new APIRequestContextOptions { Headers = new Dictionary<string, string> { ["Authorization"] = $"Bearer {token}" } });
         var json = await response.JsonAsync();
         return json!.Value.GetProperty("totalCount").GetInt32();
     }
@@ -31,7 +37,7 @@ public class ClientListTests
     [Fact]
     public async Task ClientSearch_ShowsRefreshAndNewPersonButtons()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/search");
         await page.WaitForSelectorAsync("text=Client Search");
 
@@ -42,7 +48,7 @@ public class ClientListTests
     [Fact]
     public async Task NewPersonButton_NavigatesToAddClientPage()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/search");
         await page.WaitForSelectorAsync("text=Client Search");
 
@@ -54,7 +60,7 @@ public class ClientListTests
     [Fact]
     public async Task ClientSearch_AfterCreatingAClient_CountIncreasesByOne()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         var countBefore = await GetTotalClientCountAsync(page);
 
         await page.GotoAsync("/clients/add");
@@ -73,7 +79,7 @@ public class ClientListTests
     [Fact]
     public async Task ClientSearch_AfterCreatingAClient_ShowsClientRowInGrid()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
 
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");

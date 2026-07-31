@@ -1,0 +1,123 @@
+@page "/admin/search-actions"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject ISearchActionService SearchActionService
+@inject NavigationManager Navigation
+
+<PageTitle>Command Palette Actions - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Command Palette Actions</h4>
+<p class="text-muted">Entries searchable from the floating command palette (bottom-right button, or Ctrl+K) available on every page.</p>
+
+<div class="card mb-4">
+    <div class="card-body d-flex align-items-center justify-content-between">
+        <span class="d-flex align-items-center">
+            <i class="bi bi-command me-2"></i>
+            Total Actions: @(_actions?.Count ?? 0)
+        </span>
+        <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/admin/search-actions/edit"))">
+            <i class="bi bi-plus-lg me-1"></i> New Action
+        </button>
+    </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite" aria-atomic="true">
+    @if (_toastMessage != null)
+    {
+        <div class="toast show align-items-center @(_toastIsError ? "text-bg-danger" : "text-bg-success") border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@_toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => _toastMessage = null" aria-label="Close"></button>
+            </div>
+        </div>
+    }
+</div>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading actions...
+        </div>
+    </div>
+}
+else if (_actions != null)
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>Target</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var action in _actions.OrderBy(a => a.Category).ThenBy(a => a.SortOrder))
+                    {
+                        <tr>
+                            <td>
+                                <a href="javascript:void(0)" class="link-primary"
+                                   @onclick="@(() => Navigation.NavigateTo($"/admin/search-actions/edit/{action.Id}"))">@action.Title</a>
+                            </td>
+                            <td><span class="badge bg-secondary">@action.Category</span></td>
+                            <td>@action.ActionType</td>
+                            <td class="text-truncate" style="max-width: 220px;"><code>@action.Target</code></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger" title="Archive"
+                                        @onclick="() => ArchiveAction(action)">
+                                    <i class="bi bi-archive"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_actions.Count == 0)
+        {
+            <div class="card-body text-center text-muted py-4">
+                No actions yet. Click "New Action" to add one.
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-danger d-flex align-items-center">
+        <i class="bi bi-exclamation-triangle me-1"></i> Failed to load actions.
+        <button class="btn btn-outline-danger btn-sm ms-auto" @onclick="LoadActions">Retry</button>
+    </div>
+}
+
+@code {
+    private List<SearchActionDto>? _actions;
+    private bool _isLoading = true;
+    private string? _toastMessage;
+    private bool _toastIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadActions();
+    }
+
+    private async Task LoadActions()
+    {
+        _isLoading = true;
+        _actions = await SearchActionService.GetAllActiveAsync();
+        _isLoading = false;
+    }
+
+    private async Task ArchiveAction(SearchActionDto action)
+    {
+        var success = await SearchActionService.ArchiveAsync(action.Id);
+        _toastMessage = success ? $"'{action.Title}' archived." : "Failed to archive action.";
+        _toastIsError = !success;
+        if (success) await LoadActions();
+    }
+}

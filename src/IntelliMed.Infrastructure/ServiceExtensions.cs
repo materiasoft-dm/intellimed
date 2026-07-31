@@ -43,6 +43,9 @@ public static class ServiceExtensions
         services.AddScoped<IAppointmentTypeSettingRepository, AppointmentTypeSettingRepository>();
         services.AddScoped<IProviderScheduleRepository, ProviderScheduleRepository>();
         services.AddScoped<IAppointmentReminderService, NoOpAppointmentReminderService>();
+        services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<ISearchActionRepository, SearchActionRepository>();
         // A default-less HttpClient (no User-Agent/Accept) gets served an empty body by some CDNs
         // that front provider-portal fee schedule downloads (e.g. AHSA's Zendesk-hosted attachments)
         // — set browser-like headers so those direct-download links actually return their content.

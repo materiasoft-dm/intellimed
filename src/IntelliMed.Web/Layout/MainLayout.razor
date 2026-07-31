@@ -163,6 +163,18 @@
                             <i class="bi bi-tags me-2"></i> <span class="mdi-nav-label">Appointment Types</span>
                         </a>
                     }
+                    @if (_accessiblePages.Contains("admin/email-templates"))
+                    {
+                        <a href="/admin/email-templates" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <i class="bi bi-envelope-paper me-2"></i> <span class="mdi-nav-label">Email Templates</span>
+                        </a>
+                    }
+                    @if (_accessiblePages.Contains("admin/search-actions"))
+                    {
+                        <a href="/admin/search-actions" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <i class="bi bi-command me-2"></i> <span class="mdi-nav-label">Command Palette Actions</span>
+                        </a>
+                    }
                     @if (_accessiblePages.Contains("admin/audit"))
                     {
                         <a href="/admin/audit" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
@@ -200,6 +212,8 @@
 </div>
 
 <RadzenComponents />
+
+<CommandPalette AccessiblePages="_accessiblePages" />
 
 @* =========================================================================
    MANDATORY CLINIC SELECTION MODAL — shown after login when the user belongs

@@ -207,6 +207,8 @@ public class RolePermissionsController : ControllerBase
             new() { PageKey = "admin/audit", PageName = "Audit Log", Category = "Admin", Description = "View system audit trail" },
             new() { PageKey = "admin/settings", PageName = "System Settings", Category = "Admin", Description = "Configure system parameters" },
             new() { PageKey = "admin/appointment-types", PageName = "Appointment Types", Category = "Admin", Description = "Configure the appointment-type/duration-preset catalogue" },
+            new() { PageKey = "admin/email-templates", PageName = "Email Templates", Category = "Admin", Description = "Author and assign email templates to system events (invite, forgot password)" },
+            new() { PageKey = "admin/search-actions", PageName = "Command Palette Actions", Category = "Admin", Description = "Manage the entries searchable from the global command palette" },
 
             // Practice
             new() { PageKey = "clinic-settings", PageName = "Clinic Settings", Category = "Practice", Description = "Configure practice-wide identity and contact information" },

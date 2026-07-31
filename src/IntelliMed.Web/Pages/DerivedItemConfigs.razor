@@ -51,7 +51,7 @@
                 @foreach (var config in _configs)
                 {
                     <tr>
-                        <td>@config.ItemNumber</td>
+                        <td><a href="javascript:void(0)" class="link-primary" @onclick="() => OpenEditDialog(config)">@config.ItemNumber</a></td>
                         <td>@config.Description</td>
                         <td>@CalculationTypeLabel(config.CalculationType)</td>
                         <td>@AssociatedItemDisplay(config)</td>
@@ -67,7 +67,6 @@
                             }
                         </td>
                         <td class="text-end">
-                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditDialog(config)"><i class="bi bi-pencil"></i></button>
                             <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(config)"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>

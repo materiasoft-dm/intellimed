@@ -16,7 +16,7 @@ public class ClientCreateTests
     [Fact]
     public async Task AddClientPage_Loads_WithAllExpectedPanels()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -36,7 +36,7 @@ public class ClientCreateTests
     [Fact]
     public async Task CreateClient_WithMinimalFields_NavigatesToEditPage()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -56,7 +56,7 @@ public class ClientCreateTests
     [InlineData("Other")]
     public async Task CreateClient_WithEachGender_PersistsCorrectly(string genderValue)
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -81,7 +81,7 @@ public class ClientCreateTests
     [InlineData("Unknown")]
     public async Task CreateClient_WithEachMaritalStatus_PersistsCorrectly(string maritalValue)
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -103,7 +103,7 @@ public class ClientCreateTests
     [InlineData("NeitherAboriginalNorTorresStraitIslander")]
     public async Task CreateClient_WithEachAtsiStatus_PersistsCorrectly(string atsiValue)
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -128,7 +128,7 @@ public class ClientCreateTests
     [InlineData("Other")]
     public async Task CreateClient_WithEachAccountType_PersistsCorrectly(string accountTypeValue)
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -149,7 +149,7 @@ public class ClientCreateTests
     [InlineData("Estimated")]
     public async Task CreateClient_WithEachDobAccuracy_PersistsCorrectly(string accuracyValue)
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -166,7 +166,7 @@ public class ClientCreateTests
     [Fact]
     public async Task CreateClient_WithFullDetailsAcrossAllPanels_PersistsEverything()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -221,7 +221,7 @@ public class ClientCreateTests
     [Fact]
     public async Task InterpreterCheckbox_WhenChecked_EnablesLanguageField()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -237,7 +237,7 @@ public class ClientCreateTests
     [Fact]
     public async Task SameAsNextOfKinCheckbox_WhenChecked_DisablesEmergencyFields()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -252,7 +252,7 @@ public class ClientCreateTests
     [Fact]
     public async Task AddressTabs_SwitchBetweenResidentialPostalAndOther()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -272,7 +272,7 @@ public class ClientCreateTests
     [Fact]
     public async Task BottomTabs_BeforeSaving_ShowSaveClientFirstMessage()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -288,7 +288,7 @@ public class ClientCreateTests
     [Fact]
     public async Task CloseButton_NavigatesBackToClientList()
     {
-        var page = await _fixture.NewPageAsync();
+        var page = await _fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 

@@ -290,6 +290,8 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "SuperAdmin", PageKey = "admin/audit", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/settings", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/appointment-types", Category = "Admin" },
+        new() { RoleName = "SuperAdmin", PageKey = "admin/email-templates", Category = "Admin" },
+        new() { RoleName = "SuperAdmin", PageKey = "admin/search-actions", Category = "Admin" },
         // Reports
         new() { RoleName = "SuperAdmin", PageKey = "reports", Category = "Reports" },
         new() { RoleName = "SuperAdmin", PageKey = "reports/financial", Category = "Reports" },
@@ -322,6 +324,8 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "Admin", PageKey = "admin/audit", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/settings", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/appointment-types", Category = "Admin" },
+        new() { RoleName = "Admin", PageKey = "admin/email-templates", Category = "Admin" },
+        new() { RoleName = "Admin", PageKey = "admin/search-actions", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "reports", Category = "Reports" },
         new() { RoleName = "Admin", PageKey = "reports/financial", Category = "Reports" },
         new() { RoleName = "Admin", PageKey = "reports/clinical", Category = "Reports" },

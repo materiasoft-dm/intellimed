@@ -1,0 +1,327 @@
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Core.Utilities
+@using IntelliMed.Web.Services
+@implements IAsyncDisposable
+@inject ISearchActionService SearchActionService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@* Floating trigger button — bottom-right on every page under MainLayout *@
+<button type="button" class="cp-trigger-btn" title="Search actions (Ctrl+K)" @onclick="Open">
+    <i class="bi bi-search"></i>
+</button>
+
+@if (_isOpen)
+{
+    <div class="cp-backdrop" @onclick="Close"></div>
+    <div class="cp-panel" role="dialog" aria-modal="true">
+        <div class="cp-search-row">
+            <i class="bi bi-search cp-search-icon"></i>
+            <input id="@_inputId" class="cp-search-input" placeholder="Search actions… (try 'patient' or 'create')"
+                   value="@_query" @oninput="OnQueryChanged" @onkeydown="OnKeyDown" autocomplete="off" />
+            <button type="button" class="btn-close" @onclick="Close" aria-label="Close"></button>
+        </div>
+
+        @if (_loading)
+        {
+            <div class="cp-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</div>
+        }
+        else if (_loadFailed)
+        {
+            <div class="cp-empty text-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>Couldn't load actions. <a href="javascript:void(0)" @onclick="RetryLoad">Retry</a>
+            </div>
+        }
+        else if (_infoMessage != null)
+        {
+            <div class="cp-info-banner">
+                <i class="bi bi-info-circle me-2"></i>@_infoMessage
+            </div>
+        }
+        else if (_filtered.Count == 0)
+        {
+            <div class="cp-empty">No matching actions.</div>
+        }
+        else
+        {
+            <ul class="cp-results">
+                @for (var i = 0; i < _filtered.Count; i++)
+                {
+                    var index = i;
+                    var action = _filtered[index];
+                    <li class="cp-result @(index == _highlightedIndex ? "cp-result-active" : "")"
+                        @onmouseenter="() => _highlightedIndex = index"
+                        @onclick="() => Activate(action)">
+                        <div class="cp-result-title">@action.Title</div>
+                        @if (!string.IsNullOrWhiteSpace(action.Description))
+                        {
+                            <div class="cp-result-desc">@action.Description</div>
+                        }
+                        <span class="cp-result-category">@action.Category</span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+<style>
+    .cp-trigger-btn {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        border: none;
+        background: var(--imed-primary, #0c447c);
+        color: #fff;
+        font-size: 1.25rem;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+        z-index: 1045;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.15s ease;
+    }
+
+    .cp-trigger-btn:hover {
+        transform: scale(1.06);
+    }
+
+    .cp-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1090;
+    }
+
+    .cp-panel {
+        position: fixed;
+        top: 12vh;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 560px;
+        max-height: 60vh;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        z-index: 1091;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .cp-search-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        flex-shrink: 0;
+    }
+
+    .cp-search-icon {
+        color: #6b7280;
+    }
+
+    .cp-search-input {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 1rem;
+    }
+
+    .cp-results {
+        list-style: none;
+        margin: 0;
+        padding: 8px;
+        overflow-y: auto;
+    }
+
+    .cp-result {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 10px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+    .cp-result-active {
+        background: #eef2ff;
+    }
+
+    .cp-result-title {
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .cp-result-desc {
+        color: #6b7280;
+        font-size: 0.85rem;
+    }
+
+    .cp-result-category {
+        margin-left: auto;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #9ca3af;
+    }
+
+    .cp-empty, .cp-info-banner {
+        padding: 24px 16px;
+        text-align: center;
+        color: #6b7280;
+    }
+</style>
+
+@code {
+    [Parameter] public HashSet<string> AccessiblePages { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly string _inputId = $"cp-search-{Guid.NewGuid():N}";
+    private bool _isOpen;
+    private bool _loading;
+    private string _query = string.Empty;
+    private int _highlightedIndex;
+    private string? _infoMessage;
+    private List<SearchActionDto> _allActions = new();
+    private List<SearchActionDto> _filtered = new();
+    private bool _loadFailed;
+    private DotNetObjectReference<CommandPalette>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("IntelliMedCommandPalette.register", _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task ToggleFromJs()
+    {
+        if (_isOpen) await Close();
+        else await Open();
+    }
+
+    private async Task Open()
+    {
+        _isOpen = true;
+        _infoMessage = null;
+        _highlightedIndex = 0;
+        StateHasChanged();
+
+        if (_allActions.Count == 0 && !_loadFailed)
+        {
+            await LoadActionsAsync();
+        }
+
+        ApplyFilter();
+        StateHasChanged();
+        await Task.Yield();
+        await JS.InvokeVoidAsync("IntelliMedCommandPalette.focusSearchInput", _inputId);
+    }
+
+    private async Task LoadActionsAsync()
+    {
+        _loading = true;
+        _loadFailed = false;
+        StateHasChanged();
+
+        var result = await SearchActionService.GetAllActiveAsync();
+        if (result == null)
+        {
+            // Distinguishes "the fetch itself failed" (e.g. missing table on a database that
+            // hasn't had this feature's migration applied yet) from "fetch succeeded, zero rows" —
+            // both used to render as an indistinguishable "No matching actions."
+            _loadFailed = true;
+            _allActions = new List<SearchActionDto>();
+        }
+        else
+        {
+            _allActions = result;
+        }
+
+        _loading = false;
+    }
+
+    private async Task RetryLoad()
+    {
+        await LoadActionsAsync();
+        ApplyFilter();
+    }
+
+    private Task Close()
+    {
+        _isOpen = false;
+        _query = string.Empty;
+        _infoMessage = null;
+        return Task.CompletedTask;
+    }
+
+    private void OnQueryChanged(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? string.Empty;
+        _infoMessage = null;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        var visible = _allActions.Where(a => a.PageKey == null || AccessiblePages.Contains(a.PageKey));
+        _filtered = CommandPaletteMatcher.Filter(visible, _query);
+        _highlightedIndex = 0;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                if (_filtered.Count > 0) _highlightedIndex = (_highlightedIndex + 1) % _filtered.Count;
+                break;
+            case "ArrowUp":
+                if (_filtered.Count > 0) _highlightedIndex = (_highlightedIndex - 1 + _filtered.Count) % _filtered.Count;
+                break;
+            case "Enter":
+                if (_highlightedIndex >= 0 && _highlightedIndex < _filtered.Count)
+                    await Activate(_filtered[_highlightedIndex]);
+                break;
+            case "Escape":
+                await Close();
+                break;
+        }
+    }
+
+    private async Task Activate(SearchActionDto action)
+    {
+        if (action.ActionType == SearchActionType.Navigate)
+        {
+            await Close();
+            Navigation.NavigateTo(action.Target);
+        }
+        else
+        {
+            // Modal/Info actions with no registered handler yet — show the description in place.
+            _infoMessage = string.IsNullOrWhiteSpace(action.Description)
+                ? $"\"{action.Title}\" isn't wired up to an action yet."
+                : action.Description;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dotNetRef != null)
+        {
+            try { await JS.InvokeVoidAsync("IntelliMedCommandPalette.unregister"); }
+            catch (JSDisconnectedException) { /* WASM circuit already gone */ }
+            _dotNetRef.Dispose();
+        }
+    }
+}

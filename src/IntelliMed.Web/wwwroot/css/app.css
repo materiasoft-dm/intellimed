@@ -392,7 +392,7 @@ code {
 .mdi-nav-link {
     color: var(--imed-sidebar-text) !important;
     padding: 10px 24px !important;
-    display: flex;
+    display: flex !important;
     align-items: center;
     border-radius: 0;
     transition: background-color 0.15s ease;

@@ -41,6 +41,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<DerivedItemRateCalculated> DerivedItemRateCalculateds => Set<DerivedItemRateCalculated>();
     public DbSet<AppointmentTypeSetting> AppointmentTypeSettings => Set<AppointmentTypeSetting>();
     public DbSet<ProviderSchedule> ProviderSchedules => Set<ProviderSchedule>();
+    public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
+    public DbSet<SearchAction> SearchActions => Set<SearchAction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -202,10 +204,38 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Suburb).HasMaxLength(100);
             entity.Property(e => e.Postcode).HasMaxLength(10);
             entity.Property(e => e.State).HasMaxLength(10);
+            entity.Property(e => e.SmtpHost).HasMaxLength(255);
+            entity.Property(e => e.SmtpUsername).HasMaxLength(255);
+            entity.Property(e => e.SmtpPassword).HasMaxLength(255);
+            entity.Property(e => e.SmtpFromEmail).HasMaxLength(255);
+            entity.Property(e => e.SmtpFromName).HasMaxLength(200);
 
             entity.HasData(
                 new ClinicSettings { Id = 1, PracticeName = "IntelliMed Clinic" }
             );
+        });
+
+        // EmailTemplate configuration
+        modelBuilder.Entity<EmailTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(150);
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.EventKey).HasMaxLength(50);
+            entity.HasIndex(e => new { e.ClinicId, e.EventKey });
+        });
+
+        // SearchAction configuration (global command palette catalogue)
+        modelBuilder.Entity<SearchAction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(150);
+            entity.Property(e => e.Keywords).HasMaxLength(500);
+            entity.Property(e => e.Description).HasMaxLength(255);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Target).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.PageKey).HasMaxLength(200);
+            entity.HasIndex(e => e.IsActive);
         });
 
         // Clinic configuration
