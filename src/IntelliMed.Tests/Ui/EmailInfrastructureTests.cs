@@ -126,8 +126,7 @@ public class EmailInfrastructureTests
         await page.GetByRole(AriaRole.Heading, new() { Name = "Email Templates" }).WaitForAsync();
 
         await page.Locator("tr", new PageLocatorOptions { HasTextString = "Default Forgot Password" })
-            .GetByRole(AriaRole.Button)
-            .First
+            .GetByRole(AriaRole.Link, new() { Name = "Default Forgot Password" })
             .ClickAsync();
 
         await page.WaitForURLAsync(url => url.Contains("/admin/email-templates/edit/"));

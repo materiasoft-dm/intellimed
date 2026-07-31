@@ -43,6 +43,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ProviderSchedule> ProviderSchedules => Set<ProviderSchedule>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<SearchAction> SearchActions => Set<SearchAction>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<DatabaseBackup> DatabaseBackups => Set<DatabaseBackup>();
+    public DbSet<DatabaseBackupSettings> DatabaseBackupSettings => Set<DatabaseBackupSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -606,6 +609,38 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.PageKey).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Category).HasMaxLength(100);
             entity.HasIndex(e => new { e.RoleName, e.PageKey }).IsUnique();
+        });
+
+        // Notification configuration
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RecipientUserId).IsRequired();
+            entity.Property(e => e.Message).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.LinkUrl).HasMaxLength(300);
+            entity.HasOne(e => e.RecipientUser)
+                .WithMany()
+                .HasForeignKey(e => e.RecipientUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.RecipientUserId, e.IsRead, e.CreatedAt });
+        });
+
+        // DatabaseBackup configuration
+        modelBuilder.Entity<DatabaseBackup>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FileName).IsRequired().HasMaxLength(255);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // DatabaseBackupSettings configuration (single-row settings table)
+        modelBuilder.Entity<DatabaseBackupSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasData(
+                new DatabaseBackupSettings { Id = 1, IntervalValue = 1, IntervalUnit = BackupIntervalUnit.Days }
+            );
         });
     }
 }

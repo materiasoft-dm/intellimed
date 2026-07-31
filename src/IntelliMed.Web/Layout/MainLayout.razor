@@ -45,6 +45,8 @@
             </div>
         }
 
+        <NotificationBell />
+
         <div class="dropdown">
             <button class="btn btn-primary border-0 dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="bi bi-person-circle"></i>
@@ -185,6 +187,12 @@
                     {
                         <a href="/admin/settings" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
                             <i class="bi bi-gear me-2"></i> <span class="mdi-nav-label">System Settings</span>
+                        </a>
+                    }
+                    @if (_accessiblePages.Contains("admin/database-backups"))
+                    {
+                        <a href="/admin/database-backups" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <i class="bi bi-hdd-stack me-2"></i> <span class="mdi-nav-label">Database Backups</span>
                         </a>
                     }
                 }

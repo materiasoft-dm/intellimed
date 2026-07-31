@@ -53,6 +53,8 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentTypeSettingService, AppointmentTypeSettingService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ISearchActionService, SearchActionService>();
+builder.Services.AddScoped<INotificationService, IntelliMed.Web.Services.NotificationService>();
+builder.Services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
 
 // Radzen DataGrid (column show/hide/reorder + server-side paging) for list pages
 builder.Services.AddRadzenComponents();

@@ -42,10 +42,14 @@ public static class ServiceExtensions
         services.AddScoped<IPrimaryClinicMigratorService, PrimaryClinicMigratorService>();
         services.AddScoped<IAppointmentTypeSettingRepository, AppointmentTypeSettingRepository>();
         services.AddScoped<IProviderScheduleRepository, ProviderScheduleRepository>();
-        services.AddScoped<IAppointmentReminderService, NoOpAppointmentReminderService>();
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddScoped<ISearchActionRepository, SearchActionRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IAppointmentReminderService, AppointmentReminderService>();
+        services.AddScoped<IDatabaseBackupRepository, DatabaseBackupRepository>();
+        services.AddScoped<IDatabaseBackupSettingsRepository, DatabaseBackupSettingsRepository>();
+        services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
         // A default-less HttpClient (no User-Agent/Accept) gets served an empty body by some CDNs
         // that front provider-portal fee schedule downloads (e.g. AHSA's Zendesk-hosted attachments)
         // — set browser-like headers so those direct-download links actually return their content.
@@ -56,6 +60,7 @@ public static class ServiceExtensions
             client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
         });
         services.AddHostedService<FeeScheduleAutoImportBackgroundService>();
+        services.AddHostedService<DatabaseBackupBackgroundService>();
 
         return services;
     }

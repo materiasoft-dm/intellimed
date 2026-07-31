@@ -97,9 +97,9 @@ public class ClientUpdateTests
 
         await Assertions.Expect(page.GetByText("Dr Alice Referrer")).ToBeVisibleAsync();
 
-        // Edit it
+        // Edit it — clicking the provider name link opens it, no separate Edit button anymore
         await page.GetByRole(AriaRole.Row, new() { NameString = "Dr Alice Referrer" })
-            .GetByRole(AriaRole.Button, new() { Name = "Edit" }).ClickAsync();
+            .GetByRole(AriaRole.Link, new() { Name = "Dr Alice Referrer" }).ClickAsync();
         await page.Field("Referring Provider").FillAsync("Dr Alice Updated");
         // Exact = true: the main form's submit button is "💾 Save", which would otherwise also
         // match a plain substring search for "Save".

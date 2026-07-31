@@ -1,0 +1,159 @@
+@page "/admin/database-backups"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IDatabaseBackupService BackupService
+@inject IJSRuntime JS
+
+<PageTitle>Database Backups - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Database Backups</h4>
+
+<div class="card mb-3">
+    <div class="card-header"><strong>Schedule</strong></div>
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small mb-0">Back up every</label>
+                <input type="number" min="1" class="form-control form-control-sm" style="width:100px" @bind="_settingsForm.IntervalValue" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">&nbsp;</label>
+                <select class="form-select form-select-sm" @bind="_settingsForm.IntervalUnit">
+                    <option value="@BackupIntervalUnit.Minutes">Minutes</option>
+                    <option value="@BackupIntervalUnit.Hours">Hours</option>
+                    <option value="@BackupIntervalUnit.Days">Days</option>
+                    <option value="@BackupIntervalUnit.Weeks">Weeks</option>
+                    <option value="@BackupIntervalUnit.Months">Months</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-primary" @onclick="SaveSettingsAsync">Save</button>
+            </div>
+            @if (_settings?.LastRunAt != null)
+            {
+                <div class="col-auto ms-auto text-muted small">
+                    Last scheduled backup: @_settings.LastRunAt.Value.ToLocalTime().ToString("g")
+                </div>
+            }
+        </div>
+        @if (_settingsSaved)
+        {
+            <div class="text-success small mt-2">Saved.</div>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <strong>Backups</strong>
+        <button class="btn btn-sm btn-primary" @onclick="BackupNowAsync" disabled="@_backingUp">
+            @if (_backingUp)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            <i class="bi bi-cloud-arrow-down-fill me-1"></i> Backup Now
+        </button>
+    </div>
+    <div class="card-body py-2">
+        @if (_isLoading)
+        {
+            <div class="text-muted small">Loading...</div>
+        }
+        else if (_backups.Count == 0)
+        {
+            <div class="text-muted small">No backups yet.</div>
+        }
+        else
+        {
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Size</th>
+                        <th>Trigger</th>
+                        <th>Created</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in _backups)
+                    {
+                        <tr>
+                            <td>@b.FileName</td>
+                            <td>@FormatSize(b.FileSizeBytes)</td>
+                            <td><span class="badge @(b.Trigger == DatabaseBackupTrigger.Manual ? "bg-secondary" : "bg-info text-dark")">@b.TriggerName</span></td>
+                            <td>@b.CreatedAt.ToLocalTime().ToString("g")</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => DownloadAsync(b)">
+                                    <i class="bi bi-download"></i> Download
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private List<DatabaseBackupDto> _backups = new();
+    private DatabaseBackupSettingsDto? _settings;
+    private UpdateDatabaseBackupSettingsDto _settingsForm = new() { IntervalValue = 1, IntervalUnit = BackupIntervalUnit.Days };
+    private bool _isLoading = true;
+    private bool _backingUp;
+    private bool _settingsSaved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettingsAsync();
+        await LoadBackupsAsync();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _settings = await BackupService.GetSettingsAsync();
+        if (_settings != null)
+        {
+            _settingsForm = new UpdateDatabaseBackupSettingsDto { IntervalValue = _settings.IntervalValue, IntervalUnit = _settings.IntervalUnit };
+        }
+    }
+
+    private async Task LoadBackupsAsync()
+    {
+        _isLoading = true;
+        _backups = (await BackupService.GetAllAsync()).ToList();
+        _isLoading = false;
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        _settingsSaved = await BackupService.UpdateSettingsAsync(_settingsForm);
+        await LoadSettingsAsync();
+    }
+
+    private async Task BackupNowAsync()
+    {
+        _backingUp = true;
+        await BackupService.BackupNowAsync();
+        _backingUp = false;
+        await LoadBackupsAsync();
+    }
+
+    private async Task DownloadAsync(DatabaseBackupDto backup)
+    {
+        var bytes = await BackupService.DownloadAsync(backup.Id);
+        if (bytes == null) return;
+        var base64 = Convert.ToBase64String(bytes);
+        await JS.InvokeVoidAsync("IntelliMedDownload.fromBase64", backup.FileName, base64);
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes >= 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):0.##} MB";
+        if (bytes >= 1024) return $"{bytes / 1024.0:0.##} KB";
+        return $"{bytes} B";
+    }
+}

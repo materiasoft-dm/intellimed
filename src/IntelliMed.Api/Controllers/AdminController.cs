@@ -23,6 +23,7 @@ public class AdminController : ControllerBase
     private readonly IClinicRepository _clinicRepository;
     private readonly IEmailTemplateRepository _emailTemplateRepository;
     private readonly IEmailSender _emailSender;
+    private readonly INotificationRepository _notificationRepository;
     private readonly ILogger<AdminController> _logger;
 
     public AdminController(
@@ -31,6 +32,7 @@ public class AdminController : ControllerBase
         IClinicRepository clinicRepository,
         IEmailTemplateRepository emailTemplateRepository,
         IEmailSender emailSender,
+        INotificationRepository notificationRepository,
         ILogger<AdminController> logger)
     {
         _userManager = userManager;
@@ -38,6 +40,7 @@ public class AdminController : ControllerBase
         _clinicRepository = clinicRepository;
         _emailTemplateRepository = emailTemplateRepository;
         _emailSender = emailSender;
+        _notificationRepository = notificationRepository;
         _logger = logger;
     }
 
@@ -518,6 +521,17 @@ public class AdminController : ControllerBase
 
         _logger.LogInformation("Roles updated for user {Email}: {Roles}",
             user.Email, string.Join(", ", finalRoles));
+
+        if (rolesToRemove.Count > 0 || rolesToAdd.Count > 0)
+        {
+            await _notificationRepository.CreateAsync(new CreateNotificationDto
+            {
+                RecipientUserId = user.Id,
+                Type = IdentityCore.NotificationType.RoleAssignmentChanged,
+                Message = $"Your roles were updated: {string.Join(", ", finalRoles)}",
+                LinkUrl = "/profile"
+            });
+        }
 
         return Ok(new UserManagementResponse
         {
