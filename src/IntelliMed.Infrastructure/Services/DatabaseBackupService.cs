@@ -43,7 +43,12 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         try
         {
-            using var destinationConnection = new SqliteConnection($"Data Source={filePath}");
+            // Pooling=False: Microsoft.Data.Sqlite pools connections by connection string, so a
+            // pooled connection's native file handle stays open after Dispose() — which then makes
+            // GetBackupFileAsync's File.ReadAllBytesAsync fail with a sharing violation on Windows,
+            // since the OS still sees the backup file as in use. This connection is only ever opened
+            // once, so pooling buys nothing and only costs us a held handle.
+            using var destinationConnection = new SqliteConnection($"Data Source={filePath};Pooling=False");
             destinationConnection.Open();
             sourceConnection.BackupDatabase(destinationConnection);
         }

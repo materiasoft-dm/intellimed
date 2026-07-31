@@ -24,6 +24,7 @@ public class PlaywrightServerFixture : IAsyncLifetime
 {
     private Process? _serverProcess;
     private string? _dbPath;
+    private readonly System.Text.StringBuilder _serverErrorLog = new();
 
     public IPlaywright PlaywrightInstance { get; private set; } = null!;
     public IBrowser Browser { get; private set; } = null!;
@@ -52,6 +53,19 @@ public class PlaywrightServerFixture : IAsyncLifetime
 
         _serverProcess = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Failed to start IntelliMed.Api test process.");
+
+        // RedirectStandardOutput/Error means the OS pipe buffer is finite — if nothing drains it,
+        // Kestrel's request logging eventually fills it and blocks on the next Console.Write,
+        // freezing the whole server (and every subsequent test) with no error, just a hang. Long
+        // suite runs generate enough log lines to hit this within minutes, so both streams must be
+        // read continuously for the lifetime of the process, not just on the early-exit failure path.
+        _serverProcess.OutputDataReceived += (_, _) => { };
+        _serverProcess.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null) _serverErrorLog.AppendLine(e.Data);
+        };
+        _serverProcess.BeginOutputReadLine();
+        _serverProcess.BeginErrorReadLine();
 
         await WaitUntilReadyAsync(TimeSpan.FromSeconds(60));
 
@@ -99,9 +113,8 @@ public class PlaywrightServerFixture : IAsyncLifetime
         {
             if (_serverProcess is { HasExited: true })
             {
-                var stderr = await _serverProcess.StandardError.ReadToEndAsync();
                 throw new InvalidOperationException(
-                    $"Test server process exited early (code {_serverProcess.ExitCode}). Stderr: {stderr}");
+                    $"Test server process exited early (code {_serverProcess.ExitCode}). Stderr: {_serverErrorLog}");
             }
 
             try
