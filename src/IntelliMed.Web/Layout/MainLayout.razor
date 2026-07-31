@@ -177,6 +177,12 @@
                             <i class="bi bi-gear me-2"></i> <span class="mdi-nav-label">System Settings</span>
                         </a>
                     }
+                    @if (_accessiblePages.Contains("admin/database-backups"))
+                    {
+                        <a href="/admin/database-backups" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <i class="bi bi-hdd-stack me-2"></i> <span class="mdi-nav-label">Database Backups</span>
+                        </a>
+                    }
                 }
 
                 <hr class="my-2" />

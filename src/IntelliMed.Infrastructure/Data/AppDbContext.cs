@@ -42,6 +42,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AppointmentTypeSetting> AppointmentTypeSettings => Set<AppointmentTypeSetting>();
     public DbSet<ProviderSchedule> ProviderSchedules => Set<ProviderSchedule>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<DatabaseBackup> DatabaseBackups => Set<DatabaseBackup>();
+    public DbSet<DatabaseBackupSettings> DatabaseBackupSettings => Set<DatabaseBackupSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -591,6 +593,24 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.RecipientUserId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => new { e.RecipientUserId, e.IsRead, e.CreatedAt });
+        });
+
+        // DatabaseBackup configuration
+        modelBuilder.Entity<DatabaseBackup>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FileName).IsRequired().HasMaxLength(255);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // DatabaseBackupSettings configuration (single-row settings table)
+        modelBuilder.Entity<DatabaseBackupSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasData(
+                new DatabaseBackupSettings { Id = 1, IntervalValue = 1, IntervalUnit = BackupIntervalUnit.Days }
+            );
         });
     }
 }

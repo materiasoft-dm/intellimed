@@ -52,6 +52,7 @@ builder.Services.AddScoped<IDerivedItemConfigService, DerivedItemConfigService>(
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentTypeSettingService, AppointmentTypeSettingService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
 
 // Radzen DataGrid (column show/hide/reorder + server-side paging) for list pages
 builder.Services.AddRadzenComponents();

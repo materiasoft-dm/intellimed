@@ -207,6 +207,7 @@ public class RolePermissionsController : ControllerBase
             new() { PageKey = "admin/audit", PageName = "Audit Log", Category = "Admin", Description = "View system audit trail" },
             new() { PageKey = "admin/settings", PageName = "System Settings", Category = "Admin", Description = "Configure system parameters" },
             new() { PageKey = "admin/appointment-types", PageName = "Appointment Types", Category = "Admin", Description = "Configure the appointment-type/duration-preset catalogue" },
+            new() { PageKey = "admin/database-backups", PageName = "Database Backups", Category = "Admin", Description = "Configure and manage scheduled SQLite database backups" },
 
             // Practice
             new() { PageKey = "clinic-settings", PageName = "Clinic Settings", Category = "Practice", Description = "Configure practice-wide identity and contact information" },

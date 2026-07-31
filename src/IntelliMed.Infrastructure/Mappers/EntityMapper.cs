@@ -880,4 +880,22 @@ public static class EntityMapper
         LinkUrl = dto.LinkUrl,
         CreatedAt = DateTime.UtcNow
     };
+
+    // DatabaseBackup mappings
+    public static DatabaseBackupDto ToDto(DatabaseBackup entity) => new()
+    {
+        Id = entity.Id,
+        FileName = entity.FileName,
+        FileSizeBytes = entity.FileSizeBytes,
+        Trigger = entity.Trigger,
+        CreatedAt = entity.CreatedAt
+    };
+
+    public static DatabaseBackup ToEntity(CreateDatabaseBackupDto dto) => new()
+    {
+        FileName = dto.FileName,
+        FileSizeBytes = dto.FileSizeBytes,
+        Trigger = dto.Trigger,
+        CreatedAt = DateTime.UtcNow
+    };
 }
