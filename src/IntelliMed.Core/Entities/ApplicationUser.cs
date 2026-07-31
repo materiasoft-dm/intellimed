@@ -13,6 +13,9 @@ public class ApplicationUser : IdentityUser
     public DateTime? LastLoginAt { get; set; }
     public bool IsActive { get; set; } = true;
 
+    /// <summary>When the most recent invite email was sent. Null means never invited — used to distinguish "Invite Sent" from "Active" in User Management until the user's first login.</summary>
+    public DateTime? InviteSentAt { get; set; }
+
     // Profile — personal/professional info the user can edit about themselves.
     // Provider/AHPRA/HPI-I are only meaningful for doctors, but kept optional for any user.
     public string? Title { get; set; }

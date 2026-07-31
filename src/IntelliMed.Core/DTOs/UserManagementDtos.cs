@@ -16,6 +16,7 @@ public class UserDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public DateTime? InviteSentAt { get; set; }
     public IList<int> ClinicIds { get; set; } = new List<int>();
     public IList<string> ClinicNames { get; set; } = new List<string>();
 }
@@ -29,9 +30,13 @@ public class CreateUserRequest
     [EmailAddress]
     public string Email { get; set; } = string.Empty;
 
-    [Required]
+    /// <summary>
+    /// The client always auto-generates and sends one (the UI's password field is read-only), but the
+    /// server treats it as optional and generates its own via <see cref="IntelliMed.Core.Utilities.PasswordGenerator"/>
+    /// when blank, since the real credential-setting action is the token-based "Send Invite" flow.
+    /// </summary>
     [MinLength(8, ErrorMessage = "Password must be at least 8 characters.")]
-    public string Password { get; set; } = string.Empty;
+    public string? Password { get; set; }
 
     [Required]
     public string FirstName { get; set; } = string.Empty;

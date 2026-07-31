@@ -1,0 +1,213 @@
+@page "/admin/email-templates/edit"
+@page "/admin/email-templates/edit/{Id:int}"
+@layout MainLayout
+@using System.ComponentModel.DataAnnotations
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IEmailTemplateService EmailTemplateService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>@(Id.HasValue ? "Edit" : "New") Email Template - IntelliMed</PageTitle>
+
+<h4 class="mb-4">@(Id.HasValue ? "Edit Email Template" : "New Email Template")</h4>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading template...
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <EditForm Model="@_model" OnValidSubmit="SaveAsync" FormName="emailTemplateForm">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-3" />
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Template Name <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="_model.Name" class="form-control" />
+                                <ValidationMessage For="() => _model.Name" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">System Event</label>
+                                <select class="form-select" @bind="_model.EventKey">
+                                    <option value="">-- Unassigned --</option>
+                                    @foreach (var key in EmailEventKeys.All)
+                                    {
+                                        <option value="@key">@EmailEventKeys.DisplayName(key)</option>
+                                    }
+                                </select>
+                                <div class="form-text">Assigning this event unassigns any other template currently holding it.</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Subject <span class="text-danger">*</span></label>
+                            <InputText @bind-Value="_model.Subject" class="form-control" />
+                            <ValidationMessage For="() => _model.Subject" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Body <span class="text-danger">*</span></label>
+                            <RadzenHtmlEditor @bind-Value="_model.BodyHtml" style="height: 420px;"
+                                               UploadUrl="api/email-templates/upload-image"
+                                               UploadHeaders="_uploadHeaders" />
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                                @if (_isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <span><i class="bi bi-save me-1"></i>Save</span>
+                                }
+                            </button>
+                            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header"><strong>Mail Merge Tokens</strong></div>
+                <div class="card-body">
+                    <p class="small text-muted">Insert any of these into the subject or body — they'll be replaced when the email is sent.</p>
+                    @if (string.IsNullOrEmpty(_model.EventKey))
+                    {
+                        <p class="small text-muted fst-italic">Assign a system event to see its tokens.</p>
+                    }
+                    else
+                    {
+                        <ul class="small mb-0">
+                            @foreach (var token in TokensFor(_model.EventKey))
+                            {
+                                <li><code>{{@token}}</code></li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_toastMessage != null)
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        <div class="toast show align-items-center @(_toastIsError ? "text-bg-danger" : "text-bg-success") border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@_toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => _toastMessage = null" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private TemplateFormModel _model = new();
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _toastMessage;
+    private bool _toastIsError;
+    private IDictionary<string, string> _uploadHeaders = new Dictionary<string, string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await AuthService.GetTokenAsync();
+        if (!string.IsNullOrEmpty(token))
+        {
+            _uploadHeaders = new Dictionary<string, string> { ["Authorization"] = $"Bearer {token}" };
+        }
+
+        if (Id.HasValue)
+        {
+            var existing = await EmailTemplateService.GetByIdAsync(Id.Value);
+            if (existing != null)
+            {
+                _model = new TemplateFormModel
+                {
+                    Name = existing.Name,
+                    Subject = existing.Subject,
+                    BodyHtml = existing.BodyHtml,
+                    EventKey = existing.EventKey ?? string.Empty
+                };
+            }
+        }
+
+        _isLoading = false;
+    }
+
+    private static IEnumerable<string> TokensFor(string eventKey) => eventKey switch
+    {
+        EmailEventKeys.InviteEmail => new[] { "FirstName", "LastName", "Email", "RoleNames", "ClinicNames", "InviteLink", "GeneratedPassword" },
+        EmailEventKeys.ForgotPassword => new[] { "FirstName", "LastName", "Email", "ResetLink" },
+        _ => Array.Empty<string>()
+    };
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new SaveEmailTemplateRequest
+            {
+                Name = _model.Name,
+                Subject = _model.Subject,
+                BodyHtml = _model.BodyHtml,
+                EventKey = string.IsNullOrEmpty(_model.EventKey) ? null : _model.EventKey
+            };
+
+            var success = Id.HasValue
+                ? await EmailTemplateService.UpdateAsync(Id.Value, request)
+                : await EmailTemplateService.CreateAsync(request);
+
+            if (success)
+            {
+                Navigation.NavigateTo("/admin/email-templates");
+            }
+            else
+            {
+                _toastMessage = "Failed to save template.";
+                _toastIsError = true;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => Navigation.NavigateTo("/admin/email-templates");
+
+    private class TemplateFormModel
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public string Subject { get; set; } = string.Empty;
+
+        [Required]
+        public string BodyHtml { get; set; } = string.Empty;
+
+        public string EventKey { get; set; } = string.Empty;
+    }
+}

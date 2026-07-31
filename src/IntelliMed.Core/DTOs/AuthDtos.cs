@@ -137,3 +137,24 @@ public class SetProviderScheduleRequest
 {
     public List<ProviderScheduleDayDto> Days { get; set; } = new();
 }
+
+public class ForgotPasswordRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+}
+
+/// <summary>Completes an invite or forgot-password flow using the token emailed to the user.</summary>
+public class SetPasswordRequest
+{
+    [Required]
+    public string UserId { get; set; } = string.Empty;
+
+    [Required]
+    public string Token { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(8, ErrorMessage = "Password must be at least 8 characters.")]
+    public string NewPassword { get; set; } = string.Empty;
+}

@@ -104,7 +104,7 @@
                         <tr>
                             <td>
                                 <i class="bi bi-person me-2 text-muted"></i>
-                                @user.FullName
+                                <a href="javascript:void(0)" class="link-primary" @onclick="() => OpenEditDialog(user)">@user.FullName</a>
                             </td>
                             <td>@user.Email</td>
                             <td>
@@ -118,21 +118,39 @@
                                 }
                             </td>
                             <td>
-                                @if (user.IsActive)
+                                @if (!user.IsActive)
                                 {
-                                    <span class="badge bg-success">Active</span>
+                                    <span class="badge bg-danger" style="cursor:help" title="This account has been deactivated and can no longer log in.">Inactive</span>
+                                }
+                                else if (user.LastLoginAt == null && user.InviteSentAt != null)
+                                {
+                                    <span class="badge bg-info text-dark" style="cursor:help" title="@($"Invite emailed {user.InviteSentAt?.ToLocalTime():dd/MM/yyyy HH:mm}. Waiting for the user to set their password and log in for the first time.")">Invite Sent</span>
+                                }
+                                else if (user.LastLoginAt == null)
+                                {
+                                    <span class="badge bg-secondary" style="cursor:help" title="Account created but no invite email has been sent yet. Click the envelope icon to send one.">Pending</span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-danger">Inactive</span>
+                                    <span class="badge bg-success" style="cursor:help" title="The user has logged in successfully at least once.">Active</span>
                                 }
                             </td>
                             <td>
                                 @(user.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")
                             </td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary me-1" title="Edit"
-                                        @onclick="() => OpenEditDialog(user)"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-success me-1" title="Send Invite"
+                                        disabled="@_sendingInviteFor.Contains(user.Id)"
+                                        @onclick="() => SendInvite(user)">
+                                    @if (_sendingInviteFor.Contains(user.Id))
+                                    {
+                                        <span class="spinner-border spinner-border-sm"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-envelope"></i>
+                                    }
+                                </button>
                                 <button class="btn btn-sm btn-outline-warning me-1" title="Reset Password"
                                         @onclick="() => OpenResetPasswordDialog(user)"><i class="bi bi-key"></i></button>
                                 <button class="btn btn-sm btn-outline-danger" title="Deactivate"
@@ -197,6 +215,30 @@
                     <button type="button" class="btn-close" @onclick="CloseDialog" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                @if (_justCreatedUser != null)
+                {
+                    <div class="text-center py-3">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 2.5rem;"></i>
+                        <h6 class="mt-3 mb-1">@_justCreatedUser.FullName created successfully</h6>
+                        <p class="text-muted small">Send them an invite email now, or do it later from the Actions column.</p>
+                    </div>
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Done</button>
+                        <button type="button" class="btn btn-success" disabled="@_sendingInviteFor.Contains(_justCreatedUser.Id)" @onclick="() => SendInviteFromDialog(_justCreatedUser)">
+                            @if (_sendingInviteFor.Contains(_justCreatedUser.Id))
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Sending...</span>
+                            }
+                            else
+                            {
+                                <span><i class="bi bi-envelope me-1"></i>Send Invite</span>
+                            }
+                        </button>
+                    </div>
+                }
+                else
+                {
                     <EditForm Model="@_dialogModel" OnValidSubmit="SaveUser" FormName="userDialogForm">
                         <DataAnnotationsValidator />
                         <ValidationSummary class="text-danger small mb-3" />
@@ -226,13 +268,14 @@
                                 <div class="input-group">
                                     <InputText @bind-Value="_dialogModel.Password"
                                                type="@(_showDialogPassword ? "text" : "password")"
-                                               class="form-control" />
+                                               class="form-control"
+                                               readonly="readonly" />
                                     <button type="button" class="btn btn-outline-secondary"
                                             @onclick="() => _showDialogPassword = !_showDialogPassword">
                                         <i class="bi @(_showDialogPassword ? "bi-eye-slash" : "bi-eye")"></i>
                                     </button>
                                 </div>
-                                <div class="form-text">Min 8 chars: upper, lower, digit, special</div>
+                                <div class="form-text">Auto-generated. Use "Send Invite" after creating the user to email it to them.</div>
                                 <ValidationMessage For="() => _dialogModel.Password" />
                             </div>
                         }
@@ -322,6 +365,7 @@
                             </button>
                         </div>
                     </EditForm>
+                }
                 </div>
             </div>
         </div>
@@ -463,6 +507,7 @@
     private bool _showDialogPassword;
     private UserDialogModel _dialogModel = new();
     private UserDto? _editingUser;
+    private UserDto? _justCreatedUser;
 
     // =========================================================================
     // RESET PASSWORD MODAL STATE
@@ -479,6 +524,11 @@
     private bool _deleteDialogVisible;
     private bool _deleteSaving;
     private UserDto? _deleteUser;
+
+    // =========================================================================
+    // SEND INVITE STATE
+    // =========================================================================
+    private readonly HashSet<string> _sendingInviteFor = new();
 
     // =========================================================================
     // LIFECYCLE
@@ -642,10 +692,38 @@
     {
         _isEditing = false;
         _editingUser = null;
-        _dialogModel = new UserDialogModel { IsEditing = false };
+        _justCreatedUser = null;
+        _dialogModel = new UserDialogModel { IsEditing = false, Password = GenerateRandomPassword() };
         _dialogSaving = false;
         _showDialogPassword = false;
         _dialogVisible = true;
+    }
+
+    /// <summary>Client-side preview password shown (read-only) when creating a user — meets the same policy Identity enforces server-side.</summary>
+    private static string GenerateRandomPassword(int length = 12)
+    {
+        const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const string lower = "abcdefghijkmnpqrstuvwxyz";
+        const string digits = "23456789";
+        const string special = "!@#$%^&*";
+        var all = upper + lower + digits + special;
+        var rng = Random.Shared;
+
+        var chars = new char[length];
+        chars[0] = upper[rng.Next(upper.Length)];
+        chars[1] = lower[rng.Next(lower.Length)];
+        chars[2] = digits[rng.Next(digits.Length)];
+        chars[3] = special[rng.Next(special.Length)];
+        for (var i = 4; i < length; i++)
+            chars[i] = all[rng.Next(all.Length)];
+
+        for (var i = chars.Length - 1; i > 0; i--)
+        {
+            var j = rng.Next(i + 1);
+            (chars[i], chars[j]) = (chars[j], chars[i]);
+        }
+
+        return new string(chars);
     }
 
     // =========================================================================
@@ -655,6 +733,7 @@
     {
         _isEditing = true;
         _editingUser = user;
+        _justCreatedUser = null;
         _dialogModel = new UserDialogModel
         {
             IsEditing = true,
@@ -674,6 +753,7 @@
     {
         _dialogVisible = false;
         _editingUser = null;
+        _justCreatedUser = null;
     }
 
     // =========================================================================
@@ -727,7 +807,7 @@
                 if (result?.Success == true)
                 {
                     ShowToast("User created successfully.");
-                    _dialogVisible = false;
+                    _justCreatedUser = result.User;
                     await LoadUsers();
                 }
                 else
@@ -830,6 +910,40 @@
         finally
         {
             _deleteSaving = false;
+        }
+    }
+
+    // =========================================================================
+    // SEND INVITE
+    // =========================================================================
+    private async Task SendInviteFromDialog(UserDto user)
+    {
+        await SendInvite(user);
+        _dialogVisible = false;
+    }
+
+    private async Task SendInvite(UserDto user)
+    {
+        _sendingInviteFor.Add(user.Id);
+        StateHasChanged();
+
+        try
+        {
+            var result = await AdminService.SendInviteAsync(user.Id);
+            ShowToast(result?.Message ?? (result?.Success == true ? "Invite sent." : "Failed to send invite."), result?.Success != true);
+            if (result?.Success == true)
+            {
+                await LoadUsers();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Error: {ex.Message}", true);
+        }
+        finally
+        {
+            _sendingInviteFor.Remove(user.Id);
+            StateHasChanged();
         }
     }
 

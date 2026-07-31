@@ -22,11 +22,19 @@ public class ClinicSettingsController : ControllerBase
 
     private readonly IClinicSettingsRepository _repository;
     private readonly AppDbContext _context;
+    private readonly IEmailSender _emailSender;
+    private readonly ILogger<ClinicSettingsController> _logger;
 
-    public ClinicSettingsController(IClinicSettingsRepository repository, AppDbContext context)
+    public ClinicSettingsController(
+        IClinicSettingsRepository repository,
+        AppDbContext context,
+        IEmailSender emailSender,
+        ILogger<ClinicSettingsController> logger)
     {
         _repository = repository;
         _context = context;
+        _emailSender = emailSender;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -48,7 +56,28 @@ public class ClinicSettingsController : ControllerBase
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
         await _repository.UpdateSingletonAsync(request);
+        _logger.LogInformation("Clinic settings updated by {User} (SMTP enabled: {SmtpEnabled})", User.Identity?.Name, request.SmtpEnabled);
         return NoContent();
+    }
+
+    [HttpPost("test-email")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> SendTestEmail([FromBody] TestEmailRequest request)
+    {
+        if (!await HasAccessAsync()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var (success, error) = await _emailSender.SendAsync(request.ToEmail, "IntelliMed Test Email", request.Message);
+        if (!success)
+        {
+            _logger.LogWarning("Test email to {To} failed: {Error}", request.ToEmail, error);
+            return BadRequest(new { message = error ?? "Failed to send test email." });
+        }
+
+        _logger.LogInformation("Test email sent to {To} by {User}", request.ToEmail, User.Identity?.Name);
+        return Ok(new { message = $"Test email sent to {request.ToEmail}." });
     }
 
     private async Task<bool> HasAccessAsync()

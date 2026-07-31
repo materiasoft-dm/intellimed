@@ -2,7 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using IntelliMed.Core.DTOs;
+using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Core.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +24,8 @@ public class AuthController : ControllerBase
     private readonly SignInManager<IdentityCore.ApplicationUser> _signInManager;
     private readonly IProviderGroupRepository _providerGroupRepository;
     private readonly IProviderScheduleRepository _providerScheduleRepository;
+    private readonly IEmailTemplateRepository _emailTemplateRepository;
+    private readonly IEmailSender _emailSender;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
 
@@ -30,6 +34,8 @@ public class AuthController : ControllerBase
         SignInManager<IdentityCore.ApplicationUser> signInManager,
         IProviderGroupRepository providerGroupRepository,
         IProviderScheduleRepository providerScheduleRepository,
+        IEmailTemplateRepository emailTemplateRepository,
+        IEmailSender emailSender,
         IConfiguration configuration,
         ILogger<AuthController> logger)
     {
@@ -37,6 +43,8 @@ public class AuthController : ControllerBase
         _signInManager = signInManager;
         _providerGroupRepository = providerGroupRepository;
         _providerScheduleRepository = providerScheduleRepository;
+        _emailTemplateRepository = emailTemplateRepository;
+        _emailSender = emailSender;
         _configuration = configuration;
         _logger = logger;
     }
@@ -319,6 +327,76 @@ public class AuthController : ControllerBase
 
         await _providerScheduleRepository.SetScheduleAsync(user.Id, request);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Requests a password reset email. Always returns success regardless of whether the account
+    /// exists, to avoid leaking which email addresses are registered.
+    /// </summary>
+    [HttpPost("me/forgot-password")]
+    [ProducesResponseType(typeof(UserManagementResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<UserManagementResponse>> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user != null && user.IsActive)
+        {
+            var template = await _emailTemplateRepository.GetActiveByEventKeyAsync(clinicId: 1, EmailEventKeys.ForgotPassword);
+            if (template != null)
+            {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var resetLink = $"{Request.Scheme}://{Request.Host}/set-password" +
+                    $"?userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(token)}";
+
+                var mergeTokens = new Dictionary<string, string>
+                {
+                    ["FirstName"] = user.FirstName,
+                    ["LastName"] = user.LastName,
+                    ["Email"] = user.Email ?? string.Empty,
+                    ["ResetLink"] = resetLink
+                };
+
+                var (subject, body) = EmailTemplateRenderer.Render(template.Subject, template.BodyHtml, mergeTokens);
+                var (success, error) = await _emailSender.SendAsync(user.Email!, subject, body);
+                if (!success)
+                    _logger.LogWarning("Forgot-password email to {Email} failed: {Error}", user.Email, error);
+                else
+                    _logger.LogInformation("Forgot-password email sent to {Email}", user.Email);
+            }
+            else
+            {
+                _logger.LogWarning("Forgot-password requested but no active 'ForgotPassword' email template is configured.");
+            }
+        }
+
+        return Ok(new UserManagementResponse
+        {
+            Success = true,
+            Message = "If that account exists, a password reset email has been sent."
+        });
+    }
+
+    /// <summary>
+    /// Completes an invite or forgot-password flow: sets the user's password using the token emailed to them.
+    /// </summary>
+    [HttpPost("me/set-password")]
+    [ProducesResponseType(typeof(UserManagementResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserManagementResponse), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UserManagementResponse>> SetPassword([FromBody] SetPasswordRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+            return BadRequest(new UserManagementResponse { Success = false, Message = "This link is invalid or has expired." });
+
+        var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+            return BadRequest(new UserManagementResponse { Success = false, Message = $"Failed to set password: {errors}" });
+        }
+
+        _logger.LogInformation("Password set via invite/reset link for user {Email}", user.Email);
+
+        return Ok(new UserManagementResponse { Success = true, Message = "Password set successfully. You can now log in." });
     }
 
     private async Task<string> GenerateJwtTokenAsync(IdentityCore.ApplicationUser user, IList<string> roles)

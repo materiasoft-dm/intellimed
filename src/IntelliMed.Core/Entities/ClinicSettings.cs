@@ -19,4 +19,13 @@ public class ClinicSettings
 
     /// <summary>Default appointment calendar slot granularity, in minutes. Users can override this in their own Profile Settings.</summary>
     public int MinimumTimeslotMinutes { get; set; } = 15;
+
+    public bool SmtpEnabled { get; set; }
+    public string? SmtpHost { get; set; }
+    public int SmtpPort { get; set; } = 587;
+    public string? SmtpUsername { get; set; }
+    public string? SmtpPassword { get; set; }
+    public string? SmtpFromEmail { get; set; }
+    public string? SmtpFromName { get; set; }
+    public bool SmtpUseSsl { get; set; } = true;
 }

@@ -1,5 +1,7 @@
 using IntelliMed.Core.DTOs;
+using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Core.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,17 +21,23 @@ public class AdminController : ControllerBase
     private readonly UserManager<IdentityCore.ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IClinicRepository _clinicRepository;
+    private readonly IEmailTemplateRepository _emailTemplateRepository;
+    private readonly IEmailSender _emailSender;
     private readonly ILogger<AdminController> _logger;
 
     public AdminController(
         UserManager<IdentityCore.ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         IClinicRepository clinicRepository,
+        IEmailTemplateRepository emailTemplateRepository,
+        IEmailSender emailSender,
         ILogger<AdminController> logger)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _clinicRepository = clinicRepository;
+        _emailTemplateRepository = emailTemplateRepository;
+        _emailSender = emailSender;
         _logger = logger;
     }
 
@@ -47,6 +55,7 @@ public class AdminController : ControllerBase
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt,
             LastLoginAt = user.LastLoginAt,
+            InviteSentAt = user.InviteSentAt,
             ClinicIds = clinics.Select(c => c.Id).ToList(),
             ClinicNames = clinics.Select(c => c.Name).ToList()
         };
@@ -123,7 +132,8 @@ public class AdminController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
-        var result = await _userManager.CreateAsync(user, request.Password);
+        var password = string.IsNullOrWhiteSpace(request.Password) ? PasswordGenerator.Generate() : request.Password;
+        var result = await _userManager.CreateAsync(user, password);
 
         if (!result.Succeeded)
         {
@@ -307,6 +317,83 @@ public class AdminController : ControllerBase
         {
             Success = true,
             Message = "Password reset successfully."
+        });
+    }
+
+    /// <summary>
+    /// Emails the user a sign-in invite: generates a fresh temporary password (setting it via Identity's
+    /// token-based reset, which is what actually authorizes the credential change) and a single-use link
+    /// to /set-password that lets them keep it or choose their own. Doubles as "resend invite".
+    /// </summary>
+    [HttpPost("users/{id}/send-invite")]
+    [ProducesResponseType(typeof(UserManagementResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserManagementResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(UserManagementResponse), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserManagementResponse>> SendInvite(string id)
+    {
+        var user = await _userManager.FindByIdAsync(id);
+        if (user == null)
+            return NotFound(new UserManagementResponse { Success = false, Message = "User not found." });
+
+        if (string.IsNullOrWhiteSpace(user.Email))
+            return BadRequest(new UserManagementResponse { Success = false, Message = "User has no email address." });
+
+        var template = await _emailTemplateRepository.GetActiveByEventKeyAsync(clinicId: 1, EmailEventKeys.InviteEmail);
+        if (template == null)
+        {
+            return BadRequest(new UserManagementResponse
+            {
+                Success = false,
+                Message = "No active email template is assigned to the 'Invite Email' event. Configure one under Email Templates first."
+            });
+        }
+
+        // Set a fresh temporary password now (authorized by a reset token) so the account is usable
+        // immediately, then mint a second token for the link — resetting invalidates the first one.
+        var temporaryPassword = PasswordGenerator.Generate();
+        var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var resetResult = await _userManager.ResetPasswordAsync(user, resetToken, temporaryPassword);
+        if (!resetResult.Succeeded)
+        {
+            var errors = string.Join("; ", resetResult.Errors.Select(e => e.Description));
+            return BadRequest(new UserManagementResponse { Success = false, Message = $"Failed to prepare invite: {errors}" });
+        }
+
+        var setPasswordToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var roles = await _userManager.GetRolesAsync(user);
+        var clinics = (await _clinicRepository.GetMyClinicsAsync(user.Id)).ToList();
+        var roleNames = string.Join(", ", roles);
+        var clinicNames = string.Join(", ", clinics.Select(c => c.Name));
+
+        var inviteLink = $"{Request.Scheme}://{Request.Host}/set-password" +
+            $"?userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(setPasswordToken)}&pwd={Uri.EscapeDataString(temporaryPassword)}";
+
+        var mergeTokens = new Dictionary<string, string>
+        {
+            ["FirstName"] = user.FirstName,
+            ["LastName"] = user.LastName,
+            ["Email"] = user.Email,
+            ["RoleNames"] = roleNames,
+            ["ClinicNames"] = clinicNames,
+            ["InviteLink"] = inviteLink,
+            ["GeneratedPassword"] = temporaryPassword
+        };
+
+        var (subject, body) = EmailTemplateRenderer.Render(template.Subject, template.BodyHtml, mergeTokens);
+        var (success, error) = await _emailSender.SendAsync(user.Email, subject, body);
+        if (!success)
+            return BadRequest(new UserManagementResponse { Success = false, Message = $"Failed to send invite email: {error}" });
+
+        user.InviteSentAt = DateTime.UtcNow;
+        await _userManager.UpdateAsync(user);
+
+        _logger.LogInformation("Invite sent to {Email} as {Roles} for {Clinics}", user.Email, roleNames, clinicNames);
+
+        return Ok(new UserManagementResponse
+        {
+            Success = true,
+            Message = $"Invite sent to {user.Email} as {(string.IsNullOrEmpty(roleNames) ? "(no role)" : roleNames)} to {(string.IsNullOrEmpty(clinicNames) ? "(no clinic)" : clinicNames)}.",
+            User = await ToUserDtoAsync(user, roles)
         });
     }
 

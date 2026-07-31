@@ -1,0 +1,146 @@
+@page "/admin/email-templates"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IEmailTemplateService EmailTemplateService
+@inject NavigationManager Navigation
+
+<PageTitle>Email Templates - IntelliMed</PageTitle>
+
+<h4 class="mb-4">Email Templates</h4>
+
+<div class="card mb-4">
+    <div class="card-body d-flex align-items-center justify-content-between">
+        <span class="d-flex align-items-center">
+            <i class="bi bi-envelope-paper me-2"></i>
+            Total Templates: @(_templates?.Count ?? 0)
+        </span>
+        <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/admin/email-templates/edit"))">
+            <i class="bi bi-plus-lg me-1"></i> New Template
+        </button>
+    </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite" aria-atomic="true">
+    @if (_toastMessage != null)
+    {
+        <div class="toast show align-items-center @(_toastIsError ? "text-bg-danger" : "text-bg-success") border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@_toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => _toastMessage = null" aria-label="Close"></button>
+            </div>
+        </div>
+    }
+</div>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading templates...
+        </div>
+    </div>
+}
+else if (_templates != null)
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Subject</th>
+                        <th>Event</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var template in _templates)
+                    {
+                        <tr>
+                            <td>
+                                <a href="javascript:void(0)" class="link-primary"
+                                   @onclick="@(() => Navigation.NavigateTo($"/admin/email-templates/edit/{template.Id}"))">@template.Name</a>
+                            </td>
+                            <td class="text-truncate" style="max-width: 300px;">@template.Subject</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(template.EventKey))
+                                {
+                                    <span class="badge bg-info text-dark">@EmailEventKeys.DisplayName(template.EventKey)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Unassigned</span>
+                                }
+                            </td>
+                            <td>
+                                @if (template.IsArchived)
+                                {
+                                    <span class="badge bg-secondary">Archived</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                            <td>@template.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="text-end">
+                                @if (!template.IsArchived)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" title="Archive"
+                                            @onclick="() => ArchiveTemplate(template)">
+                                        <i class="bi bi-archive"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_templates.Count == 0)
+        {
+            <div class="card-body text-center text-muted py-4">
+                No email templates yet. Click "New Template" to create one.
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-danger d-flex align-items-center">
+        <i class="bi bi-exclamation-triangle me-1"></i> Failed to load email templates.
+        <button class="btn btn-outline-danger btn-sm ms-auto" @onclick="LoadTemplates">Retry</button>
+    </div>
+}
+
+@code {
+    private List<EmailTemplateDto>? _templates;
+    private bool _isLoading = true;
+    private string? _toastMessage;
+    private bool _toastIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTemplates();
+    }
+
+    private async Task LoadTemplates()
+    {
+        _isLoading = true;
+        _templates = await EmailTemplateService.GetAllAsync();
+        _isLoading = false;
+    }
+
+    private async Task ArchiveTemplate(EmailTemplateDto template)
+    {
+        var success = await EmailTemplateService.ArchiveAsync(template.Id);
+        _toastMessage = success ? $"'{template.Name}' archived." : "Failed to archive template.";
+        _toastIsError = !success;
+        if (success) await LoadTemplates();
+    }
+}

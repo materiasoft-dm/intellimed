@@ -14,6 +14,7 @@ public interface IAdminService
     Task<UserManagementResponse?> UpdateUserAsync(string id, UpdateUserRequest request);
     Task<UserManagementResponse?> DeleteUserAsync(string id);
     Task<UserManagementResponse?> ResetPasswordAsync(string id, ResetPasswordRequest request);
+    Task<UserManagementResponse?> SendInviteAsync(string id);
     Task<List<RoleDto>?> GetRolesAsync();
     Task<UserManagementResponse?> AssignRolesAsync(string id, AssignRolesRequest request);
 
@@ -111,6 +112,20 @@ public class AdminService : IAdminService
         catch (Exception ex)
         {
             Console.Error.WriteLine($"ResetPassword error: {ex.Message}");
+            return new UserManagementResponse { Success = false, Message = "Connection error." };
+        }
+    }
+
+    public async Task<UserManagementResponse?> SendInviteAsync(string id)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/admin/users/{id}/send-invite", null);
+            return await response.Content.ReadFromJsonAsync<UserManagementResponse>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"SendInvite error: {ex.Message}");
             return new UserManagementResponse { Success = false, Message = "Connection error." };
         }
     }

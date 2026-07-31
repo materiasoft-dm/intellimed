@@ -6,4 +6,5 @@ public interface IClinicSettingsService
 {
     Task<ClinicSettingsDto?> GetAsync();
     Task<bool> UpdateAsync(UpdateClinicSettingsRequest request);
+    Task<(bool Success, string? Message)> SendTestEmailAsync(TestEmailRequest request);
 }

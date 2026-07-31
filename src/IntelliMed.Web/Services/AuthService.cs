@@ -13,11 +13,14 @@ public interface IAuthService
     string? GetCurrentUserEmail();
     string? GetCurrentUserName();
     string? GetToken();
+    Task<string?> GetTokenAsync();
     Task<CurrentUserResponse?> GetCurrentUserAsync();
     Task<UserProfileDto?> GetMyProfileAsync();
     Task<bool> UpdateMyProfileAsync(UpdateProfileRequest request);
     Task<List<ProviderScheduleDayDto>> GetMyScheduleAsync();
     Task<bool> SetMyScheduleAsync(SetProviderScheduleRequest request);
+    Task<UserManagementResponse?> ForgotPasswordAsync(string email);
+    Task<UserManagementResponse?> SetPasswordAsync(string userId, string token, string newPassword);
 }
 
 public class AuthService : IAuthService
@@ -121,6 +124,11 @@ public class AuthService : IAuthService
         return _storage.GetItemAsync(TokenKey).GetAwaiter().GetResult();
     }
 
+    public async Task<string?> GetTokenAsync()
+    {
+        return await _storage.GetItemAsync(TokenKey);
+    }
+
     public async Task<CurrentUserResponse?> GetCurrentUserAsync()
     {
         try
@@ -207,6 +215,35 @@ public class AuthService : IAuthService
         {
             Console.Error.WriteLine($"SetMySchedule error: {ex.Message}");
             return false;
+        }
+    }
+
+    public async Task<UserManagementResponse?> ForgotPasswordAsync(string email)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/auth/me/forgot-password", new ForgotPasswordRequest { Email = email });
+            return await response.Content.ReadFromJsonAsync<UserManagementResponse>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"ForgotPassword error: {ex.Message}");
+            return new UserManagementResponse { Success = false, Message = "Connection error. Please try again." };
+        }
+    }
+
+    public async Task<UserManagementResponse?> SetPasswordAsync(string userId, string token, string newPassword)
+    {
+        try
+        {
+            var request = new SetPasswordRequest { UserId = userId, Token = token, NewPassword = newPassword };
+            var response = await _httpClient.PostAsJsonAsync("api/auth/me/set-password", request);
+            return await response.Content.ReadFromJsonAsync<UserManagementResponse>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"SetPassword error: {ex.Message}");
+            return new UserManagementResponse { Success = false, Message = "Connection error. Please try again." };
         }
     }
 

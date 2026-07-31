@@ -108,6 +108,64 @@ else
                             </div>
                         </div>
 
+                        <hr class="my-4" />
+                        <h6 class="mb-3">Email (SMTP)</h6>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="smtpEnabled"
+                                           checked="@_model.SmtpEnabled"
+                                           @onchange="(ChangeEventArgs e) => _model.SmtpEnabled = (bool)e.Value!" />
+                                    <label class="form-check-label" for="smtpEnabled">Enable email sending</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">SMTP Host</label>
+                                <InputText @bind-Value="_model.SmtpHost" class="form-control" placeholder="smtp.example.com" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Port</label>
+                                <InputNumber @bind-Value="_model.SmtpPort" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Username</label>
+                                <InputText @bind-Value="_model.SmtpUsername" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Password</label>
+                                <InputText @bind-Value="_model.SmtpPassword" type="password" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">From Email</label>
+                                <InputText @bind-Value="_model.SmtpFromEmail" class="form-control" placeholder="no-reply@yourclinic.com" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">From Name</label>
+                                <InputText @bind-Value="_model.SmtpFromName" class="form-control" placeholder="@_model.PracticeName" />
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="smtpUseSsl"
+                                           checked="@_model.SmtpUseSsl"
+                                           @onchange="(ChangeEventArgs e) => _model.SmtpUseSsl = (bool)e.Value!" />
+                                    <label class="form-check-label" for="smtpUseSsl">Use SSL/TLS</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="OpenTestEmailDialog">
+                                    <i class="bi bi-send me-1"></i>Send Test Email
+                                </button>
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn btn-primary" disabled="@_isSaving">
                             @if (_isSaving)
                             {
@@ -196,6 +254,50 @@ else
     </div>
 }
 
+@* =========================================================================
+   SEND TEST EMAIL MODAL
+   ========================================================================= *@
+@if (_testEmailVisible)
+{
+    <div class="modal-backdrop fade show" style="display:block;"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Send Test Email</h5>
+                    <button type="button" class="btn-close" @onclick="() => _testEmailVisible = false" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" @bind="_testEmailModel.ToEmail" @bind:event="oninput" placeholder="you@example.com" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-control" rows="4" @bind="_testEmailModel.Message" @bind:event="oninput"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _testEmailVisible = false">Cancel</button>
+                    <button type="button" class="btn btn-primary"
+                            @onclick="SendTestEmailAsync"
+                            disabled="@(string.IsNullOrWhiteSpace(_testEmailModel.ToEmail) || _testEmailSending)">
+                        @if (_testEmailSending)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Sending...</span>
+                        }
+                        else
+                        {
+                            <span><i class="bi bi-send me-1"></i>Send</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private bool _isLoading = true;
     private bool _isSaving;
@@ -208,6 +310,10 @@ else
     private List<FeeScheduleDto> _feeSchedules = new();
     private string? _toastMessage;
     private bool _toastIsError;
+
+    private bool _testEmailVisible;
+    private bool _testEmailSending;
+    private TestEmailRequest _testEmailModel = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -230,13 +336,43 @@ else
                 Suburb = _settings.Suburb,
                 Postcode = _settings.Postcode,
                 State = _settings.State,
-                MinimumTimeslotMinutes = _settings.MinimumTimeslotMinutes
+                MinimumTimeslotMinutes = _settings.MinimumTimeslotMinutes,
+                SmtpEnabled = _settings.SmtpEnabled,
+                SmtpHost = _settings.SmtpHost,
+                SmtpPort = _settings.SmtpPort,
+                SmtpUsername = _settings.SmtpUsername,
+                SmtpPassword = _settings.SmtpPassword,
+                SmtpFromEmail = _settings.SmtpFromEmail,
+                SmtpFromName = _settings.SmtpFromName,
+                SmtpUseSsl = _settings.SmtpUseSsl
             };
 
             _feeSchedules = await FeeScheduleService.GetAllActiveAsync();
             _mappings = await InvoiceService.GetFeeScheduleMappingsAsync();
         }
         _isLoading = false;
+    }
+
+    private void OpenTestEmailDialog()
+    {
+        _testEmailModel = new TestEmailRequest { Message = "This is a test email" };
+        _testEmailVisible = true;
+    }
+
+    private async Task SendTestEmailAsync()
+    {
+        _testEmailSending = true;
+        StateHasChanged();
+        try
+        {
+            var (success, message) = await ClinicSettingsService.SendTestEmailAsync(_testEmailModel);
+            ShowToast(message ?? (success ? "Test email sent." : "Failed to send test email."), !success);
+            if (success) _testEmailVisible = false;
+        }
+        finally
+        {
+            _testEmailSending = false;
+        }
     }
 
     private static string AccountTypeLabel(AccountTypeEnum type) => type switch
@@ -280,7 +416,15 @@ else
                 Suburb = _model.Suburb,
                 Postcode = _model.Postcode,
                 State = _model.State,
-                MinimumTimeslotMinutes = _model.MinimumTimeslotMinutes
+                MinimumTimeslotMinutes = _model.MinimumTimeslotMinutes,
+                SmtpEnabled = _model.SmtpEnabled,
+                SmtpHost = _model.SmtpHost,
+                SmtpPort = _model.SmtpPort,
+                SmtpUsername = _model.SmtpUsername,
+                SmtpPassword = _model.SmtpPassword,
+                SmtpFromEmail = _model.SmtpFromEmail,
+                SmtpFromName = _model.SmtpFromName,
+                SmtpUseSsl = _model.SmtpUseSsl
             };
 
             var success = await ClinicSettingsService.UpdateAsync(request);
@@ -340,5 +484,15 @@ else
         public string? State { get; set; }
         [Range(1, 240)]
         public int MinimumTimeslotMinutes { get; set; } = 15;
+
+        public bool SmtpEnabled { get; set; }
+        public string? SmtpHost { get; set; }
+        [Range(1, 65535)]
+        public int SmtpPort { get; set; } = 587;
+        public string? SmtpUsername { get; set; }
+        public string? SmtpPassword { get; set; }
+        public string? SmtpFromEmail { get; set; }
+        public string? SmtpFromName { get; set; }
+        public bool SmtpUseSsl { get; set; } = true;
     }
 }

@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using IntelliMed.Core.DTOs;
 
 namespace IntelliMed.Web.Services;
@@ -23,5 +24,21 @@ public class ClinicSettingsService : IClinicSettingsService
     {
         var response = await _httpClient.PutAsJsonAsync("api/clinic-settings", request);
         return response.IsSuccessStatusCode;
+    }
+
+    public async Task<(bool Success, string? Message)> SendTestEmailAsync(TestEmailRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/clinic-settings/test-email", request);
+            var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var message = result.TryGetProperty("message", out var m) ? m.GetString() : null;
+            return (response.IsSuccessStatusCode, message);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"SendTestEmail error: {ex.Message}");
+            return (false, "Connection error.");
+        }
     }
 }

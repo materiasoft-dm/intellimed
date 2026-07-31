@@ -27,7 +27,15 @@ public class ClinicSettingsRepository : Repository<ClinicSettings>, IClinicSetti
             Suburb = settings.Suburb,
             Postcode = settings.Postcode,
             State = settings.State,
-            MinimumTimeslotMinutes = settings.MinimumTimeslotMinutes
+            MinimumTimeslotMinutes = settings.MinimumTimeslotMinutes,
+            SmtpEnabled = settings.SmtpEnabled,
+            SmtpHost = settings.SmtpHost,
+            SmtpPort = settings.SmtpPort,
+            SmtpUsername = settings.SmtpUsername,
+            SmtpPassword = settings.SmtpPassword,
+            SmtpFromEmail = settings.SmtpFromEmail,
+            SmtpFromName = settings.SmtpFromName,
+            SmtpUseSsl = settings.SmtpUseSsl
         };
     }
 
@@ -45,6 +53,14 @@ public class ClinicSettingsRepository : Repository<ClinicSettings>, IClinicSetti
         settings.Postcode = request.Postcode;
         settings.State = request.State;
         settings.MinimumTimeslotMinutes = request.MinimumTimeslotMinutes;
+        settings.SmtpEnabled = request.SmtpEnabled;
+        settings.SmtpHost = request.SmtpHost;
+        settings.SmtpPort = request.SmtpPort;
+        settings.SmtpUsername = request.SmtpUsername;
+        settings.SmtpPassword = request.SmtpPassword;
+        settings.SmtpFromEmail = request.SmtpFromEmail;
+        settings.SmtpFromName = request.SmtpFromName;
+        settings.SmtpUseSsl = request.SmtpUseSsl;
         await _context.SaveChangesAsync();
     }
 }

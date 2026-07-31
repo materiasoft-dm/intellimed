@@ -23,6 +23,8 @@ public class AuthControllerTests
     private readonly Mock<ILogger<AuthController>> _loggerMock;
     private readonly Mock<IProviderGroupRepository> _providerGroupRepositoryMock;
     private readonly Mock<IProviderScheduleRepository> _providerScheduleRepositoryMock;
+    private readonly Mock<IEmailTemplateRepository> _emailTemplateRepositoryMock;
+    private readonly Mock<IEmailSender> _emailSenderMock;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
@@ -54,11 +56,17 @@ public class AuthControllerTests
         // Setup ProviderScheduleRepository mock
         _providerScheduleRepositoryMock = new Mock<IProviderScheduleRepository>();
 
+        // Setup EmailTemplateRepository / EmailSender mocks
+        _emailTemplateRepositoryMock = new Mock<IEmailTemplateRepository>();
+        _emailSenderMock = new Mock<IEmailSender>();
+
         _controller = new AuthController(
             _userManagerMock.Object,
             _signInManagerMock.Object,
             _providerGroupRepositoryMock.Object,
             _providerScheduleRepositoryMock.Object,
+            _emailTemplateRepositoryMock.Object,
+            _emailSenderMock.Object,
             _configurationMock.Object,
             _loggerMock.Object);
 
