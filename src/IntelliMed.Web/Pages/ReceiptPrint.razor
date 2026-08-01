@@ -1,0 +1,107 @@
+@page "/invoices/receipt/{InvoiceId:int}/{PaymentId:int}"
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject IInvoiceService InvoiceService
+@inject IJSRuntime JS
+
+<PageTitle>Receipt - IntelliMed</PageTitle>
+
+<style>
+    .no-print { }
+    @@media print {
+        .no-print { display: none !important; }
+        body { margin: 0; }
+    }
+</style>
+
+<div class="no-print p-3 d-flex justify-content-end">
+    <button class="btn btn-primary" @onclick="Print"><i class="bi bi-printer"></i> Print</button>
+</div>
+
+@if (_isLoading)
+{
+    <div class="p-4 text-center">
+        <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+        Loading receipt...
+    </div>
+}
+else if (_invoice == null || _payment == null)
+{
+    <div class="p-4"><div class="alert alert-danger">Receipt not found.</div></div>
+}
+else
+{
+    <div class="p-4" style="max-width: 700px; margin: 0 auto;">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h4 class="mb-1">@(_invoice.ClinicName ?? "Clinic")</h4>
+                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicAddress))
+                {
+                    <div>@_invoice.ClinicAddress</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicSuburb) || !string.IsNullOrWhiteSpace(_invoice.ClinicState) || !string.IsNullOrWhiteSpace(_invoice.ClinicPostcode))
+                {
+                    <div>@_invoice.ClinicSuburb @_invoice.ClinicState @_invoice.ClinicPostcode</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicPhone) || !string.IsNullOrWhiteSpace(_invoice.ClinicEmail))
+                {
+                    <div>@_invoice.ClinicPhone@(!string.IsNullOrWhiteSpace(_invoice.ClinicPhone) && !string.IsNullOrWhiteSpace(_invoice.ClinicEmail) ? " · " : "")@_invoice.ClinicEmail</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicAbn))
+                {
+                    <div>ABN: @_invoice.ClinicAbn</div>
+                }
+            </div>
+            <div class="text-end">
+                <h3 class="mb-1">RECEIPT</h3>
+                <div><strong>Receipt No. @_payment.Id</strong></div>
+            </div>
+        </div>
+
+        <div class="row g-1 small mb-4">
+            <div class="col-6 text-muted">Received From</div>
+            <div class="col-6">@_invoice.ClientName</div>
+            <div class="col-6 text-muted">For Invoice</div>
+            <div class="col-6">@_invoice.InvoiceNumber</div>
+            <div class="col-6 text-muted">Payment Date</div>
+            <div class="col-6">@_payment.PaymentDate.ToString("dd/MM/yyyy")</div>
+            <div class="col-6 text-muted">Method</div>
+            <div class="col-6">@_payment.MethodName</div>
+            @if (!string.IsNullOrWhiteSpace(_payment.Reference))
+            {
+                <div class="col-6 text-muted">Reference</div>
+                <div class="col-6">@_payment.Reference</div>
+            }
+        </div>
+
+        <table class="table table-sm mb-0">
+            <tbody>
+                <tr class="fw-bold"><td>Amount Received</td><td class="text-end">@_payment.Amount.ToString("C")</td></tr>
+                <tr><td>Invoice Total</td><td class="text-end">@_invoice.TotalAmount.ToString("C")</td></tr>
+                <tr><td>Total Paid to Date</td><td class="text-end">@_invoice.AmountPaid.ToString("C")</td></tr>
+                <tr class="border-top"><td>Balance Remaining</td><td class="text-end">@_invoice.AmountOwing.ToString("C")</td></tr>
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter] public int InvoiceId { get; set; }
+    [Parameter] public int PaymentId { get; set; }
+
+    private InvoiceDto? _invoice;
+    private PaymentDto? _payment;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _invoice = await InvoiceService.GetInvoiceByIdAsync(InvoiceId);
+        _payment = _invoice?.Payments.FirstOrDefault(p => p.Id == PaymentId);
+        _isLoading = false;
+    }
+
+    private async Task Print()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+}

@@ -1,0 +1,152 @@
+@page "/invoices/print/{Id:int}"
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject IInvoiceService InvoiceService
+@inject IJSRuntime JS
+
+<PageTitle>Invoice @(_invoice?.InvoiceNumber) - IntelliMed</PageTitle>
+
+<style>
+    .no-print { }
+    @@media print {
+        .no-print { display: none !important; }
+        body { margin: 0; }
+    }
+</style>
+
+<div class="no-print p-3 d-flex justify-content-end">
+    <button class="btn btn-primary" @onclick="Print"><i class="bi bi-printer"></i> Print</button>
+</div>
+
+@if (_isLoading)
+{
+    <div class="p-4 text-center">
+        <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+        Loading invoice...
+    </div>
+}
+else if (_invoice == null)
+{
+    <div class="p-4"><div class="alert alert-danger">Invoice not found.</div></div>
+}
+else
+{
+    <div class="p-4" style="max-width: 900px; margin: 0 auto;">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h4 class="mb-1">@(_invoice.ClinicName ?? "Clinic")</h4>
+                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicAddress))
+                {
+                    <div>@_invoice.ClinicAddress</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicSuburb) || !string.IsNullOrWhiteSpace(_invoice.ClinicState) || !string.IsNullOrWhiteSpace(_invoice.ClinicPostcode))
+                {
+                    <div>@_invoice.ClinicSuburb @_invoice.ClinicState @_invoice.ClinicPostcode</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicPhone) || !string.IsNullOrWhiteSpace(_invoice.ClinicEmail))
+                {
+                    <div>@_invoice.ClinicPhone@(!string.IsNullOrWhiteSpace(_invoice.ClinicPhone) && !string.IsNullOrWhiteSpace(_invoice.ClinicEmail) ? " · " : "")@_invoice.ClinicEmail</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicAbn))
+                {
+                    <div>ABN: @_invoice.ClinicAbn</div>
+                }
+            </div>
+            <div class="text-end">
+                <h3 class="mb-1">INVOICE</h3>
+                <div><strong>@_invoice.InvoiceNumber</strong></div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-6">
+                <div class="text-muted small">Bill To</div>
+                <div class="fw-semibold">@_invoice.ClientName</div>
+            </div>
+            <div class="col-6">
+                <div class="row g-1 small">
+                    <div class="col-6 text-muted">Invoice Date</div>
+                    <div class="col-6">@_invoice.InvoiceDate.ToString("dd/MM/yyyy")</div>
+                    <div class="col-6 text-muted">Due Date</div>
+                    <div class="col-6">@_invoice.DueDate.ToString("dd/MM/yyyy")</div>
+                    <div class="col-6 text-muted">Provider</div>
+                    <div class="col-6">@(_invoice.PractitionerName ?? "-")</div>
+                    <div class="col-6 text-muted">Account Type</div>
+                    <div class="col-6">@_invoice.AccountTypeName</div>
+                </div>
+            </div>
+        </div>
+
+        <table class="table table-sm table-bordered">
+            <thead>
+                <tr>
+                    <th style="width:100px">Service Date</th>
+                    <th>Description</th>
+                    <th style="width:50px" class="text-end">Qty</th>
+                    <th style="width:90px" class="text-end">Fee</th>
+                    <th style="width:90px" class="text-end">Rebate</th>
+                    <th style="width:90px" class="text-end">Gap</th>
+                    <th style="width:90px" class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in _invoice.Items)
+                {
+                    <tr>
+                        <td>@(item.ServiceDate?.ToString("dd/MM/yyyy") ?? "-")</td>
+                        <td>@item.Description</td>
+                        <td class="text-end">@item.Quantity</td>
+                        <td class="text-end">@item.UnitPrice.ToString("C")</td>
+                        <td class="text-end">@item.LineRebate.ToString("C")</td>
+                        <td class="text-end">@item.Gap.ToString("C")</td>
+                        <td class="text-end">@item.TotalPrice.ToString("C")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="row">
+            <div class="col-6">
+                @if (!string.IsNullOrWhiteSpace(_invoice.Notes))
+                {
+                    <div class="text-muted small">Notes</div>
+                    <div>@_invoice.Notes</div>
+                }
+            </div>
+            <div class="col-6">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td>Total Fee</td><td class="text-end">@_invoice.TotalAmount.ToString("C")</td></tr>
+                        @{ var totalGst = _invoice.Items.Sum(i => i.GstAmount); }
+                        @if (totalGst != 0)
+                        {
+                            <tr><td>GST</td><td class="text-end">@totalGst.ToString("C")</td></tr>
+                        }
+                        <tr><td>Total Rebate</td><td class="text-end">@_invoice.TotalRebate.ToString("C")</td></tr>
+                        <tr><td>Total Gap</td><td class="text-end">@_invoice.TotalGap.ToString("C")</td></tr>
+                        <tr><td>Amount Paid</td><td class="text-end">@_invoice.AmountPaid.ToString("C")</td></tr>
+                        <tr class="fw-bold border-top"><td>Balance Due</td><td class="text-end">@_invoice.AmountOwing.ToString("C")</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private InvoiceDto? _invoice;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _invoice = await InvoiceService.GetInvoiceByIdAsync(Id);
+        _isLoading = false;
+    }
+
+    private async Task Print()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+}

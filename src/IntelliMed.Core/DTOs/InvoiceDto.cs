@@ -5,6 +5,15 @@ namespace IntelliMed.Core.DTOs;
 public class InvoiceDto
 {
     public int Id { get; set; }
+    public int ClinicId { get; set; }
+    public string? ClinicName { get; set; }
+    public string? ClinicAbn { get; set; }
+    public string? ClinicAddress { get; set; }
+    public string? ClinicSuburb { get; set; }
+    public string? ClinicState { get; set; }
+    public string? ClinicPostcode { get; set; }
+    public string? ClinicPhone { get; set; }
+    public string? ClinicEmail { get; set; }
     public int ClientId { get; set; }
     public string ClientName { get; set; } = string.Empty;
     public int? AppointmentId { get; set; }

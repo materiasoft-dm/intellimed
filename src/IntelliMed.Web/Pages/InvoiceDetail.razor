@@ -148,6 +148,7 @@ else
                             <th style="width:120px">Method</th>
                             <th>Reference</th>
                             <th style="width:100px">Amount</th>
+                            <th style="width:40px"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -158,6 +159,11 @@ else
                                 <td>@payment.MethodName</td>
                                 <td>@(payment.Reference ?? "-")</td>
                                 <td>@payment.Amount.ToString("C")</td>
+                                <td>
+                                    <a href="/invoices/receipt/@Id/@payment.Id" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary" title="Print Receipt">
+                                        <i class="bi bi-printer"></i>
+                                    </a>
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -166,7 +172,8 @@ else
         </div>
     </div>
 
-    <div class="d-flex justify-content-end">
+    <div class="d-flex justify-content-end gap-2">
+        <a href="/invoices/print/@Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer"></i> Print Invoice</a>
         <button type="button" class="btn btn-secondary" @onclick="@(() => NavManager.NavigateTo("/invoices"))">Close</button>
     </div>
 }

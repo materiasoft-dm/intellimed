@@ -68,6 +68,13 @@
                     <RadzenDataGridColumn TItem="PaymentDto" Property="MethodName" Title="Method" Width="120px" />
                     <RadzenDataGridColumn TItem="PaymentDto" Property="Reference" Title="Reference" Width="140px" />
                     <RadzenDataGridColumn TItem="PaymentDto" Property="Amount" Title="Amount" Width="100px" FormatString="{0:C}" />
+                    <RadzenDataGridColumn TItem="PaymentDto" Title="" Width="60px">
+                        <Template Context="p">
+                            <a href="/invoices/receipt/@p.InvoiceId/@p.Id" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary" title="Print Receipt">
+                                <i class="bi bi-printer"></i>
+                            </a>
+                        </Template>
+                    </RadzenDataGridColumn>
                 </Columns>
             </RadzenDataGrid>
         </div>

@@ -43,7 +43,10 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
                 .ThenInclude(item => item.FeeSchedule)
             .Include(i => i.Payments)
             .FirstOrDefaultAsync(i => i.Id == id);
-        return invoice == null ? null : EntityMapper.ToDto(invoice);
+        if (invoice == null) return null;
+
+        var clinic = await _context.Clinics.AsNoTracking().FirstOrDefaultAsync(c => c.Id == invoice.ClinicId);
+        return EntityMapper.ToDto(invoice, clinic);
     }
 
     public async Task<IEnumerable<InvoiceDto>> SearchAsync(InvoiceSearchDto search)
@@ -52,7 +55,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         var invoices = await query
             .Include(i => i.Client)
             .ToListAsync();
-        return invoices.Select(EntityMapper.ToDto);
+        return invoices.Select(i => EntityMapper.ToDto(i));
     }
 
     public async Task<(IEnumerable<InvoiceDto> Items, int TotalCount)> GetPagedAsync(InvoiceSearchDto search)
@@ -67,7 +70,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             .Take(search.PageSize)
             .ToListAsync();
 
-        return (invoices.Select(EntityMapper.ToDto), totalCount);
+        return (invoices.Select(i => EntityMapper.ToDto(i)), totalCount);
     }
 
     public async Task<IEnumerable<InvoiceDto>> GetByClientIdAsync(int clientId)
@@ -77,7 +80,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             .Where(i => i.ClientId == clientId)
             .OrderByDescending(i => i.InvoiceDate)
             .ToListAsync();
-        return invoices.Select(EntityMapper.ToDto);
+        return invoices.Select(i => EntityMapper.ToDto(i));
     }
 
     public async Task<IEnumerable<InvoiceDto>> GetOverdueInvoicesAsync()
@@ -88,7 +91,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             .Where(i => i.DueDate < today && i.Status != InvoiceStatus.Paid && i.Status != InvoiceStatus.Cancelled)
             .OrderBy(i => i.DueDate)
             .ToListAsync();
-        return invoices.Select(EntityMapper.ToDto);
+        return invoices.Select(i => EntityMapper.ToDto(i));
     }
 
     public async Task<string> GenerateInvoiceNumberAsync()
