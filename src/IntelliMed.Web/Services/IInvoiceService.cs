@@ -14,4 +14,7 @@ public interface IInvoiceService
     Task<ResolveLineResult?> ResolveLineAsync(ResolveLineRequest request);
     Task<List<AccountTypeFeeScheduleMappingDto>> GetFeeScheduleMappingsAsync();
     Task<bool> SaveFeeScheduleMappingAsync(SaveAccountTypeFeeScheduleMappingDto dto);
+    Task<ReceiptDto?> GetReceiptByIdAsync(int id);
+    Task<int?> CreateReceiptAsync(CreateReceiptDto dto);
+    Task<List<OutstandingInvoiceDto>> GetOutstandingInvoicesForPayerAsync(int payerClientId, int? excludeInvoiceId);
 }

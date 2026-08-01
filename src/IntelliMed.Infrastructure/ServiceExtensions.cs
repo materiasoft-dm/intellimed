@@ -20,6 +20,7 @@ public static class ServiceExtensions
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IPractitionerRepository, PractitionerRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IReceiptRepository, ReceiptRepository>();
         services.AddScoped<IClientAddressRepository, ClientAddressRepository>();
         services.AddScoped<IClientReferralRepository, ClientReferralRepository>();
         services.AddScoped<IClientCompensationClaimRepository, ClientCompensationClaimRepository>();

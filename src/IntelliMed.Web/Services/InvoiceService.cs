@@ -135,4 +135,36 @@ public class InvoiceService : IInvoiceService
         return await _httpClient.GetFromJsonAsync<PagedResult<PaymentDto>>(uri)
             ?? new PagedResult<PaymentDto>();
     }
+
+    public async Task<ReceiptDto?> GetReceiptByIdAsync(int id)
+    {
+        var response = await _httpClient.GetAsync($"api/receipts/{id}");
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<ReceiptDto>();
+    }
+
+    public async Task<int?> CreateReceiptAsync(CreateReceiptDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/receipts", dto);
+            if (!response.IsSuccessStatusCode) return null;
+            var result = await response.Content.ReadFromJsonAsync<CreateResult>();
+            return result?.Id;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Create receipt error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<List<OutstandingInvoiceDto>> GetOutstandingInvoicesForPayerAsync(int payerClientId, int? excludeInvoiceId)
+    {
+        var uri = $"api/receipts/outstanding?payerClientId={payerClientId}";
+        if (excludeInvoiceId.HasValue) uri += $"&excludeInvoiceId={excludeInvoiceId.Value}";
+
+        var results = await _httpClient.GetFromJsonAsync<List<OutstandingInvoiceDto>>(uri);
+        return results ?? new List<OutstandingInvoiceDto>();
+    }
 }

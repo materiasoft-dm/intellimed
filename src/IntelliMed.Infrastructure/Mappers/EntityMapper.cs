@@ -634,7 +634,10 @@ public static class EntityMapper
         CreatedAt = entity.CreatedAt,
         UpdatedAt = entity.UpdatedAt,
         Items = entity.Items.Select(ToDto).ToList(),
-        Payments = entity.Payments.Select(ToDto).ToList()
+        Payments = entity.ReceiptAllocations
+            .Where(a => a.AllocationType == AllocationType.Payment)
+            .Select(ToPaymentDto)
+            .ToList()
     };
 
     public static InvoiceItemDto ToDto(InvoiceItem entity) => new()
@@ -657,17 +660,69 @@ public static class EntityMapper
         Note = entity.Note
     };
 
-    public static PaymentDto ToDto(Payment entity) => new()
+    // Receipt mappings
+    public static ReceiptDto ToDto(Receipt entity, Clinic? clinic = null) => new()
+    {
+        Id = entity.Id,
+        ClinicId = entity.ClinicId,
+        ClinicName = clinic?.Name,
+        ClinicAbn = clinic?.Abn,
+        ClinicAddress = clinic?.Address,
+        ClinicSuburb = clinic?.Suburb,
+        ClinicState = clinic?.State,
+        ClinicPostcode = clinic?.Postcode,
+        ClinicPhone = clinic?.Phone,
+        ClinicEmail = clinic?.Email,
+        PayerClientId = entity.PayerClientId,
+        PayerName = entity.PayerClient != null ? $"{entity.PayerClient.FirstName} {entity.PayerClient.LastName}" : string.Empty,
+        ReceiptDate = entity.ReceiptDate,
+        Notes = entity.Notes,
+        CreatedAt = entity.CreatedAt,
+        Payments = entity.Payments.Select(ToDto).ToList(),
+        Allocations = entity.Allocations.Select(ToDto).ToList()
+    };
+
+    public static ReceiptPaymentDto ToDto(ReceiptPayment entity) => new()
+    {
+        Id = entity.Id,
+        Amount = entity.Amount,
+        Method = entity.Method,
+        Reference = entity.Reference
+    };
+
+    public static ReceiptAllocationDto ToDto(ReceiptAllocation entity) => new()
     {
         Id = entity.Id,
         InvoiceId = entity.InvoiceId,
         InvoiceNumber = entity.Invoice?.InvoiceNumber,
-        ClientName = entity.Invoice?.Client != null ? $"{entity.Invoice.Client.FirstName} {entity.Invoice.Client.LastName}" : null,
+        InvoiceItemId = entity.InvoiceItemId,
+        InvoiceItemDescription = entity.InvoiceItem?.Description,
         Amount = entity.Amount,
-        Method = entity.Method,
-        Reference = entity.Reference,
-        PaymentDate = entity.PaymentDate
+        AllocationType = entity.AllocationType
     };
+
+    /// <summary>Flattens a Payment-type ReceiptAllocation into the legacy PaymentDto shape, so the
+    /// invoice detail card and the cross-invoice ledger grid don't need a bigger rewrite. Named
+    /// distinctly from ToDto since C# can't overload solely on return type.</summary>
+    public static PaymentDto ToPaymentDto(ReceiptAllocation entity)
+    {
+        var receipt = entity.Receipt;
+        var isSplitTender = receipt != null && receipt.Payments.Count > 1;
+        var dominantTender = receipt?.Payments.OrderByDescending(p => p.Amount).FirstOrDefault();
+
+        return new PaymentDto
+        {
+            Id = entity.Id,
+            ReceiptId = entity.ReceiptId,
+            InvoiceId = entity.InvoiceId ?? 0,
+            InvoiceNumber = entity.Invoice?.InvoiceNumber,
+            ClientName = entity.Invoice?.Client != null ? $"{entity.Invoice.Client.FirstName} {entity.Invoice.Client.LastName}" : null,
+            Amount = entity.Amount,
+            Method = dominantTender?.Method ?? PaymentMethod.Other,
+            Reference = isSplitTender ? null : dominantTender?.Reference,
+            PaymentDate = receipt?.ReceiptDate ?? entity.CreatedAt
+        };
+    }
 
     public static Invoice ToEntity(CreateInvoiceDto dto, string invoiceNumber) => new()
     {
@@ -698,16 +753,6 @@ public static class EntityMapper
             DerivedQuantity = i.DerivedQuantity,
             Note = i.Note
         }).ToList()
-    };
-
-    public static Payment ToEntity(CreatePaymentDto dto) => new()
-    {
-        InvoiceId = dto.InvoiceId,
-        Amount = dto.Amount,
-        Method = dto.Method,
-        Reference = dto.Reference,
-        PaymentDate = dto.PaymentDate,
-        CreatedAt = DateTime.UtcNow
     };
 
     // BillingItem mappings

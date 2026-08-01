@@ -468,9 +468,9 @@ public class PrimaryClinicMigratorService : IPrimaryClinicMigratorService
         var result = new PrimaryClinicMigratorResultDto();
 
         // allocationRows is pre-grouped by (ReceiptGUID, InvoiceGUID) with a summed AllocatedAmount —
-        // this tells us which invoice(s) each receipt applies to and how much. In practice a receipt
-        // almost always covers a single invoice, but multi-invoice receipts are handled by pro-rating
-        // each tender line's amount across the invoices it touched.
+        // this tells us which invoice(s) each receipt applies to and how much, straight from legacy's
+        // own BillingAllocation rows. No pro-rating needed against the new schema: a ReceiptAllocation
+        // just records the legacy-allocated amount directly, one row per (receipt, invoice) pair.
         var invoicesByReceipt = new Dictionary<string, List<(string InvoiceGuid, decimal Amount)>>();
         foreach (var row in allocationRows)
         {
@@ -482,61 +482,89 @@ public class PrimaryClinicMigratorService : IPrimaryClinicMigratorService
             list.Add((invoiceGuid, amount));
         }
 
-        var touchedInvoiceIds = new HashSet<int>();
-
+        var paymentsByReceipt = new Dictionary<string, List<Dictionary<string, JsonElement>>>();
         foreach (var row in paymentRows)
         {
-            var receiptPaymentGuid = GetGuid(row, "GUID");
             var receiptGuid = GetGuid(row, "ReceiptGUID");
-            var amount = GetDecimal(row, "Amount") ?? 0m;
-            var method = PrimaryClinicLegacyMapper.MapPaymentMethod(GetString(row, "PaymentTypeName"));
+            if (!paymentsByReceipt.TryGetValue(receiptGuid, out var list))
+                paymentsByReceipt[receiptGuid] = list = new List<Dictionary<string, JsonElement>>();
+            list.Add(row);
+        }
 
+        var touchedInvoiceIds = new HashSet<int>();
+
+        foreach (var (receiptGuid, tenderRows) in paymentsByReceipt)
+        {
             if (!invoicesByReceipt.TryGetValue(receiptGuid, out var invoiceAllocations) || invoiceAllocations.Count == 0)
-                continue; // this receipt's allocations don't resolve to any invoice item — nothing to attribute the payment to
+                continue; // this receipt's allocations don't resolve to any invoice — nothing to attribute the payment to
 
-            var totalAllocated = invoiceAllocations.Sum(a => a.Amount);
-
-            foreach (var (invoiceGuid, allocatedAmount) in invoiceAllocations)
+            // Resolve each allocation's invoice up front — an invoice that wasn't imported is skipped
+            // individually rather than dropping the whole receipt.
+            var resolvedAllocations = new List<(int InvoiceId, string InvoiceGuid, decimal Amount)>();
+            foreach (var (invoiceGuid, amount) in invoiceAllocations)
             {
                 var invoiceId = await _context.Invoices.Where(i => i.LegacyGuid == invoiceGuid).Select(i => (int?)i.Id).FirstOrDefaultAsync();
-                if (invoiceId == null) continue; // invoice wasn't imported — skip rather than orphan the payment
+                if (invoiceId != null)
+                    resolvedAllocations.Add((invoiceId.Value, invoiceGuid, amount));
+            }
+            if (resolvedAllocations.Count == 0) continue;
 
-                // Single-invoice receipts (the overwhelming common case) get the full tender amount;
-                // multi-invoice receipts pro-rate by each invoice's share of the total allocated.
-                var paymentAmount = invoiceAllocations.Count == 1 || totalAllocated == 0
-                    ? amount
-                    : Math.Round(amount * (allocatedAmount / totalAllocated), 2);
+            var existingReceipt = await _context.Receipts
+                .Include(r => r.Payments)
+                .Include(r => r.Allocations)
+                .FirstOrDefaultAsync(r => r.LegacyGuid == receiptGuid);
 
-                var legacyGuid = $"{receiptPaymentGuid}:{invoiceGuid}";
-                var existing = await _context.Payments.FirstOrDefaultAsync(p => p.LegacyGuid == legacyGuid);
-                var payment = existing ?? new Payment { InvoiceId = invoiceId.Value, LegacyGuid = legacyGuid };
+            var (clinicId, payerClientId) = await ResolveReceiptContextAsync(resolvedAllocations[0].InvoiceId);
 
-                payment.Amount = paymentAmount;
-                payment.Method = method;
-                payment.PaymentDate = GetDateTime(row, "IssueDate") ?? payment.PaymentDate;
+            var receipt = existingReceipt ?? new Receipt { LegacyGuid = receiptGuid };
+            receipt.ClinicId = clinicId;
+            receipt.PayerClientId = payerClientId;
+            receipt.ReceiptDate = GetDateTime(tenderRows[0], "IssueDate") ?? receipt.ReceiptDate;
 
-                if (existing == null)
-                {
-                    _context.Payments.Add(payment);
-                    result.PaymentsCreated++;
-                }
-                else
-                {
-                    result.PaymentsUpdated++;
-                }
+            if (existingReceipt == null)
+            {
+                _context.Receipts.Add(receipt);
+                result.PaymentsCreated++;
+            }
+            else
+            {
+                result.PaymentsUpdated++;
+            }
 
-                touchedInvoiceIds.Add(invoiceId.Value);
+            foreach (var tenderRow in tenderRows)
+            {
+                var tenderGuid = GetGuid(tenderRow, "GUID");
+                var tender = receipt.Payments.FirstOrDefault(p => p.LegacyGuid == tenderGuid)
+                    ?? new ReceiptPayment { LegacyGuid = tenderGuid };
+                tender.Amount = GetDecimal(tenderRow, "Amount") ?? 0m;
+                tender.Method = PrimaryClinicLegacyMapper.MapPaymentMethod(GetString(tenderRow, "PaymentTypeName"));
+                if (tender.Id == 0) receipt.Payments.Add(tender);
+            }
+
+            foreach (var (invoiceId, invoiceGuid, amount) in resolvedAllocations)
+            {
+                var allocationGuid = $"{receiptGuid}:{invoiceGuid}";
+                var allocation = receipt.Allocations.FirstOrDefault(a => a.LegacyGuid == allocationGuid)
+                    ?? new ReceiptAllocation { LegacyGuid = allocationGuid };
+                allocation.InvoiceId = invoiceId;
+                allocation.Amount = amount;
+                allocation.AllocationType = AllocationType.Payment;
+                if (allocation.Id == 0) receipt.Allocations.Add(allocation);
+
+                touchedInvoiceIds.Add(invoiceId);
             }
         }
 
         await _context.SaveChangesAsync();
 
-        // Recompute each touched invoice's AmountPaid/Status now that its payments exist, matching
-        // how InvoiceRepository.RecordPaymentAsync derives Status from AmountPaid vs TotalAmount.
+        // Recompute each touched invoice's AmountPaid/Status now that its allocations exist, matching
+        // how ReceiptRepository.CreateAsync derives Status from AmountPaid vs TotalAmount.
         foreach (var invoiceId in touchedInvoiceIds)
         {
-            var invoice = await _context.Invoices.Include(i => i.Payments).FirstAsync(i => i.Id == invoiceId);
-            invoice.AmountPaid = Math.Round(invoice.Payments.Sum(p => p.Amount), 2);
+            var invoice = await _context.Invoices.FirstAsync(i => i.Id == invoiceId);
+            invoice.AmountPaid = Math.Round(await _context.ReceiptAllocations
+                .Where(a => a.InvoiceId == invoiceId && a.AllocationType == AllocationType.Payment)
+                .SumAsync(a => a.Amount), 2);
             invoice.Status = invoice.TotalAmount > 0 && invoice.AmountPaid >= invoice.TotalAmount
                 ? InvoiceStatus.Paid
                 : invoice.AmountPaid > 0
@@ -546,6 +574,14 @@ public class PrimaryClinicMigratorService : IPrimaryClinicMigratorService
 
         await _context.SaveChangesAsync();
         return result;
+    }
+
+    /// <summary>Resolves the clinic and payer for a synthetic Receipt from one of its allocated
+    /// invoices — the payer is Client.PayerClientId if set, else the client themself (self-pay).</summary>
+    private async Task<(int ClinicId, int PayerClientId)> ResolveReceiptContextAsync(int invoiceId)
+    {
+        var invoice = await _context.Invoices.Include(i => i.Client).FirstAsync(i => i.Id == invoiceId);
+        return (invoice.ClinicId, invoice.Client!.PayerClientId ?? invoice.Client.Id);
     }
 
     // =========================================================================

@@ -13,16 +13,19 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
     private readonly IBillingCalculator _billingCalculator;
     private readonly IDerivedFeeCalculator _derivedFeeCalculator;
     private readonly IMultipleOperationRuleCalculator _multipleOperationRuleCalculator;
+    private readonly IReceiptRepository _receiptRepository;
 
     public InvoiceRepository(
         AppDbContext context,
         IBillingCalculator billingCalculator,
         IDerivedFeeCalculator derivedFeeCalculator,
-        IMultipleOperationRuleCalculator multipleOperationRuleCalculator) : base(context)
+        IMultipleOperationRuleCalculator multipleOperationRuleCalculator,
+        IReceiptRepository receiptRepository) : base(context)
     {
         _billingCalculator = billingCalculator;
         _derivedFeeCalculator = derivedFeeCalculator;
         _multipleOperationRuleCalculator = multipleOperationRuleCalculator;
+        _receiptRepository = receiptRepository;
     }
 
     public async Task<InvoiceDto?> GetByIdAsync(int id)
@@ -41,7 +44,9 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
                 .ThenInclude(item => item.BillingItem)
             .Include(i => i.Items)
                 .ThenInclude(item => item.FeeSchedule)
-            .Include(i => i.Payments)
+            .Include(i => i.ReceiptAllocations)
+                .ThenInclude(a => a.Receipt)
+                    .ThenInclude(r => r!.Payments)
             .FirstOrDefaultAsync(i => i.Id == id);
         if (invoice == null) return null;
 
@@ -193,38 +198,30 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
     public async Task AddPaymentAsync(int invoiceId, CreatePaymentDto dto)
     {
         var invoice = await _dbSet
-            .Include(i => i.Payments)
+            .Include(i => i.Client)
             .FirstOrDefaultAsync(i => i.Id == invoiceId);
 
         if (invoice == null)
             throw new InvalidOperationException($"Invoice with ID {invoiceId} not found");
 
-        var payment = new Payment
+        // A thin single-invoice/single-tender adapter over the general receipting model — this is
+        // what keeps AddInvoice.razor's "pay now" checkbox and any other simple caller working
+        // unchanged while every payment, here or from the richer receipt UI, lands in the same place.
+        await _receiptRepository.CreateAsync(new CreateReceiptDto
         {
-            InvoiceId = invoiceId,
-            Amount = dto.Amount,
-            PaymentDate = dto.PaymentDate,
-            Method = dto.Method,
-            Reference = dto.Reference,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        await _context.Payments.AddAsync(payment);
-
-        // Update invoice total paid
-        invoice.AmountPaid += dto.Amount;
-
-        // Check if fully paid
-        if (invoice.AmountPaid >= invoice.TotalAmount)
-        {
-            invoice.Status = InvoiceStatus.Paid;
-        }
-        else if (invoice.AmountPaid > 0)
-        {
-            invoice.Status = InvoiceStatus.PartiallyPaid;
-        }
-
-        await _context.SaveChangesAsync();
+            ClinicId = invoice.ClinicId,
+            PayerClientId = invoice.Client?.PayerClientId ?? invoice.ClientId,
+            ReceiptDate = dto.PaymentDate,
+            Payments = new List<CreateReceiptTenderDto>
+            {
+                new() { Amount = dto.Amount, Method = dto.Method, Reference = dto.Reference }
+            },
+            Allocations = new List<CreateReceiptAllocationDto>
+            {
+                new() { InvoiceId = invoiceId, Amount = dto.Amount }
+            },
+            KeepOverpaymentAsCredit = true
+        });
     }
 
     public async Task UpdateStatusAsync(int id, InvoiceStatus status)
@@ -240,32 +237,37 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
 
     public async Task<(IEnumerable<PaymentDto> Items, int TotalCount)> GetAllPaymentsAsync(PaymentSearchDto search)
     {
-        var query = _context.Payments
-            .Include(p => p.Invoice)
-            .ThenInclude(i => i!.Client)
+        var query = _context.ReceiptAllocations
+            .Where(a => a.AllocationType == AllocationType.Payment && a.InvoiceId != null)
+            .Include(a => a.Invoice)
+                .ThenInclude(i => i!.Client)
+            .Include(a => a.Receipt)
+                .ThenInclude(r => r!.Payments)
             .AsQueryable();
 
         if (search.ClinicId.HasValue)
-            query = query.Where(p => p.Invoice!.ClinicId == search.ClinicId.Value);
+            query = query.Where(a => a.Invoice!.ClinicId == search.ClinicId.Value);
 
+        // Matches if ANY tender on the receipt used this method — a split-tender receipt no longer
+        // silently falls out of a method filter the way a flat one-method-per-row model would.
         if (search.Method.HasValue)
-            query = query.Where(p => p.Method == search.Method.Value);
+            query = query.Where(a => a.Receipt!.Payments.Any(p => p.Method == search.Method.Value));
 
         if (search.FromDate.HasValue)
-            query = query.Where(p => p.PaymentDate >= search.FromDate.Value);
+            query = query.Where(a => a.Receipt!.ReceiptDate >= search.FromDate.Value);
 
         if (search.ToDate.HasValue)
-            query = query.Where(p => p.PaymentDate <= search.ToDate.Value);
+            query = query.Where(a => a.Receipt!.ReceiptDate <= search.ToDate.Value);
 
         var totalCount = await query.CountAsync();
 
-        var payments = await query
-            .OrderByDescending(p => p.PaymentDate)
+        var allocations = await query
+            .OrderByDescending(a => a.Receipt!.ReceiptDate)
             .Skip((search.Page - 1) * search.PageSize)
             .Take(search.PageSize)
             .ToListAsync();
 
-        return (payments.Select(EntityMapper.ToDto), totalCount);
+        return (allocations.Select(EntityMapper.ToPaymentDto), totalCount);
     }
 
     private IQueryable<Invoice> BuildSearchQuery(InvoiceSearchDto search)

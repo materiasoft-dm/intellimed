@@ -16,6 +16,8 @@ public class InvoiceDto
     public string? ClinicEmail { get; set; }
     public int ClientId { get; set; }
     public string ClientName { get; set; } = string.Empty;
+    public int? PayerClientId { get; set; }
+    public string? PayerName { get; set; }
     public int? AppointmentId { get; set; }
     public int? PractitionerId { get; set; }
     public string? PractitionerName { get; set; }
@@ -66,6 +68,7 @@ public class InvoiceItemDto
 public class PaymentDto
 {
     public int Id { get; set; }
+    public int ReceiptId { get; set; }
     public int InvoiceId { get; set; }
     public string? InvoiceNumber { get; set; }
     public string? ClientName { get; set; }

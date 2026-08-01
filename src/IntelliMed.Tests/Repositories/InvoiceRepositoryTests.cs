@@ -13,12 +13,14 @@ namespace IntelliMed.Tests.Repositories;
 public class InvoiceRepositoryTests : IDisposable
 {
     private readonly InvoiceRepository _repository;
+    private readonly ReceiptRepository _receiptRepository;
     private readonly AppDbContext _context;
 
     public InvoiceRepositoryTests()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
-        _repository = new InvoiceRepository(_context, new BillingCalculator(_context), new DerivedFeeCalculator(_context), new MultipleOperationRuleCalculator(_context));
+        _receiptRepository = new ReceiptRepository(_context);
+        _repository = new InvoiceRepository(_context, new BillingCalculator(_context), new DerivedFeeCalculator(_context), new MultipleOperationRuleCalculator(_context), _receiptRepository);
     }
 
     public void Dispose()
@@ -502,8 +504,13 @@ public class InvoiceRepositoryTests : IDisposable
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync();
 
-        _context.Payments.Add(new Payment { InvoiceId = invoice.Id, Amount = 100.00m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today });
-        await _context.SaveChangesAsync();
+        var receiptId = await _receiptRepository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 100.00m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoice.Id, Amount = 100.00m } }
+        });
 
         // Act
         var (items, totalCount) = await _repository.GetAllPaymentsAsync(new PaymentSearchDto());
@@ -513,6 +520,7 @@ public class InvoiceRepositoryTests : IDisposable
         var payment = items.Should().ContainSingle().Subject;
         payment.InvoiceNumber.Should().Be("INV-777");
         payment.ClientName.Should().Be("Jane Doe");
+        payment.ReceiptId.Should().Be(receiptId);
     }
 
     [Fact]
@@ -528,10 +536,20 @@ public class InvoiceRepositoryTests : IDisposable
         _context.Invoices.AddRange(invoiceClinic1, invoiceClinic2);
         await _context.SaveChangesAsync();
 
-        _context.Payments.AddRange(
-            new Payment { InvoiceId = invoiceClinic1.Id, Amount = 100m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today },
-            new Payment { InvoiceId = invoiceClinic2.Id, Amount = 50m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today });
-        await _context.SaveChangesAsync();
+        await _receiptRepository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 100m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoiceClinic1.Id, Amount = 100m } }
+        });
+        await _receiptRepository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 2,
+            PayerClientId = client.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 50m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoiceClinic2.Id, Amount = 50m } }
+        });
 
         // Act
         var (items, totalCount) = await _repository.GetAllPaymentsAsync(new PaymentSearchDto { ClinicId = 1 });

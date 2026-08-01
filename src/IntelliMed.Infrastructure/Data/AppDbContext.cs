@@ -19,6 +19,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Receipt> Receipts => Set<Receipt>();
+    public DbSet<ReceiptPayment> ReceiptPayments => Set<ReceiptPayment>();
+    public DbSet<ReceiptAllocation> ReceiptAllocations => Set<ReceiptAllocation>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<ClientAddress> ClientAddresses => Set<ClientAddress>();
     public DbSet<ClientReferral> ClientReferrals => Set<ClientReferral>();
@@ -596,9 +599,58 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Reference).HasMaxLength(100);
             entity.HasIndex(e => e.LegacyGuid).IsUnique();
             entity.HasOne(e => e.Invoice)
-                .WithMany(i => i.Payments)
+                .WithMany()
                 .HasForeignKey(e => e.InvoiceId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Receipt configuration
+        modelBuilder.Entity<Receipt>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
+            entity.HasIndex(e => e.ClinicId);
+            entity.HasIndex(e => e.PayerClientId);
+            entity.HasOne(e => e.PayerClient)
+                .WithMany()
+                .HasForeignKey(e => e.PayerClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Clinic>()
+                .WithMany()
+                .HasForeignKey(e => e.ClinicId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ReceiptPayment configuration (a tender within a Receipt)
+        modelBuilder.Entity<ReceiptPayment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Reference).HasMaxLength(100);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
+            entity.HasOne(e => e.Receipt)
+                .WithMany(r => r.Payments)
+                .HasForeignKey(e => e.ReceiptId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ReceiptAllocation configuration (a settlement within a Receipt)
+        modelBuilder.Entity<ReceiptAllocation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
+            entity.HasIndex(e => e.InvoiceId);
+            entity.HasOne(e => e.Receipt)
+                .WithMany(r => r.Allocations)
+                .HasForeignKey(e => e.ReceiptId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Invoice)
+                .WithMany(i => i.ReceiptAllocations)
+                .HasForeignKey(e => e.InvoiceId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.InvoiceItem)
+                .WithMany()
+                .HasForeignKey(e => e.InvoiceItemId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // RolePermission configuration

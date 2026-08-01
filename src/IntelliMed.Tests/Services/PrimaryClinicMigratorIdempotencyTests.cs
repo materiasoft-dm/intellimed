@@ -101,20 +101,27 @@ public class PrimaryClinicMigratorIdempotencyTests : IDisposable
     }
 
     [Fact]
-    public async Task PaymentLegacyGuid_IsAReceiptInvoiceCompositeKey_NotJustTheReceiptGuid()
+    public async Task ReceiptAllocationLegacyGuid_IsAReceiptInvoiceCompositeKey_NotJustTheReceiptGuid()
     {
         // A single legacy receipt can pay off multiple invoices, so PrimaryClinicMigratorService keys
-        // each generated Payment row on "{ReceiptPaymentGuid}:{InvoiceLegacyGuid}", not the receipt
-        // payment's own GUID alone — otherwise the second invoice's payment would collide with the first.
+        // each generated ReceiptAllocation row on "{ReceiptGuid}:{InvoiceLegacyGuid}", not the
+        // receipt's own GUID alone — otherwise the second invoice's allocation would collide with the
+        // first. (Before the receipting rebuild, this composite key lived on Payment.LegacyGuid; it
+        // now lives on ReceiptAllocation.LegacyGuid instead — Receipt.LegacyGuid and
+        // ReceiptPayment.LegacyGuid each hold their own plain, non-composite legacy GUID.)
         var client = await UpsertClientByLegacyGuidAsync("77777777-7777-7777-7777-777777777777", "Payer");
         var invoiceA = await UpsertInvoiceByLegacyGuidAsync(client.Id, "88888888-8888-8888-8888-888888888888", 50m);
         var invoiceB = await UpsertInvoiceByLegacyGuidAsync(client.Id, "99999999-9999-9999-9999-999999999999", 75m);
 
-        const string receiptPaymentGuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-        _context.Payments.Add(new Payment { InvoiceId = invoiceA.Id, Amount = 20m, LegacyGuid = $"{receiptPaymentGuid}:88888888-8888-8888-8888-888888888888" });
-        _context.Payments.Add(new Payment { InvoiceId = invoiceB.Id, Amount = 30m, LegacyGuid = $"{receiptPaymentGuid}:99999999-9999-9999-9999-999999999999" });
+        const string receiptGuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+        var receipt = new Receipt { ClinicId = 1, PayerClientId = client.Id, ReceiptDate = DateTime.Today, LegacyGuid = receiptGuid };
+        _context.Receipts.Add(receipt);
         await _context.SaveChangesAsync();
 
-        (await _context.Payments.CountAsync()).Should().Be(2);
+        _context.ReceiptAllocations.Add(new ReceiptAllocation { ReceiptId = receipt.Id, InvoiceId = invoiceA.Id, Amount = 20m, LegacyGuid = $"{receiptGuid}:88888888-8888-8888-8888-888888888888" });
+        _context.ReceiptAllocations.Add(new ReceiptAllocation { ReceiptId = receipt.Id, InvoiceId = invoiceB.Id, Amount = 30m, LegacyGuid = $"{receiptGuid}:99999999-9999-9999-9999-999999999999" });
+        await _context.SaveChangesAsync();
+
+        (await _context.ReceiptAllocations.CountAsync()).Should().Be(2);
     }
 }

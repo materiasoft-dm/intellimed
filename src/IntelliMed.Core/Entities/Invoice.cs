@@ -30,7 +30,7 @@ public class Invoice
     public Appointment? Appointment { get; set; }
     public Practitioner? Practitioner { get; set; }
     public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
-    public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public ICollection<ReceiptAllocation> ReceiptAllocations { get; set; } = new List<ReceiptAllocation>();
 }
 
 public class InvoiceItem

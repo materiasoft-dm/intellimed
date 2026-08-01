@@ -132,7 +132,7 @@ else
     <div class="card mb-2">
         <div class="card-header py-1 d-flex justify-content-between align-items-center">
             <strong>Payments</strong>
-            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenPaymentModal" disabled="@(_invoice.AmountOwing <= 0)">+ Record Payment</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenReceiptModal" disabled="@(_invoice.AmountOwing <= 0)">+ Record Receipt</button>
         </div>
         <div class="card-body py-2">
             @if (_invoice.Payments.Count == 0)
@@ -160,7 +160,7 @@ else
                                 <td>@(payment.Reference ?? "-")</td>
                                 <td>@payment.Amount.ToString("C")</td>
                                 <td>
-                                    <a href="/invoices/receipt/@Id/@payment.Id" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary" title="Print Receipt">
+                                    <a href="/invoices/receipt/@payment.ReceiptId" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary" title="Print Receipt">
                                         <i class="bi bi-printer"></i>
                                     </a>
                                 </td>
@@ -178,19 +178,60 @@ else
     </div>
 }
 
-@if (_showPaymentModal)
+@if (_showReceiptModal)
 {
     <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header py-2">
-                    <h6 class="modal-title">Record Payment</h6>
-                    <button type="button" class="btn-close" @onclick="@(() => _showPaymentModal = false)"></button>
+                    <h6 class="modal-title">
+                        Record Receipt
+                        @if (_invoice?.PayerClientId != null)
+                        {
+                            <span class="text-muted small fw-normal">— Payer: @_invoice.PayerName</span>
+                        }
+                    </h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showReceiptModal = false)"></button>
                 </div>
                 <div class="modal-body">
+                    <label class="form-label small mb-1 fw-semibold">Allocate To</label>
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width:30px"></th>
+                                <th>Invoice #</th>
+                                <th>Client</th>
+                                <th style="width:100px" class="text-end">Owing</th>
+                                <th style="width:120px" class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in _allocationRows)
+                            {
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input" @bind="row.IsSelected" @bind:after="RecalculateTenderAmount" disabled="@row.IsLocked" />
+                                    </td>
+                                    <td>@row.InvoiceNumber</td>
+                                    <td>@row.ClientName</td>
+                                    <td class="text-end">@row.MaxAmount.ToString("C")</td>
+                                    <td class="text-end">
+                                        <input type="number" step="0.01" class="form-control form-control-sm text-end" @bind="row.Amount" @bind:after="RecalculateTenderAmount" disabled="@(!row.IsSelected)" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (_allocationRows.Count <= 1)
+                    {
+                        <div class="text-muted small mt-1">No other outstanding invoices for this payer.</div>
+                    }
+
+                    <hr />
+
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label small mb-0">Amount</label>
+                            <label class="form-label small mb-0">Amount Tendered</label>
                             <input type="number" step="0.01" class="form-control form-control-sm" @bind="_paymentAmount" />
                         </div>
                         <div class="col-6">
@@ -211,10 +252,18 @@ else
                             <input class="form-control form-control-sm" @bind="_paymentReference" />
                         </div>
                     </div>
+
+                    <div class="small mt-2 @(_paymentAmount < TotalAllocated ? "text-danger" : "text-muted")">
+                        Total Allocated: @TotalAllocated.ToString("C") &middot; Total Tendered: @_paymentAmount.ToString("C")
+                        @if (_paymentAmount > TotalAllocated)
+                        {
+                            <span> &middot; Excess of @((_paymentAmount - TotalAllocated).ToString("C")) will be kept as credit.</span>
+                        }
+                    </div>
                 </div>
                 <div class="modal-footer py-2">
-                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showPaymentModal = false)">Cancel</button>
-                    <button type="button" class="btn btn-sm btn-primary" @onclick="SavePaymentAsync">Save</button>
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showReceiptModal = false)">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-primary" @onclick="SaveReceiptAsync" disabled="@(_paymentAmount < TotalAllocated)">Save</button>
                 </div>
             </div>
         </div>
@@ -227,11 +276,14 @@ else
     private InvoiceDto? _invoice;
     private bool _isLoading = true;
 
-    private bool _showPaymentModal;
+    private bool _showReceiptModal;
+    private List<ReceiptAllocationRow> _allocationRows = new();
     private decimal _paymentAmount;
     private PaymentMethod _paymentMethod = PaymentMethod.Cash;
     private DateTime _paymentDate = DateTime.Today;
     private string? _paymentReference;
+
+    private decimal TotalAllocated => _allocationRows.Where(r => r.IsSelected).Sum(r => r.Amount);
 
     private string? _statusMessage;
     private bool _statusIsError;
@@ -248,35 +300,83 @@ else
         _isLoading = false;
     }
 
-    private void OpenPaymentModal()
+    private async Task OpenReceiptModal()
     {
-        _paymentAmount = _invoice?.AmountOwing ?? 0;
+        if (_invoice == null) return;
+
+        _allocationRows = new List<ReceiptAllocationRow>
+        {
+            new()
+            {
+                InvoiceId = _invoice.Id,
+                InvoiceNumber = _invoice.InvoiceNumber,
+                ClientName = _invoice.ClientName,
+                MaxAmount = _invoice.AmountOwing,
+                IsLocked = true,
+                IsSelected = true,
+                Amount = _invoice.AmountOwing
+            }
+        };
+
+        var payerClientId = _invoice.PayerClientId ?? _invoice.ClientId;
+        var outstanding = await InvoiceService.GetOutstandingInvoicesForPayerAsync(payerClientId, _invoice.Id);
+        foreach (var o in outstanding)
+        {
+            _allocationRows.Add(new ReceiptAllocationRow
+            {
+                InvoiceId = o.InvoiceId,
+                InvoiceNumber = o.InvoiceNumber,
+                ClientName = o.ClientName,
+                MaxAmount = o.AmountOwing,
+                IsLocked = false,
+                IsSelected = false,
+                Amount = o.AmountOwing
+            });
+        }
+
+        RecalculateTenderAmount();
         _paymentMethod = PaymentMethod.Cash;
         _paymentDate = DateTime.Today;
         _paymentReference = null;
-        _showPaymentModal = true;
+        _showReceiptModal = true;
     }
 
-    private async Task SavePaymentAsync()
+    private void RecalculateTenderAmount()
+    {
+        _paymentAmount = TotalAllocated;
+    }
+
+    private async Task SaveReceiptAsync()
     {
         if (_invoice == null) return;
-        var success = await InvoiceService.AddPaymentAsync(_invoice.Id, new CreatePaymentDto
+
+        var selectedRows = _allocationRows.Where(r => r.IsSelected).ToList();
+        if (selectedRows.Count == 0) return;
+
+        var receiptId = await InvoiceService.CreateReceiptAsync(new CreateReceiptDto
         {
-            Amount = _paymentAmount,
-            Method = _paymentMethod,
-            PaymentDate = _paymentDate,
-            Reference = _paymentReference
+            PayerClientId = _invoice.PayerClientId ?? _invoice.ClientId,
+            ReceiptDate = _paymentDate,
+            Payments = new List<CreateReceiptTenderDto>
+            {
+                new() { Amount = _paymentAmount, Method = _paymentMethod, Reference = _paymentReference }
+            },
+            Allocations = selectedRows.Select(r => new CreateReceiptAllocationDto
+            {
+                InvoiceId = r.InvoiceId,
+                Amount = r.Amount
+            }).ToList()
         });
 
-        _showPaymentModal = false;
-        if (success)
+        _showReceiptModal = false;
+        if (receiptId.HasValue)
         {
-            ShowStatus("Payment recorded.", false);
+            ShowStatus("Receipt recorded.", false);
             await LoadAsync();
         }
         else
         {
-            ShowStatus("Failed to record payment.", true);
+            ShowStatus("Failed to record receipt.", true);
         }
     }
 
@@ -284,5 +384,16 @@ else
     {
         _statusMessage = message;
         _statusIsError = isError;
+    }
+
+    private class ReceiptAllocationRow
+    {
+        public int InvoiceId { get; set; }
+        public string InvoiceNumber { get; set; } = string.Empty;
+        public string ClientName { get; set; } = string.Empty;
+        public decimal MaxAmount { get; set; }
+        public bool IsLocked { get; set; }
+        public bool IsSelected { get; set; }
+        public decimal Amount { get; set; }
     }
 }

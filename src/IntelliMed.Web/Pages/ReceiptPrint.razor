@@ -1,5 +1,6 @@
-@page "/invoices/receipt/{InvoiceId:int}/{PaymentId:int}"
+@page "/invoices/receipt/{ReceiptId:int}"
 @using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
 @using IntelliMed.Web.Services
 @inject IInvoiceService InvoiceService
 @inject IJSRuntime JS
@@ -25,7 +26,7 @@
         Loading receipt...
     </div>
 }
-else if (_invoice == null || _payment == null)
+else if (_receipt == null)
 {
     <div class="p-4"><div class="alert alert-danger">Receipt not found.</div></div>
 }
@@ -34,69 +35,97 @@ else
     <div class="p-4" style="max-width: 700px; margin: 0 auto;">
         <div class="d-flex justify-content-between align-items-start mb-4">
             <div>
-                <h4 class="mb-1">@(_invoice.ClinicName ?? "Clinic")</h4>
-                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicAddress))
+                <h4 class="mb-1">@(_receipt.ClinicName ?? "Clinic")</h4>
+                @if (!string.IsNullOrWhiteSpace(_receipt.ClinicAddress))
                 {
-                    <div>@_invoice.ClinicAddress</div>
+                    <div>@_receipt.ClinicAddress</div>
                 }
-                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicSuburb) || !string.IsNullOrWhiteSpace(_invoice.ClinicState) || !string.IsNullOrWhiteSpace(_invoice.ClinicPostcode))
+                @if (!string.IsNullOrWhiteSpace(_receipt.ClinicSuburb) || !string.IsNullOrWhiteSpace(_receipt.ClinicState) || !string.IsNullOrWhiteSpace(_receipt.ClinicPostcode))
                 {
-                    <div>@_invoice.ClinicSuburb @_invoice.ClinicState @_invoice.ClinicPostcode</div>
+                    <div>@_receipt.ClinicSuburb @_receipt.ClinicState @_receipt.ClinicPostcode</div>
                 }
-                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicPhone) || !string.IsNullOrWhiteSpace(_invoice.ClinicEmail))
+                @if (!string.IsNullOrWhiteSpace(_receipt.ClinicPhone) || !string.IsNullOrWhiteSpace(_receipt.ClinicEmail))
                 {
-                    <div>@_invoice.ClinicPhone@(!string.IsNullOrWhiteSpace(_invoice.ClinicPhone) && !string.IsNullOrWhiteSpace(_invoice.ClinicEmail) ? " · " : "")@_invoice.ClinicEmail</div>
+                    <div>@_receipt.ClinicPhone@(!string.IsNullOrWhiteSpace(_receipt.ClinicPhone) && !string.IsNullOrWhiteSpace(_receipt.ClinicEmail) ? " · " : "")@_receipt.ClinicEmail</div>
                 }
-                @if (!string.IsNullOrWhiteSpace(_invoice.ClinicAbn))
+                @if (!string.IsNullOrWhiteSpace(_receipt.ClinicAbn))
                 {
-                    <div>ABN: @_invoice.ClinicAbn</div>
+                    <div>ABN: @_receipt.ClinicAbn</div>
                 }
             </div>
             <div class="text-end">
                 <h3 class="mb-1">RECEIPT</h3>
-                <div><strong>Receipt No. @_payment.Id</strong></div>
+                <div><strong>Receipt No. @_receipt.Id</strong></div>
             </div>
         </div>
 
         <div class="row g-1 small mb-4">
             <div class="col-6 text-muted">Received From</div>
-            <div class="col-6">@_invoice.ClientName</div>
-            <div class="col-6 text-muted">For Invoice</div>
-            <div class="col-6">@_invoice.InvoiceNumber</div>
-            <div class="col-6 text-muted">Payment Date</div>
-            <div class="col-6">@_payment.PaymentDate.ToString("dd/MM/yyyy")</div>
-            <div class="col-6 text-muted">Method</div>
-            <div class="col-6">@_payment.MethodName</div>
-            @if (!string.IsNullOrWhiteSpace(_payment.Reference))
+            <div class="col-6">@_receipt.PayerName</div>
+            <div class="col-6 text-muted">Receipt Date</div>
+            <div class="col-6">@_receipt.ReceiptDate.ToString("dd/MM/yyyy")</div>
+            @if (!string.IsNullOrWhiteSpace(_receipt.Notes))
             {
-                <div class="col-6 text-muted">Reference</div>
-                <div class="col-6">@_payment.Reference</div>
+                <div class="col-6 text-muted">Notes</div>
+                <div class="col-6">@_receipt.Notes</div>
             }
         </div>
 
-        <table class="table table-sm mb-0">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Payment Method</th>
+                    <th>Reference</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
             <tbody>
-                <tr class="fw-bold"><td>Amount Received</td><td class="text-end">@_payment.Amount.ToString("C")</td></tr>
-                <tr><td>Invoice Total</td><td class="text-end">@_invoice.TotalAmount.ToString("C")</td></tr>
-                <tr><td>Total Paid to Date</td><td class="text-end">@_invoice.AmountPaid.ToString("C")</td></tr>
-                <tr class="border-top"><td>Balance Remaining</td><td class="text-end">@_invoice.AmountOwing.ToString("C")</td></tr>
+                @foreach (var tender in _receipt.Payments)
+                {
+                    <tr>
+                        <td>@tender.MethodName</td>
+                        <td>@(tender.Reference ?? "-")</td>
+                        <td class="text-end">@tender.Amount.ToString("C")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fw-bold">
+                    <td colspan="2" class="text-end">Total Received</td>
+                    <td class="text-end">@_receipt.TotalTendered.ToString("C")</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Applied To</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var allocation in _receipt.Allocations)
+                {
+                    <tr>
+                        <td>@(allocation.AllocationType == AllocationType.Credit ? "Held as credit" : $"Invoice {allocation.InvoiceNumber}")</td>
+                        <td class="text-end">@allocation.Amount.ToString("C")</td>
+                    </tr>
+                }
             </tbody>
         </table>
     </div>
 }
 
 @code {
-    [Parameter] public int InvoiceId { get; set; }
-    [Parameter] public int PaymentId { get; set; }
+    [Parameter] public int ReceiptId { get; set; }
 
-    private InvoiceDto? _invoice;
-    private PaymentDto? _payment;
+    private ReceiptDto? _receipt;
     private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        _invoice = await InvoiceService.GetInvoiceByIdAsync(InvoiceId);
-        _payment = _invoice?.Payments.FirstOrDefault(p => p.Id == PaymentId);
+        _receipt = await InvoiceService.GetReceiptByIdAsync(ReceiptId);
         _isLoading = false;
     }
 
