@@ -446,3 +446,26 @@ code {
     from { opacity: 0; }
     to { opacity: 1; }
 }
+
+/* Print: hide the app shell (top bar, sidebar, mobile backdrop) and undo the fixed-viewport
+   height/overflow the shell relies on for its internal scrolling panes — without this, printed
+   documents longer than one screen get clipped instead of flowing onto additional pages. */
+@media print {
+    .mdi-menu-bar,
+    .mdi-sidebar,
+    .mdi-overlay-backdrop {
+        display: none !important;
+    }
+
+    html, body,
+    .mdi-layout,
+    .mdi-body,
+    .mdi-main-content {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .mdi-main-content {
+        background-color: #fff;
+    }
+}
