@@ -42,6 +42,8 @@ else
                         <div class="col-6">@_invoice.ClientName</div>
                         <div class="col-6 text-muted">Provider</div>
                         <div class="col-6">@(_invoice.PractitionerName ?? "-")</div>
+                        <div class="col-6 text-muted">Payee</div>
+                        <div class="col-6">@(_invoice.PayeePractitionerName ?? "Same as Provider")</div>
                         <div class="col-6 text-muted">Account Type</div>
                         <div class="col-6">@_invoice.AccountTypeName</div>
                         <div class="col-6 text-muted">Invoice Date</div>
@@ -64,6 +66,15 @@ else
                     <div class="row g-1 small">
                         <div class="col-6 text-muted">Status</div>
                         <div class="col-6"><span class="badge bg-primary">@_invoice.StatusName</span></div>
+                        <div class="col-6 text-muted">Claim Status</div>
+                        <div class="col-6">
+                            <select class="form-select form-select-sm" style="width:auto;font-size:0.8rem" value="@_invoice.ClaimStatus" @onchange="OnClaimStatusChangedAsync">
+                                @foreach (var status in Enum.GetValues<ClaimStatus>())
+                                {
+                                    <option value="@status">@status</option>
+                                }
+                            </select>
+                        </div>
                         <div class="col-6 text-muted">Total</div>
                         <div class="col-6">@_invoice.TotalAmount.ToString("C")</div>
                         <div class="col-6 text-muted">Paid</div>
@@ -84,6 +95,17 @@ else
                         {
                             <div class="col-6 text-muted">Cancel Reason</div>
                             <div class="col-6">@_invoice.CancelReason</div>
+                        }
+                        @{ var consentFlags = ApplicableConsentFlags(); }
+                        @if (consentFlags.Count > 0)
+                        {
+                            <div class="col-12 text-muted mt-1">Consent &amp; Claiming</div>
+                            <div class="col-12">
+                                @foreach (var flag in consentFlags)
+                                {
+                                    <span class="badge @(flag.Value ? "bg-success" : "bg-secondary") me-1">@(flag.Value ? "✓" : "✗") @flag.Label</span>
+                                }
+                            </div>
                         }
                     </div>
                 </div>
@@ -715,6 +737,45 @@ else
     {
         _statusMessage = message;
         _statusIsError = isError;
+    }
+
+    /// <summary>Same account-type gating as AddInvoice.razor's Consent &amp; Claiming card — only
+    /// list the checkboxes that actually applied when this invoice was created.</summary>
+    private List<(string Label, bool Value)> ApplicableConsentFlags()
+    {
+        var list = new List<(string, bool)>();
+        if (_invoice == null) return list;
+
+        if (_invoice.AccountType is not (AccountTypeEnum.WorkCover or AccountTypeEnum.Tac or AccountTypeEnum.Other))
+            list.Add(("Online Submission Authorised", _invoice.ClaimSubmissionAuthorised));
+        if (_invoice.AccountType is AccountTypeEnum.Imc or AccountTypeEnum.Ovs)
+        {
+            list.Add(("Financial Interest Disclosed", _invoice.FinancialInterestDisclosed));
+            list.Add(("Compensation Claim", _invoice.CompensationClaim));
+        }
+        if (_invoice.AccountType == AccountTypeEnum.BulkBill)
+            list.Add(("Submission Authority Received", _invoice.SubmissionAuthorityReceived));
+        if (_invoice.AccountType == AccountTypeEnum.Imc)
+            list.Add(("Assignment Requested", _invoice.BenefitAssignmentRequested));
+
+        return list;
+    }
+
+    private async Task OnClaimStatusChangedAsync(ChangeEventArgs e)
+    {
+        if (_invoice == null || e.Value == null) return;
+        if (!Enum.TryParse<ClaimStatus>(e.Value.ToString(), out var newStatus)) return;
+
+        var ok = await InvoiceService.UpdateClaimStatusAsync(_invoice.Id, newStatus);
+        if (ok)
+        {
+            ShowStatus("Claim status updated.", false);
+            await LoadAsync();
+        }
+        else
+        {
+            ShowStatus("Failed to update claim status.", true);
+        }
     }
 
     private class ReceiptAllocationRow

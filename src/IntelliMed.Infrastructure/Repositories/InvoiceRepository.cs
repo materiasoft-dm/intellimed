@@ -40,6 +40,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             .Include(i => i.Client)
             .Include(i => i.Appointment)
             .Include(i => i.Practitioner)
+            .Include(i => i.PayeePractitioner)
             .Include(i => i.Items)
                 .ThenInclude(item => item.BillingItem)
             .Include(i => i.Items)
@@ -232,6 +233,17 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             throw new InvalidOperationException($"Invoice with ID {id} not found");
 
         invoice.Status = status;
+        invoice.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateClaimStatusAsync(int id, ClaimStatus claimStatus)
+    {
+        var invoice = await _dbSet.FindAsync(id);
+        if (invoice == null)
+            throw new InvalidOperationException($"Invoice with ID {id} not found");
+
+        invoice.ClaimStatus = claimStatus;
         invoice.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
     }

@@ -1055,4 +1055,143 @@ public class InvoiceRepositoryTests : IDisposable
             .ToListAsync();
         siblingNumbers.Should().OnlyHaveUniqueItems();
     }
+
+    [Fact]
+    public async Task CreateAsync_PersistsConsentFlagsAndPayeePractitioner()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        var payee = new Practitioner { FirstName = "Payee", LastName = "Doctor", Title = "Dr", IsActive = true };
+        _context.Practitioners.Add(payee);
+        await _context.SaveChangesAsync();
+
+        var dto = new CreateInvoiceDto
+        {
+            ClientId = client.Id,
+            DueDate = DateTime.Today.AddDays(30),
+            PayeePractitionerId = payee.Id,
+            ClaimSubmissionAuthorised = true,
+            FinancialInterestDisclosed = true,
+            CompensationClaim = true,
+            SubmissionAuthorityReceived = true,
+            BenefitAssignmentRequested = true,
+            Items = new List<CreateInvoiceItemDto> { new() { Description = "Consultation", Quantity = 1, UnitPrice = 100m } }
+        };
+
+        var id = await _repository.CreateAsync(dto);
+
+        var invoice = await _context.Invoices.FindAsync(id);
+        invoice!.PayeePractitionerId.Should().Be(payee.Id);
+        invoice.ClaimSubmissionAuthorised.Should().BeTrue();
+        invoice.FinancialInterestDisclosed.Should().BeTrue();
+        invoice.CompensationClaim.Should().BeTrue();
+        invoice.SubmissionAuthorityReceived.Should().BeTrue();
+        invoice.BenefitAssignmentRequested.Should().BeTrue();
+        invoice.ClaimStatus.Should().Be(ClaimStatus.NotSubmitted);
+    }
+
+    [Fact]
+    public async Task GetByIdWithDetailsAsync_ReturnsPayerClientIdAndPayerNameFromClient()
+    {
+        // Regression test for a dead-mapping bug: InvoiceDto.PayerClientId/PayerName were declared
+        // but never assigned in EntityMapper.ToDto(Invoice, Clinic?), so a dependent client's
+        // invoices always resolved the payer as themselves instead of the real payer.
+        var payer = new Client { FirstName = "Parent", LastName = "Payer", Email = "parent@example.com", IsActive = true };
+        _context.Clients.Add(payer);
+        await _context.SaveChangesAsync();
+
+        var dependent = new Client
+        {
+            FirstName = "Dependent",
+            LastName = "Child",
+            Email = "child@example.com",
+            IsActive = true,
+            PayerClientId = payer.Id,
+            PayerName = "Parent Payer"
+        };
+        _context.Clients.Add(dependent);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice
+        {
+            ClientId = dependent.Id,
+            InvoiceNumber = "INV-PAYER-TEST",
+            InvoiceDate = DateTime.Today,
+            DueDate = DateTime.Today.AddDays(30),
+            Status = InvoiceStatus.Draft,
+            TotalAmount = 100m
+        };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.GetByIdWithDetailsAsync(invoice.Id);
+
+        result.Should().NotBeNull();
+        result!.PayerClientId.Should().Be(payer.Id);
+        result.PayerName.Should().Be("Parent Payer");
+    }
+
+    [Fact]
+    public async Task UpdateClaimStatusAsync_UpdatesClaimStatus()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Draft, TotalAmount = 100m };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        await _repository.UpdateClaimStatusAsync(invoice.Id, ClaimStatus.Submitted);
+
+        var updated = await _context.Invoices.FindAsync(invoice.Id);
+        updated!.ClaimStatus.Should().Be(ClaimStatus.Submitted);
+    }
+
+    [Fact]
+    public async Task SplitAsync_CarriesForwardConsentFlagsAndPayeePractitioner_ButResetsClaimStatusToNotSubmitted()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        var payee = new Practitioner { FirstName = "Payee", LastName = "Doctor", Title = "Dr", IsActive = true };
+        _context.Practitioners.Add(payee);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice
+        {
+            ClientId = client.Id,
+            InvoiceNumber = "INV-001",
+            InvoiceDate = DateTime.Today,
+            DueDate = DateTime.Today.AddDays(30),
+            Status = InvoiceStatus.Sent,
+            TotalAmount = 300m,
+            PayeePractitionerId = payee.Id,
+            ClaimSubmissionAuthorised = true,
+            FinancialInterestDisclosed = true,
+            CompensationClaim = true,
+            SubmissionAuthorityReceived = true,
+            BenefitAssignmentRequested = true,
+            ClaimStatus = ClaimStatus.Submitted
+        };
+        _context.Invoices.Add(invoice);
+        var itemA = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item A", Quantity = 1, UnitPrice = 100m };
+        var itemB = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item B", Quantity = 1, UnitPrice = 200m };
+        _context.InvoiceItems.AddRange(itemA, itemB);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.SplitAsync(invoice.Id, new SplitInvoiceDto
+        {
+            Reason = "Testing field carry-forward",
+            NewInvoices = { new SplitInvoiceGroupDto { InvoiceItemIds = { itemB.Id } } }
+        });
+
+        var sibling = await _context.Invoices.FirstAsync(i => i.Id == result.NewInvoiceIds[0]);
+        sibling.PayeePractitionerId.Should().Be(payee.Id);
+        sibling.ClaimSubmissionAuthorised.Should().BeTrue();
+        sibling.FinancialInterestDisclosed.Should().BeTrue();
+        sibling.CompensationClaim.Should().BeTrue();
+        sibling.SubmissionAuthorityReceived.Should().BeTrue();
+        sibling.BenefitAssignmentRequested.Should().BeTrue();
+        sibling.ClaimStatus.Should().Be(ClaimStatus.NotSubmitted);
+    }
 }

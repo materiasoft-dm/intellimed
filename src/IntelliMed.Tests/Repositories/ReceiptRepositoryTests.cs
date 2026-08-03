@@ -461,6 +461,55 @@ public class ReceiptRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateAsync_IgnoresClientSuppliedPayerClientId_DerivesRealPayerFromInvoice()
+    {
+        var payer = await SeedClientAsync();
+        var dependent = await SeedClientAsync(payerClientId: payer.Id);
+        var invoice = await SeedInvoiceAsync(dependent.Id, 100m);
+
+        var dto = new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = dependent.Id, // wrong on purpose — the real payer is `payer`, not `dependent`
+            Payments = { new CreateReceiptTenderDto { Amount = 100m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoice.Id, Amount = 100m } }
+        };
+
+        var receiptId = await _repository.CreateAsync(dto);
+
+        var receipt = await _context.Receipts.FindAsync(receiptId);
+        receipt!.PayerClientId.Should().Be(payer.Id);
+    }
+
+    [Fact]
+    public async Task CreateRefundAsync_IgnoresClientSuppliedPayerClientId_DerivesRealPayerFromInvoice()
+    {
+        var payer = await SeedClientAsync();
+        var dependent = await SeedClientAsync(payerClientId: payer.Id);
+        var invoice = await SeedInvoiceAsync(dependent.Id, 100m);
+        await _repository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = payer.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 100m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoice.Id, Amount = 100m } }
+        });
+
+        var refundId = await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = dependent.Id, // wrong on purpose
+            InvoiceId = invoice.Id,
+            Amount = 50m,
+            Method = PaymentMethod.Cash,
+            Reason = "Testing payer re-derivation"
+        });
+
+        var refundReceipt = await _context.Receipts.FindAsync(refundId);
+        refundReceipt!.PayerClientId.Should().Be(payer.Id);
+    }
+
+    [Fact]
     public async Task CreateRefundAsync_CancelledInvoice_Throws()
     {
         var client = await SeedClientAsync();

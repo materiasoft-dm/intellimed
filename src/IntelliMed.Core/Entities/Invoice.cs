@@ -27,10 +27,26 @@ public class Invoice
     /// <summary>The legacy Pracnet Invoices.GUID this record was imported from (PrimaryClinic Migrator).</summary>
     public string? LegacyGuid { get; set; }
 
+    public bool ClaimSubmissionAuthorised { get; set; }
+    public bool FinancialInterestDisclosed { get; set; }
+    public bool CompensationClaim { get; set; }
+    public bool SubmissionAuthorityReceived { get; set; }
+    public bool BenefitAssignmentRequested { get; set; }
+    public ClaimStatus ClaimStatus { get; set; } = ClaimStatus.NotSubmitted;
+
+    /// <summary>Invoice-level override for who receives the Medicare/DVA/fund payment when different
+    /// from the servicing Practitioner. Null = same as Practitioner (legacy:
+    /// GroupPayeeBusinessAddressGuid = PayeeBusinessAddressGUID ?? ProviderBusinessAddressGUID).
+    /// Deliberately no provider-level default (legacy's ProviderBusinessAddresses.PayeeProviderGUID) —
+    /// that's a UX auto-fill convenience worth adding later if manual per-invoice selection turns out
+    /// to be a real annoyance, not something to build speculatively now.</summary>
+    public int? PayeePractitionerId { get; set; }
+
     // Navigation properties
     public Client? Client { get; set; }
     public Appointment? Appointment { get; set; }
     public Practitioner? Practitioner { get; set; }
+    public Practitioner? PayeePractitioner { get; set; }
     public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
     public ICollection<ReceiptAllocation> ReceiptAllocations { get; set; } = new List<ReceiptAllocation>();
     public ICollection<InvoiceWriteOff> WriteOffs { get; set; } = new List<InvoiceWriteOff>();
@@ -130,6 +146,22 @@ public enum InvoiceStatus
     PartiallyPaid,
     Overdue,
     Cancelled
+}
+
+/// <summary>Medicare/DVA/health-fund claim lodgement status — orthogonal to InvoiceStatus (payment
+/// state), and unrelated to ClientCompensationClaim (a WorkCover/TAC injury-claim record — "claim"
+/// is an overloaded word in this domain). Append-only, like AllocationType — persisted as a plain
+/// int, never renumber. Deliberately collapsed from legacy's ~20-value eClaimStatus (which encodes
+/// per-channel/vendor history no code here needs yet) down to the essential lifecycle; nothing
+/// drives real transitions until real electronic claiming exists, so this is manually set for now.</summary>
+public enum ClaimStatus
+{
+    NotSubmitted,
+    Submitted,
+    Accepted,
+    Rejected,
+    PartiallyPaid,
+    Paid
 }
 
 public enum PaymentMethod

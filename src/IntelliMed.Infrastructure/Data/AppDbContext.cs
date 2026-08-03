@@ -470,6 +470,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.PractitionerId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.PayeePractitioner)
+                .WithMany()
+                .HasForeignKey(e => e.PayeePractitionerId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Clinic>()
                 .WithMany()
                 .HasForeignKey(e => e.ClinicId)

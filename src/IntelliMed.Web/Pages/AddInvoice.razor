@@ -48,7 +48,7 @@
                             <button type="button" class="btn btn-outline-secondary" @onclick="OpenClientPicker">Find</button>
                         </div>
                     </div>
-                    <div class="col-4">
+                    <div class="col-3">
                         <label class="form-label small mb-0">Provider</label>
                         <select class="form-select form-select-sm" @bind="_model.PractitionerId" @bind:after="RecalculateAllLinesAsync">
                             <option value="">-- None --</option>
@@ -58,7 +58,17 @@
                             }
                         </select>
                     </div>
-                    <div class="col-4">
+                    <div class="col-3">
+                        <label class="form-label small mb-0" title="Who receives the Medicare/DVA/fund payment, if different from the servicing Provider">Payee</label>
+                        <select class="form-select form-select-sm" @bind="_model.PayeePractitionerId">
+                            <option value="">-- Same as Provider --</option>
+                            @foreach (var p in _practitioners)
+                            {
+                                <option value="@p.Id">@p.FullName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-3">
                         <label class="form-label small mb-0">Place of Service</label>
                         <select class="form-select form-select-sm" @bind="_model.PlaceOfService" @bind:after="RecalculateAllLinesAsync">
                             @foreach (var place in Enum.GetValues<PlaceOfServiceEnum>())
@@ -67,7 +77,7 @@
                             }
                         </select>
                     </div>
-                    <div class="col-4">
+                    <div class="col-3">
                         <label class="form-label small mb-0">Due Date</label>
                         <input type="date" class="form-control form-control-sm" @bind="_model.DueDate" />
                     </div>
@@ -113,6 +123,49 @@
         </div>
     </div>
 </div>
+
+@if (AnyConsentFieldsApplicable(_model.AccountType))
+{
+    <div class="card mb-2">
+        <div class="card-header py-1"><strong>Consent &amp; Claiming</strong></div>
+        <div class="card-body py-2">
+            <div class="row g-2">
+                @if (_model.AccountType is not (AccountTypeEnum.WorkCover or AccountTypeEnum.Tac or AccountTypeEnum.Other))
+                {
+                    <div class="col-auto form-check">
+                        <input class="form-check-input" type="checkbox" id="chkClaimSubmissionAuthorised" @bind="_model.ClaimSubmissionAuthorised" />
+                        <label class="form-check-label small" for="chkClaimSubmissionAuthorised">Online Submission Authorised</label>
+                    </div>
+                }
+                @if (_model.AccountType is AccountTypeEnum.Imc or AccountTypeEnum.Ovs)
+                {
+                    <div class="col-auto form-check">
+                        <input class="form-check-input" type="checkbox" id="chkFinancialInterestDisclosed" @bind="_model.FinancialInterestDisclosed" />
+                        <label class="form-check-label small" for="chkFinancialInterestDisclosed">Financial Interest Disclosed</label>
+                    </div>
+                    <div class="col-auto form-check">
+                        <input class="form-check-input" type="checkbox" id="chkCompensationClaim" @bind="_model.CompensationClaim" />
+                        <label class="form-check-label small" for="chkCompensationClaim">Compensation Claim</label>
+                    </div>
+                }
+                @if (_model.AccountType == AccountTypeEnum.BulkBill)
+                {
+                    <div class="col-auto form-check">
+                        <input class="form-check-input" type="checkbox" id="chkSubmissionAuthorityReceived" @bind="_model.SubmissionAuthorityReceived" />
+                        <label class="form-check-label small" for="chkSubmissionAuthorityReceived">Submission Authority Form Received (DB4)</label>
+                    </div>
+                }
+                @if (_model.AccountType == AccountTypeEnum.Imc)
+                {
+                    <div class="col-auto form-check">
+                        <input class="form-check-input" type="checkbox" id="chkBenefitAssignmentRequested" @bind="_model.BenefitAssignmentRequested" />
+                        <label class="form-check-label small" for="chkBenefitAssignmentRequested" title="Unticked = implied assignment (default). Ticked = requested assignment.">Assignment Requested</label>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
 
 <div class="card mb-2">
     <div class="card-header py-1 d-flex justify-content-between align-items-center">
@@ -336,8 +389,16 @@
         AccountTypeEnum.WorkCover => "WorkCover",
         AccountTypeEnum.Tac => "TAC",
         AccountTypeEnum.Imc => "IMC",
+        AccountTypeEnum.Ovs => "OVS",
+        AccountTypeEnum.ChildImm => "Immunisation",
         _ => type.ToString()
     };
+
+    /// <summary>WorkCover/Tac/Other are the only account types where none of the five consent
+    /// checkboxes apply (see each checkbox's own @if gate below) — hide the whole card for those
+    /// rather than render an empty one.</summary>
+    private static bool AnyConsentFieldsApplicable(AccountTypeEnum type) =>
+        type is not (AccountTypeEnum.WorkCover or AccountTypeEnum.Tac or AccountTypeEnum.Other);
 
     private void OpenClientPicker()
     {

@@ -37,6 +37,15 @@ public class InvoiceDto
     public decimal TotalGap => Items.Sum(i => i.Gap);
     public string? Notes { get; set; }
     public string? CancelReason { get; set; }
+    public bool ClaimSubmissionAuthorised { get; set; }
+    public bool FinancialInterestDisclosed { get; set; }
+    public bool CompensationClaim { get; set; }
+    public bool SubmissionAuthorityReceived { get; set; }
+    public bool BenefitAssignmentRequested { get; set; }
+    public ClaimStatus ClaimStatus { get; set; }
+    public string ClaimStatusName => ClaimStatus.ToString();
+    public int? PayeePractitionerId { get; set; }
+    public string? PayeePractitionerName { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public List<InvoiceItemDto> Items { get; set; } = new();
@@ -93,6 +102,12 @@ public class CreateInvoiceDto
     public PlaceOfServiceEnum PlaceOfService { get; set; } = PlaceOfServiceEnum.Rooms;
     public DateTime DueDate { get; set; }
     public string? Notes { get; set; }
+    public bool ClaimSubmissionAuthorised { get; set; }
+    public bool FinancialInterestDisclosed { get; set; }
+    public bool CompensationClaim { get; set; }
+    public bool SubmissionAuthorityReceived { get; set; }
+    public bool BenefitAssignmentRequested { get; set; }
+    public int? PayeePractitionerId { get; set; }
     public List<CreateInvoiceItemDto> Items { get; set; } = new();
 }
 

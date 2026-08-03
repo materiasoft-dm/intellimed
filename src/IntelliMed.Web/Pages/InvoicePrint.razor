@@ -71,6 +71,11 @@ else
                     <div class="col-6">@_invoice.DueDate.ToString("dd/MM/yyyy")</div>
                     <div class="col-6 text-muted">Provider</div>
                     <div class="col-6">@(_invoice.PractitionerName ?? "-")</div>
+                    @if (_invoice.PayeePractitionerId.HasValue && _invoice.PayeePractitionerId != _invoice.PractitionerId)
+                    {
+                        <div class="col-6 text-muted">Payee</div>
+                        <div class="col-6">@_invoice.PayeePractitionerName</div>
+                    }
                     <div class="col-6 text-muted">Account Type</div>
                     <div class="col-6">@_invoice.AccountTypeName</div>
                 </div>

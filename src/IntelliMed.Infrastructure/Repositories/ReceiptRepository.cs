@@ -42,11 +42,20 @@ public class ReceiptRepository : Repository<Receipt>, IReceiptRepository
         if (tenderTotal < allocationTotal)
             throw new InvalidOperationException("Tendered amount is less than the amount being allocated.");
 
+        // Re-derived from the target invoice(s) rather than trusted from the DTO — matches
+        // InvoiceRepository.AddPaymentAsync's existing pattern. A receipt spanning multiple invoices
+        // must resolve to the same payer for all of them.
+        int? resolvedPayerClientId = null;
         foreach (var allocation in dto.Allocations)
         {
-            var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == allocation.InvoiceId);
+            var invoice = await _context.Invoices.Include(i => i.Client).FirstOrDefaultAsync(i => i.Id == allocation.InvoiceId);
             if (invoice == null || invoice.ClinicId != dto.ClinicId)
                 throw new InvalidOperationException($"Invoice {allocation.InvoiceId} was not found in this clinic.");
+
+            var invoicePayerClientId = invoice.Client?.PayerClientId ?? invoice.ClientId;
+            if (resolvedPayerClientId.HasValue && resolvedPayerClientId.Value != invoicePayerClientId)
+                throw new InvalidOperationException("All allocations in a receipt must belong to the same payer.");
+            resolvedPayerClientId = invoicePayerClientId;
 
             if (allocation.InvoiceItemId.HasValue)
             {
@@ -60,7 +69,9 @@ public class ReceiptRepository : Repository<Receipt>, IReceiptRepository
         var receipt = new Receipt
         {
             ClinicId = dto.ClinicId,
-            PayerClientId = dto.PayerClientId,
+            // Falls back to the client-supplied value only when there are no allocations to derive
+            // a payer from (nothing currently calls CreateAsync that way, but it's not hard-blocked).
+            PayerClientId = resolvedPayerClientId ?? dto.PayerClientId,
             ReceiptDate = dto.ReceiptDate,
             Notes = dto.Notes,
             CreatedAt = DateTime.UtcNow,
@@ -113,9 +124,13 @@ public class ReceiptRepository : Repository<Receipt>, IReceiptRepository
         if (string.IsNullOrWhiteSpace(dto.Reason))
             throw new InvalidOperationException("A reason is required to record a refund.");
 
+        // Re-derived from the target invoice when one is set, same as CreateAsync — see its comment.
+        // A payer-level credit refund (InvoiceId == null) has no invoice to derive from, so
+        // dto.PayerClientId stays trusted as-is in that one case; no alternative source of truth exists.
+        int? resolvedPayerClientId = null;
         if (dto.InvoiceId.HasValue)
         {
-            var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == dto.InvoiceId.Value);
+            var invoice = await _context.Invoices.Include(i => i.Client).FirstOrDefaultAsync(i => i.Id == dto.InvoiceId.Value);
             if (invoice == null || invoice.ClinicId != dto.ClinicId)
                 throw new InvalidOperationException($"Invoice {dto.InvoiceId} was not found in this clinic.");
             if (invoice.Status == InvoiceStatus.Cancelled)
@@ -126,6 +141,8 @@ public class ReceiptRepository : Repository<Receipt>, IReceiptRepository
             // subtracting prior refunds again here would double-count them.
             if (dto.Amount > invoice.AmountPaid)
                 throw new InvalidOperationException($"Refund amount exceeds the refundable balance of {invoice.AmountPaid:C}.");
+
+            resolvedPayerClientId = invoice.Client?.PayerClientId ?? invoice.ClientId;
         }
         else
         {
@@ -137,7 +154,7 @@ public class ReceiptRepository : Repository<Receipt>, IReceiptRepository
         var receipt = new Receipt
         {
             ClinicId = dto.ClinicId,
-            PayerClientId = dto.PayerClientId,
+            PayerClientId = resolvedPayerClientId ?? dto.PayerClientId,
             ReceiptDate = dto.RefundDate,
             Notes = dto.Reason,
             CreatedAt = DateTime.UtcNow,

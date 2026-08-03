@@ -84,6 +84,20 @@ public class InvoiceService : IInvoiceService
         }
     }
 
+    public async Task<bool> UpdateClaimStatusAsync(int id, ClaimStatus claimStatus)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/invoices/{id}/claim-status", new { claimStatus });
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Update claim status error: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<ResolveLineResult?> ResolveLineAsync(ResolveLineRequest request)
     {
         try

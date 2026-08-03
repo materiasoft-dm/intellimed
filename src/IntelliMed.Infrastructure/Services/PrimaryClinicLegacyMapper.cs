@@ -18,8 +18,8 @@ public static class PrimaryClinicLegacyMapper
         ["BB"] = AccountTypeEnum.BulkBill,
         // "Health Fund" is expressed via Client.HealthFundId in our model, not a distinct account type.
         ["Health Fund"] = AccountTypeEnum.PrivatePatient,
-        ["OVS"] = AccountTypeEnum.Other,
-        ["Imm'n"] = AccountTypeEnum.Other,
+        ["OVS"] = AccountTypeEnum.Ovs,
+        ["Immunisation"] = AccountTypeEnum.ChildImm,
         ["Others"] = AccountTypeEnum.Other,
         ["No Charge"] = AccountTypeEnum.Other,
         ["Credit Note"] = AccountTypeEnum.Other,
