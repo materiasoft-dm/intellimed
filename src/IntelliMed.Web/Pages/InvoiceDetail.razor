@@ -4,6 +4,7 @@
 @using IntelliMed.Core.Entities
 @using IntelliMed.Web.Services
 @inject IInvoiceService InvoiceService
+@inject IAuthService AuthService
 @inject NavigationManager NavManager
 
 <PageTitle>Invoice @(_invoice?.InvoiceNumber) - IntelliMed</PageTitle>
@@ -69,6 +70,21 @@ else
                         <div class="col-6">@_invoice.AmountPaid.ToString("C")</div>
                         <div class="col-6 text-muted fw-semibold">Owing</div>
                         <div class="col-6 fw-semibold">@_invoice.AmountOwing.ToString("C")</div>
+                        @if (_invoice.AmountWrittenOff > 0)
+                        {
+                            <div class="col-6 text-muted">Written Off</div>
+                            <div class="col-6">@_invoice.AmountWrittenOff.ToString("C")</div>
+                        }
+                        @if (_availableCredit > 0)
+                        {
+                            <div class="col-6 text-muted">Payer Credit Available</div>
+                            <div class="col-6 text-success">@_availableCredit.ToString("C")</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_invoice.CancelReason))
+                        {
+                            <div class="col-6 text-muted">Cancel Reason</div>
+                            <div class="col-6">@_invoice.CancelReason</div>
+                        }
                     </div>
                 </div>
             </div>
@@ -132,7 +148,14 @@ else
     <div class="card mb-2">
         <div class="card-header py-1 d-flex justify-content-between align-items-center">
             <strong>Payments</strong>
-            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenReceiptModal" disabled="@(_invoice.AmountOwing <= 0)">+ Record Receipt</button>
+            <div class="d-flex gap-1">
+                @if (_isAdmin)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OpenWriteOffModal" disabled="@(_invoice.Status == InvoiceStatus.Cancelled || _invoice.AmountOwing <= 0)">Write Off</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OpenRefundModal" disabled="@(RefundableFromInvoice <= 0 && _availableCredit <= 0)">Refund</button>
+                }
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenReceiptModal" disabled="@(_invoice.AmountOwing <= 0)">+ Record Receipt</button>
+            </div>
         </div>
         <div class="card-body py-2">
             @if (_invoice.Payments.Count == 0)
@@ -173,6 +196,11 @@ else
     </div>
 
     <div class="d-flex justify-content-end gap-2">
+        @if (_isAdmin)
+        {
+            <button type="button" class="btn btn-outline-secondary" @onclick="@(() => NavManager.NavigateTo($"/invoices/split/{Id}"))" disabled="@(!CanSplit)" title="@(CanSplit ? null : "Only unpaid invoices with no write-offs can be split")">Split Invoice</button>
+            <button type="button" class="btn btn-outline-danger" @onclick="OpenCancelModal" disabled="@(!CanCancel)" title="@CancelDisabledReason">Cancel Invoice</button>
+        }
         <a href="/invoices/print/@Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer"></i> Print Invoice</a>
         <button type="button" class="btn btn-secondary" @onclick="@(() => NavManager.NavigateTo("/invoices"))">Close</button>
     </div>
@@ -270,6 +298,162 @@ else
     </div>
 }
 
+@if (_showRefundModal && _invoice != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Refund</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showRefundModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    @if (RefundableFromInvoice > 0 && _availableCredit > 0)
+                    {
+                        <div class="mb-2">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="refundSource" id="refundSourceInvoice" checked="@(!_refundFromCredit)" @onchange="@(() => SetRefundSource(false))" />
+                                <label class="form-check-label small" for="refundSourceInvoice">This invoice (@RefundableFromInvoice.ToString("C"))</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="refundSource" id="refundSourceCredit" checked="@(_refundFromCredit)" @onchange="@(() => SetRefundSource(true))" />
+                                <label class="form-check-label small" for="refundSourceCredit">Account credit (@_availableCredit.ToString("C"))</label>
+                            </div>
+                        </div>
+                    }
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small mb-0">Amount (max @RefundCap.ToString("C"))</label>
+                            <input type="number" step="0.01" max="@RefundCap" class="form-control form-control-sm" @bind="_refundAmount" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-0">Method</label>
+                            <select class="form-select form-select-sm" @bind="_refundMethod">
+                                @foreach (var method in Enum.GetValues<PaymentMethod>())
+                                {
+                                    <option value="@method">@method</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-0">Date</label>
+                            <input type="date" class="form-control form-control-sm" @bind="_refundDate" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-0">Reference</label>
+                            <input class="form-control form-control-sm" @bind="_refundReference" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-0">Reason</label>
+                            <textarea class="form-control form-control-sm" rows="2" @bind="_refundReason"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showRefundModal = false)">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-primary"
+                            @onclick="SaveRefundAsync"
+                            disabled="@(_refundSaving || _refundAmount <= 0 || _refundAmount > RefundCap || string.IsNullOrWhiteSpace(_refundReason))">
+                        @if (_refundSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span>Refunding...</span>
+                        }
+                        else
+                        {
+                            <span>Refund</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showWriteOffModal && _invoice != null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Write Off Invoice</h5>
+                    <button type="button" class="btn-close" @onclick="@(() => _showWriteOffModal = false)" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i> This forgives part or all of the outstanding balance. No money changes hands, and this cannot be undone.
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small mb-0">Amount (max @_invoice.AmountOwing.ToString("C"))</label>
+                            <input type="number" step="0.01" max="@_invoice.AmountOwing" class="form-control form-control-sm" @bind="_writeOffAmount" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-0">Reason</label>
+                            <textarea class="form-control form-control-sm" rows="2" @bind="_writeOffReason"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="@(() => _showWriteOffModal = false)">Cancel</button>
+                    <button type="button" class="btn btn-danger"
+                            @onclick="SaveWriteOffAsync"
+                            disabled="@(_writeOffSaving || _writeOffAmount <= 0 || _writeOffAmount > _invoice.AmountOwing || string.IsNullOrWhiteSpace(_writeOffReason))">
+                        @if (_writeOffSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Writing Off...</span>
+                        }
+                        else
+                        {
+                            <span>Write Off Invoice</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showCancelModal && _invoice != null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cancel Invoice</h5>
+                    <button type="button" class="btn-close" @onclick="@(() => _showCancelModal = false)" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i> This will cancel invoice @_invoice.InvoiceNumber. It can no longer be paid or split.
+                    </div>
+                    <label class="form-label small mb-0">Reason</label>
+                    <textarea class="form-control form-control-sm" rows="2" @bind="_cancelReason"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="@(() => _showCancelModal = false)">Keep Invoice</button>
+                    <button type="button" class="btn btn-danger"
+                            @onclick="SaveCancelAsync"
+                            disabled="@(_cancelSaving || string.IsNullOrWhiteSpace(_cancelReason))">
+                        @if (_cancelSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Cancelling...</span>
+                        }
+                        else
+                        {
+                            <span>Cancel Invoice</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public int Id { get; set; }
 
@@ -288,9 +472,52 @@ else
     private string? _statusMessage;
     private bool _statusIsError;
 
+    private IList<string> _currentUserRoles = new List<string>();
+    private bool _isAdmin => _currentUserRoles.Any(r => r == "SuperAdmin" || r == "Admin");
+    private decimal _availableCredit;
+
+    private bool _showRefundModal;
+    private bool _refundFromCredit;
+    private decimal _refundAmount;
+    private PaymentMethod _refundMethod = PaymentMethod.Cash;
+    private DateTime _refundDate = DateTime.Today;
+    private string? _refundReference;
+    private string _refundReason = string.Empty;
+    private bool _refundSaving;
+
+    private bool _showWriteOffModal;
+    private decimal _writeOffAmount;
+    private string _writeOffReason = string.Empty;
+    private bool _writeOffSaving;
+
+    private bool _showCancelModal;
+    private string _cancelReason = string.Empty;
+    private bool _cancelSaving;
+
+    // AmountPaid is already net of every prior refund, so it IS the refundable cap — see the matching
+    // comment in ReceiptRepository.CreateRefundAsync for why subtracting Refunds again would be wrong.
+    private decimal RefundableFromInvoice => _invoice?.AmountPaid ?? 0;
+    private decimal RefundCap => _refundFromCredit ? _availableCredit : RefundableFromInvoice;
+    private bool CanCancel => _invoice != null && _invoice.Status != InvoiceStatus.Cancelled && _invoice.AmountPaid <= 0;
+    private string? CancelDisabledReason => _invoice == null || CanCancel
+        ? null
+        : _invoice.Status == InvoiceStatus.Cancelled ? "This invoice is already cancelled" : "Refund this invoice before cancelling it";
+    private bool CanSplit => _invoice != null && _invoice.Status != InvoiceStatus.Cancelled && _invoice.AmountPaid <= 0 && _invoice.AmountWrittenOff <= 0;
+
     protected override async Task OnInitializedAsync()
     {
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user?.IsAuthenticated == true && user.Roles != null)
+            _currentUserRoles = user.Roles;
+
         await LoadAsync();
+        await LoadAvailableCreditAsync();
+    }
+
+    private async Task LoadAvailableCreditAsync()
+    {
+        if (_invoice == null) return;
+        _availableCredit = await InvoiceService.GetAvailableCreditAsync(_invoice.PayerClientId ?? _invoice.ClientId);
     }
 
     private async Task LoadAsync()
@@ -377,6 +604,110 @@ else
         else
         {
             ShowStatus("Failed to record receipt.", true);
+        }
+    }
+
+    private void OpenRefundModal()
+    {
+        if (_invoice == null) return;
+
+        _refundFromCredit = RefundableFromInvoice <= 0 && _availableCredit > 0;
+        _refundAmount = RefundCap;
+        _refundMethod = PaymentMethod.Cash;
+        _refundDate = DateTime.Today;
+        _refundReference = null;
+        _refundReason = string.Empty;
+        _showRefundModal = true;
+    }
+
+    private void SetRefundSource(bool fromCredit)
+    {
+        _refundFromCredit = fromCredit;
+        _refundAmount = RefundCap;
+    }
+
+    private async Task SaveRefundAsync()
+    {
+        if (_invoice == null || _refundAmount <= 0 || _refundAmount > RefundCap || string.IsNullOrWhiteSpace(_refundReason)) return;
+
+        _refundSaving = true;
+        var result = await InvoiceService.CreateRefundAsync(new CreateRefundDto
+        {
+            PayerClientId = _invoice.PayerClientId ?? _invoice.ClientId,
+            InvoiceId = _refundFromCredit ? null : _invoice.Id,
+            Amount = _refundAmount,
+            Method = _refundMethod,
+            Reference = _refundReference,
+            RefundDate = _refundDate,
+            Reason = _refundReason
+        });
+        _refundSaving = false;
+        _showRefundModal = false;
+
+        if (result.HasValue)
+        {
+            ShowStatus("Refund recorded.", false);
+            await LoadAsync();
+            await LoadAvailableCreditAsync();
+        }
+        else
+        {
+            ShowStatus("Failed to record refund.", true);
+        }
+    }
+
+    private void OpenWriteOffModal()
+    {
+        if (_invoice == null) return;
+
+        _writeOffAmount = _invoice.AmountOwing;
+        _writeOffReason = string.Empty;
+        _showWriteOffModal = true;
+    }
+
+    private async Task SaveWriteOffAsync()
+    {
+        if (_invoice == null || _writeOffAmount <= 0 || _writeOffAmount > _invoice.AmountOwing || string.IsNullOrWhiteSpace(_writeOffReason)) return;
+
+        _writeOffSaving = true;
+        var ok = await InvoiceService.WriteOffAsync(_invoice.Id, new CreateWriteOffDto { Amount = _writeOffAmount, Reason = _writeOffReason });
+        _writeOffSaving = false;
+        _showWriteOffModal = false;
+
+        if (ok)
+        {
+            ShowStatus("Invoice written off.", false);
+            await LoadAsync();
+        }
+        else
+        {
+            ShowStatus("Failed to write off invoice.", true);
+        }
+    }
+
+    private void OpenCancelModal()
+    {
+        _cancelReason = string.Empty;
+        _showCancelModal = true;
+    }
+
+    private async Task SaveCancelAsync()
+    {
+        if (_invoice == null || string.IsNullOrWhiteSpace(_cancelReason)) return;
+
+        _cancelSaving = true;
+        var ok = await InvoiceService.CancelInvoiceAsync(_invoice.Id, new CancelInvoiceDto { Reason = _cancelReason });
+        _cancelSaving = false;
+        _showCancelModal = false;
+
+        if (ok)
+        {
+            ShowStatus("Invoice cancelled.", false);
+            await LoadAsync();
+        }
+        else
+        {
+            ShowStatus("Failed to cancel invoice.", true);
         }
     }
 

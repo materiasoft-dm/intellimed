@@ -17,4 +17,7 @@ public interface IInvoiceRepository : IRepository<Invoice>
     Task AddPaymentAsync(int invoiceId, CreatePaymentDto dto);
     Task UpdateStatusAsync(int id, InvoiceStatus status);
     Task<(IEnumerable<PaymentDto> Items, int TotalCount)> GetAllPaymentsAsync(PaymentSearchDto search);
+    Task WriteOffAsync(int invoiceId, CreateWriteOffDto dto);
+    Task CancelAsync(int invoiceId, CancelInvoiceDto dto);
+    Task<SplitInvoiceResultDto> SplitAsync(int sourceInvoiceId, SplitInvoiceDto dto);
 }

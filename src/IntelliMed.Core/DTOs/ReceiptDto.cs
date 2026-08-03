@@ -72,6 +72,21 @@ public class CreateReceiptAllocationDto
     public decimal Amount { get; set; }
 }
 
+/// <summary>Refund either a specific invoice's paid amount (InvoiceId set, capped at that invoice's
+/// AmountPaid minus any prior refunds) or a payer's unspent account credit (InvoiceId null, capped
+/// at their available Credit balance).</summary>
+public class CreateRefundDto
+{
+    public int ClinicId { get; set; }
+    public int PayerClientId { get; set; }
+    public int? InvoiceId { get; set; }
+    public decimal Amount { get; set; }
+    public PaymentMethod Method { get; set; }
+    public string? Reference { get; set; }
+    public DateTime RefundDate { get; set; } = DateTime.UtcNow;
+    public string Reason { get; set; } = string.Empty;
+}
+
 /// <summary>A payer's outstanding invoice, for the multi-invoice receipt picker.</summary>
 public class OutstandingInvoiceDto
 {

@@ -1625,8 +1625,14 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<decimal>("AmountPaid")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal>("AmountWrittenOff")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("AppointmentId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("CancelReason")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("ClientId")
                         .HasColumnType("INTEGER");
@@ -1753,6 +1759,33 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("InvoiceItems");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.InvoiceWriteOff", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("InvoiceId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.ToTable("InvoiceWriteOffs");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.Notification", b =>
@@ -2671,6 +2704,17 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("Invoice");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.InvoiceWriteOff", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Invoice", "Invoice")
+                        .WithMany("WriteOffs")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.Notification", b =>
                 {
                     b.HasOne("IntelliMed.Core.Entities.ApplicationUser", "RecipientUser")
@@ -2842,6 +2886,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("ReceiptAllocations");
+
+                    b.Navigation("WriteOffs");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.Practitioner", b =>

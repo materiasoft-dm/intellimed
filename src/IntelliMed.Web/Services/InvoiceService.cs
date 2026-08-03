@@ -167,4 +167,76 @@ public class InvoiceService : IInvoiceService
         var results = await _httpClient.GetFromJsonAsync<List<OutstandingInvoiceDto>>(uri);
         return results ?? new List<OutstandingInvoiceDto>();
     }
+
+    public async Task<bool> WriteOffAsync(int invoiceId, CreateWriteOffDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/invoices/{invoiceId}/write-off", dto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Write off invoice error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> CancelInvoiceAsync(int invoiceId, CancelInvoiceDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/invoices/{invoiceId}/cancel", dto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Cancel invoice error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<SplitInvoiceResultDto?> SplitInvoiceAsync(int invoiceId, SplitInvoiceDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/invoices/{invoiceId}/split", dto);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<SplitInvoiceResultDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Split invoice error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<int?> CreateRefundAsync(CreateRefundDto dto)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/receipts/refund", dto);
+            if (!response.IsSuccessStatusCode) return null;
+            var result = await response.Content.ReadFromJsonAsync<CreateResult>();
+            return result?.Id;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Create refund error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<decimal> GetAvailableCreditAsync(int payerClientId)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<decimal>($"api/receipts/available-credit?payerClientId={payerClientId}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Get available credit error: {ex.Message}");
+            return 0;
+        }
+    }
 }

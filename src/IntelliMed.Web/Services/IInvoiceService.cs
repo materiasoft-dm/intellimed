@@ -17,4 +17,9 @@ public interface IInvoiceService
     Task<ReceiptDto?> GetReceiptByIdAsync(int id);
     Task<int?> CreateReceiptAsync(CreateReceiptDto dto);
     Task<List<OutstandingInvoiceDto>> GetOutstandingInvoicesForPayerAsync(int payerClientId, int? excludeInvoiceId);
+    Task<bool> WriteOffAsync(int invoiceId, CreateWriteOffDto dto);
+    Task<bool> CancelInvoiceAsync(int invoiceId, CancelInvoiceDto dto);
+    Task<SplitInvoiceResultDto?> SplitInvoiceAsync(int invoiceId, SplitInvoiceDto dto);
+    Task<int?> CreateRefundAsync(CreateRefundDto dto);
+    Task<decimal> GetAvailableCreditAsync(int payerClientId);
 }

@@ -31,14 +31,18 @@ public class InvoiceDto
     public string StatusName => Status.ToString();
     public decimal TotalAmount { get; set; }
     public decimal AmountPaid { get; set; }
-    public decimal AmountOwing => TotalAmount - AmountPaid;
+    public decimal AmountWrittenOff { get; set; }
+    public decimal AmountOwing => TotalAmount - AmountPaid - AmountWrittenOff;
     public decimal TotalRebate => Items.Sum(i => i.LineRebate);
     public decimal TotalGap => Items.Sum(i => i.Gap);
     public string? Notes { get; set; }
+    public string? CancelReason { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public List<InvoiceItemDto> Items { get; set; } = new();
     public List<PaymentDto> Payments { get; set; } = new();
+    public List<PaymentDto> Refunds { get; set; } = new();
+    public List<InvoiceWriteOffDto> WriteOffs { get; set; } = new();
 }
 
 public class InvoiceItemDto
@@ -153,6 +157,43 @@ public class CreatePaymentDto
     public PaymentMethod Method { get; set; }
     public string? Reference { get; set; }
     public DateTime PaymentDate { get; set; }
+}
+
+public class InvoiceWriteOffDto
+{
+    public int Id { get; set; }
+    public decimal Amount { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateWriteOffDto
+{
+    public decimal Amount { get; set; }
+    public string Reason { get; set; } = string.Empty;
+}
+
+public class CancelInvoiceDto
+{
+    public string Reason { get; set; } = string.Empty;
+}
+
+public class SplitInvoiceDto
+{
+    public string Reason { get; set; } = string.Empty;
+    public List<SplitInvoiceGroupDto> NewInvoices { get; set; } = new();
+}
+
+public class SplitInvoiceGroupDto
+{
+    public List<int> InvoiceItemIds { get; set; } = new();
+    public DateTime? DueDate { get; set; }
+}
+
+public class SplitInvoiceResultDto
+{
+    public int SourceInvoiceId { get; set; }
+    public List<int> NewInvoiceIds { get; set; } = new();
 }
 
 public class InvoiceSearchDto

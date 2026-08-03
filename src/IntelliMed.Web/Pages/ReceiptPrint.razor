@@ -108,7 +108,7 @@ else
                 @foreach (var allocation in _receipt.Allocations)
                 {
                     <tr>
-                        <td>@(allocation.AllocationType == AllocationType.Credit ? "Held as credit" : $"Invoice {allocation.InvoiceNumber}")</td>
+                        <td>@AllocationLabel(allocation)</td>
                         <td class="text-end">@allocation.Amount.ToString("C")</td>
                     </tr>
                 }
@@ -133,4 +133,12 @@ else
     {
         await JS.InvokeVoidAsync("window.print");
     }
+
+    private static string AllocationLabel(ReceiptAllocationDto allocation) => allocation.AllocationType switch
+    {
+        AllocationType.Credit => "Held as credit",
+        AllocationType.Refund when allocation.InvoiceId == null => "Refunded from account credit",
+        AllocationType.Refund => $"Refund — Invoice {allocation.InvoiceNumber}",
+        _ => $"Invoice {allocation.InvoiceNumber}"
+    };
 }

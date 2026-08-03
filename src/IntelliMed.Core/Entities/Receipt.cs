@@ -78,10 +78,11 @@ public class ReceiptAllocation
 
 /// <summary>
 /// Append-only — persisted as a plain int, so inserting a value in the middle later would silently
-/// reinterpret existing rows. A later phase appends WriteOff/Refund here; do not renumber.
+/// reinterpret existing rows; never renumber.
 /// </summary>
 public enum AllocationType
 {
     Payment,
-    Credit
+    Credit,
+    Refund
 }

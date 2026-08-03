@@ -732,4 +732,327 @@ public class InvoiceRepositoryTests : IDisposable
         // Assert
         result.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task WriteOffAsync_ReducesAmountOwingAndPersistsAmountWrittenOff()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 200m };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        await _repository.WriteOffAsync(invoice.Id, new CreateWriteOffDto { Amount = 50m, Reason = "Financial hardship" });
+
+        var updated = await _context.Invoices.FindAsync(invoice.Id);
+        updated!.AmountWrittenOff.Should().Be(50m);
+        updated.AmountOwing.Should().Be(150m);
+    }
+
+    [Fact]
+    public async Task WriteOffAsync_ExceedingOwingAmount_Throws()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 100m };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.WriteOffAsync(invoice.Id, new CreateWriteOffDto { Amount = 150m, Reason = "Too much" });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task WriteOffAsync_EmptyReason_Throws()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 100m };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.WriteOffAsync(invoice.Id, new CreateWriteOffDto { Amount = 50m, Reason = "" });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task WriteOffAsync_CancelledInvoice_Throws()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Cancelled, TotalAmount = 100m };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.WriteOffAsync(invoice.Id, new CreateWriteOffDto { Amount = 50m, Reason = "Nope" });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task WriteOffAsync_MultiplePartialWriteOffs_Accumulate()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 200m };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        await _repository.WriteOffAsync(invoice.Id, new CreateWriteOffDto { Amount = 50m, Reason = "First" });
+        await _repository.WriteOffAsync(invoice.Id, new CreateWriteOffDto { Amount = 30m, Reason = "Second" });
+
+        var updated = await _context.Invoices.FindAsync(invoice.Id);
+        updated!.AmountWrittenOff.Should().Be(80m);
+        updated.AmountOwing.Should().Be(120m);
+        (await _context.InvoiceWriteOffs.CountAsync(w => w.InvoiceId == invoice.Id)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CancelAsync_UnpaidInvoice_SetsStatusAndReason()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 100m };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        await _repository.CancelAsync(invoice.Id, new CancelInvoiceDto { Reason = "Booked in error" });
+
+        var updated = await _context.Invoices.FindAsync(invoice.Id);
+        updated!.Status.Should().Be(InvoiceStatus.Cancelled);
+        updated.CancelReason.Should().Be("Booked in error");
+    }
+
+    [Fact]
+    public async Task CancelAsync_PaidInvoice_Throws()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.PartiallyPaid, TotalAmount = 100m, AmountPaid = 50m };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.CancelAsync(invoice.Id, new CancelInvoiceDto { Reason = "Should fail" });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task CancelAsync_AlreadyCancelled_Throws()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Cancelled, TotalAmount = 100m };
+        _context.Invoices.Add(invoice);
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.CancelAsync(invoice.Id, new CancelInvoiceDto { Reason = "Again?" });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task SplitAsync_MovesItemsAndRecomputesSourceTotal()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 300m };
+        _context.Invoices.Add(invoice);
+        var itemA = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item A", Quantity = 1, UnitPrice = 100m };
+        var itemB = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item B", Quantity = 1, UnitPrice = 200m };
+        _context.InvoiceItems.AddRange(itemA, itemB);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.SplitAsync(invoice.Id, new SplitInvoiceDto
+        {
+            Reason = "Splitting for separate payers",
+            NewInvoices = { new SplitInvoiceGroupDto { InvoiceItemIds = { itemB.Id } } }
+        });
+
+        result.NewInvoiceIds.Should().HaveCount(1);
+        var source = await _context.Invoices.Include(i => i.Items).FirstAsync(i => i.Id == invoice.Id);
+        source.Items.Should().ContainSingle(i => i.Id == itemA.Id);
+        source.TotalAmount.Should().Be(100m);
+
+        var sibling = await _context.Invoices.Include(i => i.Items).FirstAsync(i => i.Id == result.NewInvoiceIds[0]);
+        sibling.Items.Should().ContainSingle(i => i.Description == "Item B");
+        sibling.TotalAmount.Should().Be(200m);
+    }
+
+    [Fact]
+    public async Task SplitAsync_ClonedItemsGetFreshIdsAndNullLegacyGuid()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 300m };
+        _context.Invoices.Add(invoice);
+        var itemA = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item A", Quantity = 1, UnitPrice = 100m, LegacyGuid = "legacy-guid-a" };
+        var itemB = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item B", Quantity = 1, UnitPrice = 200m };
+        _context.InvoiceItems.AddRange(itemA, itemB);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.SplitAsync(invoice.Id, new SplitInvoiceDto
+        {
+            Reason = "Splitting",
+            NewInvoices = { new SplitInvoiceGroupDto { InvoiceItemIds = { itemA.Id } } }
+        });
+
+        var sibling = await _context.Invoices.Include(i => i.Items).FirstAsync(i => i.Id == result.NewInvoiceIds[0]);
+        var clonedItem = sibling.Items.Single();
+        clonedItem.Id.Should().NotBe(itemA.Id);
+        clonedItem.LegacyGuid.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SplitAsync_ItemClaimedByTwoGroups_Throws()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 300m };
+        _context.Invoices.Add(invoice);
+        var itemA = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item A", Quantity = 1, UnitPrice = 100m };
+        var itemB = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item B", Quantity = 1, UnitPrice = 200m };
+        _context.InvoiceItems.AddRange(itemA, itemB);
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.SplitAsync(invoice.Id, new SplitInvoiceDto
+        {
+            Reason = "Bad split",
+            NewInvoices =
+            {
+                new SplitInvoiceGroupDto { InvoiceItemIds = { itemA.Id } },
+                new SplitInvoiceGroupDto { InvoiceItemIds = { itemA.Id, itemB.Id } }
+            }
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task SplitAsync_PaidSource_Throws()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.PartiallyPaid, TotalAmount = 300m, AmountPaid = 100m };
+        _context.Invoices.Add(invoice);
+        var itemA = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item A", Quantity = 1, UnitPrice = 100m };
+        var itemB = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item B", Quantity = 1, UnitPrice = 200m };
+        _context.InvoiceItems.AddRange(itemA, itemB);
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.SplitAsync(invoice.Id, new SplitInvoiceDto
+        {
+            Reason = "Should fail",
+            NewInvoices = { new SplitInvoiceGroupDto { InvoiceItemIds = { itemB.Id } } }
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task SplitAsync_WrittenOffSource_Throws()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 300m, AmountWrittenOff = 50m };
+        _context.Invoices.Add(invoice);
+        var itemA = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item A", Quantity = 1, UnitPrice = 100m };
+        var itemB = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item B", Quantity = 1, UnitPrice = 200m };
+        _context.InvoiceItems.AddRange(itemA, itemB);
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.SplitAsync(invoice.Id, new SplitInvoiceDto
+        {
+            Reason = "Should fail",
+            NewInvoices = { new SplitInvoiceGroupDto { InvoiceItemIds = { itemB.Id } } }
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task SplitAsync_MovingEveryItem_Throws()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 300m };
+        _context.Invoices.Add(invoice);
+        var itemA = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item A", Quantity = 1, UnitPrice = 100m };
+        var itemB = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item B", Quantity = 1, UnitPrice = 200m };
+        _context.InvoiceItems.AddRange(itemA, itemB);
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.SplitAsync(invoice.Id, new SplitInvoiceDto
+        {
+            Reason = "Should fail",
+            NewInvoices = { new SplitInvoiceGroupDto { InvoiceItemIds = { itemA.Id, itemB.Id } } }
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task SplitAsync_TwoSiblings_NoInvoiceNumberCollision()
+    {
+        var client = new Client { FirstName = "Test", LastName = "Client", Email = "test@example.com", IsActive = true };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        var invoice = new Invoice { ClientId = client.Id, InvoiceNumber = "INV-001", InvoiceDate = DateTime.Today, DueDate = DateTime.Today.AddDays(30), Status = InvoiceStatus.Sent, TotalAmount = 300m };
+        _context.Invoices.Add(invoice);
+        var itemA = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item A", Quantity = 1, UnitPrice = 100m };
+        var itemB = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item B", Quantity = 1, UnitPrice = 100m };
+        var itemC = new InvoiceItem { InvoiceId = invoice.Id, Description = "Item C", Quantity = 1, UnitPrice = 100m };
+        _context.InvoiceItems.AddRange(itemA, itemB, itemC);
+        await _context.SaveChangesAsync();
+
+        // Directly exercises the per-sibling-save-before-next-number fix: if two numbers were ever
+        // generated before either sibling saved, both would collide on the same next number.
+        var result = await _repository.SplitAsync(invoice.Id, new SplitInvoiceDto
+        {
+            Reason = "Two new invoices",
+            NewInvoices =
+            {
+                new SplitInvoiceGroupDto { InvoiceItemIds = { itemB.Id } },
+                new SplitInvoiceGroupDto { InvoiceItemIds = { itemC.Id } }
+            }
+        });
+
+        result.NewInvoiceIds.Should().HaveCount(2);
+        var siblingNumbers = await _context.Invoices
+            .Where(i => result.NewInvoiceIds.Contains(i.Id))
+            .Select(i => i.InvoiceNumber)
+            .ToListAsync();
+        siblingNumbers.Should().OnlyHaveUniqueItems();
+    }
 }

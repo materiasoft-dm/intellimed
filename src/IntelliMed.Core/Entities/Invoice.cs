@@ -17,8 +17,10 @@ public class Invoice
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;
     public decimal TotalAmount { get; set; }
     public decimal AmountPaid { get; set; }
-    public decimal AmountOwing => TotalAmount - AmountPaid;
+    public decimal AmountWrittenOff { get; set; }
+    public decimal AmountOwing => TotalAmount - AmountPaid - AmountWrittenOff;
     public string? Notes { get; set; }
+    public string? CancelReason { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
@@ -31,6 +33,21 @@ public class Invoice
     public Practitioner? Practitioner { get; set; }
     public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
     public ICollection<ReceiptAllocation> ReceiptAllocations { get; set; } = new List<ReceiptAllocation>();
+    public ICollection<InvoiceWriteOff> WriteOffs { get; set; } = new List<InvoiceWriteOff>();
+}
+
+/// <summary>A partial or full forgiveness of an invoice's outstanding balance — no money moves, so
+/// unlike a Refund this never touches Receipt/ReceiptPayment/ReceiptAllocation at all. Invoice-level
+/// only (no line-item precision) for a basic first pass.</summary>
+public class InvoiceWriteOff
+{
+    public int Id { get; set; }
+    public int InvoiceId { get; set; }
+    public decimal Amount { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public Invoice? Invoice { get; set; }
 }
 
 public class InvoiceItem

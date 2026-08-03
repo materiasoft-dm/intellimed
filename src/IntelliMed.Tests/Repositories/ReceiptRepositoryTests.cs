@@ -265,4 +265,219 @@ public class ReceiptRepositoryTests : IDisposable
 
         result.Should().ContainSingle(i => i.InvoiceId == outstanding.Id);
     }
+
+    [Fact]
+    public async Task CreateRefundAsync_InvoiceScoped_ReducesAmountPaidAndCreatesRefundAllocation()
+    {
+        var client = await SeedClientAsync();
+        var invoice = await SeedInvoiceAsync(client.Id, 200m);
+        await _repository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 200m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoice.Id, Amount = 200m } }
+        });
+
+        var refundId = await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            InvoiceId = invoice.Id,
+            Amount = 50m,
+            Method = PaymentMethod.Cash,
+            Reason = "Patient overcharged"
+        });
+
+        refundId.Should().BeGreaterThan(0);
+        var updated = await _context.Invoices.FindAsync(invoice.Id);
+        updated!.AmountPaid.Should().Be(150m);
+        var refundAllocation = await _context.ReceiptAllocations.SingleAsync(a => a.ReceiptId == refundId);
+        refundAllocation.AllocationType.Should().Be(AllocationType.Refund);
+        refundAllocation.InvoiceId.Should().Be(invoice.Id);
+        refundAllocation.Amount.Should().Be(50m);
+    }
+
+    [Fact]
+    public async Task CreateRefundAsync_ExceedingRefundableCap_Throws()
+    {
+        var client = await SeedClientAsync();
+        var invoice = await SeedInvoiceAsync(client.Id, 200m);
+        await _repository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 100m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoice.Id, Amount = 100m } }
+        });
+
+        var act = async () => await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            InvoiceId = invoice.Id,
+            Amount = 150m,
+            Method = PaymentMethod.Cash,
+            Reason = "Too much"
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task CreateRefundAsync_CapAccountsForPriorRefunds()
+    {
+        var client = await SeedClientAsync();
+        var invoice = await SeedInvoiceAsync(client.Id, 200m);
+        await _repository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 200m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoice.Id, Amount = 200m } }
+        });
+        await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            InvoiceId = invoice.Id,
+            Amount = 150m,
+            Method = PaymentMethod.Cash,
+            Reason = "First refund"
+        });
+
+        // AmountPaid is already net of the first refund (200 - 150 = 50), so exactly $50 more should
+        // be refundable — a double-subtraction bug (netting the prior refund a second time against an
+        // already-net AmountPaid) would wrongly reject this as over-cap.
+        var secondRefundId = await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            InvoiceId = invoice.Id,
+            Amount = 50m,
+            Method = PaymentMethod.Cash,
+            Reason = "Second refund"
+        });
+
+        secondRefundId.Should().BeGreaterThan(0);
+        (await _context.Invoices.FindAsync(invoice.Id))!.AmountPaid.Should().Be(0m);
+
+        // Nothing left to refund after both refunds bring AmountPaid to zero.
+        var act = async () => await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            InvoiceId = invoice.Id,
+            Amount = 1m,
+            Method = PaymentMethod.Cash,
+            Reason = "Third refund"
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task CreateRefundAsync_FullRefund_ResetsStatusToSent()
+    {
+        var client = await SeedClientAsync();
+        var invoice = await SeedInvoiceAsync(client.Id, 200m);
+        await _repository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 200m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoice.Id, Amount = 200m } }
+        });
+        (await _context.Invoices.FindAsync(invoice.Id))!.Status.Should().Be(InvoiceStatus.Paid);
+
+        await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            InvoiceId = invoice.Id,
+            Amount = 200m,
+            Method = PaymentMethod.Cash,
+            Reason = "Full refund"
+        });
+
+        var updated = await _context.Invoices.FindAsync(invoice.Id);
+        updated!.AmountPaid.Should().Be(0m);
+        updated.Status.Should().Be(InvoiceStatus.Sent);
+    }
+
+    [Fact]
+    public async Task CreateRefundAsync_PayerLevelCredit_DeductsFromAvailableCredit()
+    {
+        var client = await SeedClientAsync();
+        var invoice = await SeedInvoiceAsync(client.Id, 100m);
+        await _repository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 120m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoice.Id, Amount = 100m } },
+            KeepOverpaymentAsCredit = true
+        });
+        (await _repository.GetAvailableCreditAsync(1, client.Id)).Should().Be(20m);
+
+        await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            InvoiceId = null,
+            Amount = 15m,
+            Method = PaymentMethod.Cash,
+            Reason = "Credit refund"
+        });
+
+        (await _repository.GetAvailableCreditAsync(1, client.Id)).Should().Be(5m);
+    }
+
+    [Fact]
+    public async Task CreateRefundAsync_PayerLevelCredit_ExceedingAvailable_Throws()
+    {
+        var client = await SeedClientAsync();
+        var invoice = await SeedInvoiceAsync(client.Id, 100m);
+        await _repository.CreateAsync(new CreateReceiptDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            Payments = { new CreateReceiptTenderDto { Amount = 120m, Method = PaymentMethod.Cash } },
+            Allocations = { new CreateReceiptAllocationDto { InvoiceId = invoice.Id, Amount = 100m } },
+            KeepOverpaymentAsCredit = true
+        });
+
+        var act = async () => await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            InvoiceId = null,
+            Amount = 25m,
+            Method = PaymentMethod.Cash,
+            Reason = "Too much credit"
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task CreateRefundAsync_CancelledInvoice_Throws()
+    {
+        var client = await SeedClientAsync();
+        var invoice = await SeedInvoiceAsync(client.Id, 100m);
+        invoice.Status = InvoiceStatus.Cancelled;
+        await _context.SaveChangesAsync();
+
+        var act = async () => await _repository.CreateRefundAsync(new CreateRefundDto
+        {
+            ClinicId = 1,
+            PayerClientId = client.Id,
+            InvoiceId = invoice.Id,
+            Amount = 10m,
+            Method = PaymentMethod.Cash,
+            Reason = "Should fail"
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
 }

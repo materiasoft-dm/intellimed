@@ -1,0 +1,243 @@
+@page "/invoices/split/{Id:int}"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IInvoiceService InvoiceService
+@inject NavigationManager NavManager
+
+<PageTitle>Split Invoice @(_invoice?.InvoiceNumber) - IntelliMed</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="card text-center py-3">
+        <div class="card-body py-2">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading invoice...
+        </div>
+    </div>
+}
+else if (_invoice == null)
+{
+    <div class="alert alert-danger">Invoice not found.</div>
+}
+else if (!CanSplit)
+{
+    <div class="alert alert-warning">
+        Invoice @_invoice.InvoiceNumber can't be split — only unpaid invoices with no write-offs can be divided.
+        <a href="/invoices/edit/@Id">Back to invoice</a>
+    </div>
+}
+else if (_result != null)
+{
+    <div class="alert alert-success">
+        <p class="mb-2">Invoice @_invoice.InvoiceNumber was split into @(_result.NewInvoiceIds.Count + 1) invoices.</p>
+        <ul class="mb-2">
+            @for (int i = 0; i < _result.NewInvoiceIds.Count; i++)
+            {
+                var newId = _result.NewInvoiceIds[i];
+                <li><a href="/invoices/edit/@newId" target="_blank" rel="noopener">New Invoice @(i + 1)</a></li>
+            }
+        </ul>
+        <a href="/invoices/edit/@Id" class="btn btn-sm btn-primary">Back to Invoice @_invoice.InvoiceNumber</a>
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h5 class="mb-0 small">Split Invoice @_invoice.InvoiceNumber — @_invoice.ClientName</h5>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger py-2">@_error</div>
+    }
+
+    <div class="card mb-2">
+        <div class="card-header py-1"><strong>Assign Line Items</strong></div>
+        <div class="card-body py-2">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:60px">Item#</th>
+                        <th>Description</th>
+                        <th style="width:90px" class="text-end">Total</th>
+                        <th style="width:220px">Goes To</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            <td>@(row.ItemNumber ?? "-")</td>
+                            <td>@row.Description</td>
+                            <td class="text-end">@row.TotalPrice.ToString("C")</td>
+                            <td>
+                                <select class="form-select form-select-sm" @bind="row.GroupIndex" @bind:after="@(() => OnGroupChanged(row))">
+                                    <option value="0">Stay on original</option>
+                                    @for (int g = 1; g <= _groupCount; g++)
+                                    {
+                                        <option value="@g">New Invoice @g</option>
+                                    }
+                                    <option value="-1">+ Add new invoice</option>
+                                </select>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (_groupCount > 0)
+    {
+        <div class="card mb-2">
+            <div class="card-header py-1"><strong>New Invoices</strong></div>
+            <div class="card-body py-2">
+                <div class="row g-2 small text-muted mb-1">
+                    <div class="col-3">Invoice</div>
+                    <div class="col-3">Items</div>
+                    <div class="col-3">Total</div>
+                    <div class="col-3">Due Date</div>
+                </div>
+                @for (int g = 1; g <= _groupCount; g++)
+                {
+                    var groupIndex = g;
+                    var groupRows = _rows.Where(r => r.GroupIndex == groupIndex).ToList();
+                    <div class="row g-2 small align-items-center mb-1">
+                        <div class="col-3">New Invoice @groupIndex</div>
+                        <div class="col-3">@groupRows.Count item(s)</div>
+                        <div class="col-3">@groupRows.Sum(r => r.TotalPrice).ToString("C")</div>
+                        <div class="col-3">
+                            <input type="date" class="form-control form-control-sm" @bind="_groupDueDates[groupIndex - 1]" />
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-2">
+            <div class="card-header py-1"><strong>Source Invoice (Remaining)</strong></div>
+            <div class="card-body py-2 small">
+                @{
+                    var remaining = _rows.Where(r => r.GroupIndex == 0).ToList();
+                }
+                @if (remaining.Count == 0)
+                {
+                    <span class="text-danger">The source invoice must retain at least one item.</span>
+                }
+                else
+                {
+                    <span>@remaining.Count item(s), @remaining.Sum(r => r.TotalPrice).ToString("C")</span>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-2">
+            <div class="card-body py-2">
+                <label class="form-label small mb-0">Reason</label>
+                <textarea class="form-control form-control-sm" rows="2" @bind="_reason"></textarea>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-secondary" @onclick="@(() => NavManager.NavigateTo($"/invoices/edit/{Id}"))">Cancel</button>
+        <button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@(!CanSave)">
+            @if (_saving)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+                <span>Splitting...</span>
+            }
+            else
+            {
+                <span>Split Invoice</span>
+            }
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private InvoiceDto? _invoice;
+    private bool _isLoading = true;
+    private List<SplitRow> _rows = new();
+    private int _groupCount;
+    private List<DateTime?> _groupDueDates = new();
+    private string _reason = string.Empty;
+    private bool _saving;
+    private string? _error;
+    private SplitInvoiceResultDto? _result;
+
+    private bool CanSplit => _invoice != null && _invoice.Status != InvoiceStatus.Cancelled && _invoice.AmountPaid <= 0 && _invoice.AmountWrittenOff <= 0;
+    private bool CanSave => _groupCount > 0 && _rows.Any(r => r.GroupIndex == 0) && !string.IsNullOrWhiteSpace(_reason) && !_saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _invoice = await InvoiceService.GetInvoiceByIdAsync(Id);
+        _isLoading = false;
+
+        if (_invoice != null)
+        {
+            _rows = _invoice.Items.Select(i => new SplitRow
+            {
+                ItemId = i.Id,
+                Description = i.Description,
+                ItemNumber = i.ItemNumber,
+                TotalPrice = i.TotalPrice,
+                GroupIndex = 0
+            }).ToList();
+        }
+    }
+
+    // Selecting "+ Add new invoice" (sentinel -1) mints the next group on the spot and reassigns
+    // this row to it, rather than requiring a separate "add invoice" control elsewhere on the page.
+    private void OnGroupChanged(SplitRow row)
+    {
+        if (row.GroupIndex == -1)
+        {
+            _groupCount++;
+            _groupDueDates.Add(null);
+            row.GroupIndex = _groupCount;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!CanSave || _invoice == null) return;
+
+        _saving = true;
+        _error = null;
+
+        var dto = new SplitInvoiceDto
+        {
+            Reason = _reason,
+            NewInvoices = Enumerable.Range(1, _groupCount)
+                .Select(g => new SplitInvoiceGroupDto
+                {
+                    InvoiceItemIds = _rows.Where(r => r.GroupIndex == g).Select(r => r.ItemId).ToList(),
+                    DueDate = _groupDueDates[g - 1]
+                })
+                .Where(g => g.InvoiceItemIds.Count > 0)
+                .ToList()
+        };
+
+        _result = await InvoiceService.SplitInvoiceAsync(Id, dto);
+        _saving = false;
+
+        if (_result == null)
+        {
+            _error = "Failed to split invoice. Check that every new invoice has at least one item.";
+        }
+    }
+
+    private class SplitRow
+    {
+        public int ItemId { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public string? ItemNumber { get; set; }
+        public decimal TotalPrice { get; set; }
+        public int GroupIndex { get; set; }
+    }
+}

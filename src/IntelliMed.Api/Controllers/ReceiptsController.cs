@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Interfaces;
@@ -62,6 +63,42 @@ public class ReceiptsController : ControllerBase
     {
         var result = await _receiptRepository.GetOutstandingInvoicesForPayerAsync(GetCurrentClinicId() ?? 1, payerClientId, excludeInvoiceId);
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Refund either a specific invoice's paid amount or a payer's unspent account credit.
+    /// </summary>
+    [HttpPost("refund")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Refund([FromBody] CreateRefundDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        dto.ClinicId = GetCurrentClinicId() ?? 1;
+
+        try
+        {
+            var id = await _receiptRepository.CreateRefundAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id }, new { id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// A payer's available (unrefunded, unspent) account credit balance.
+    /// </summary>
+    [HttpGet("available-credit")]
+    [ProducesResponseType(typeof(decimal), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAvailableCredit([FromQuery] int payerClientId)
+    {
+        var available = await _receiptRepository.GetAvailableCreditAsync(GetCurrentClinicId() ?? 1, payerClientId);
+        return Ok(available);
     }
 
     /// <summary>

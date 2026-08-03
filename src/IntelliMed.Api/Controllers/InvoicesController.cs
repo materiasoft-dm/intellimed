@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
@@ -152,6 +153,66 @@ public class InvoicesController : ControllerBase
 
         await _invoiceRepository.UpdateStatusAsync(id, request.Status);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Forgive part or all of an invoice's outstanding balance — no money moves.
+    /// </summary>
+    [HttpPost("{id:int}/write-off")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> WriteOff(int id, [FromBody] CreateWriteOffDto dto)
+    {
+        try
+        {
+            await _invoiceRepository.WriteOffAsync(id, dto);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Cancel an unpaid invoice.
+    /// </summary>
+    [HttpPost("{id:int}/cancel")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Cancel(int id, [FromBody] CancelInvoiceDto dto)
+    {
+        try
+        {
+            await _invoiceRepository.CancelAsync(id, dto);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Split an unpaid invoice's line items across one or more new sibling invoices.
+    /// </summary>
+    [HttpPost("{id:int}/split")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
+    [ProducesResponseType(typeof(SplitInvoiceResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Split(int id, [FromBody] SplitInvoiceDto dto)
+    {
+        try
+        {
+            var result = await _invoiceRepository.SplitAsync(id, dto);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     /// <summary>

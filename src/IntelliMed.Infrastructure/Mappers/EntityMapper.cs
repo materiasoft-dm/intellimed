@@ -630,14 +630,21 @@ public static class EntityMapper
         Status = entity.Status,
         TotalAmount = entity.TotalAmount,
         AmountPaid = entity.AmountPaid,
+        AmountWrittenOff = entity.AmountWrittenOff,
         Notes = entity.Notes,
+        CancelReason = entity.CancelReason,
         CreatedAt = entity.CreatedAt,
         UpdatedAt = entity.UpdatedAt,
         Items = entity.Items.Select(ToDto).ToList(),
         Payments = entity.ReceiptAllocations
             .Where(a => a.AllocationType == AllocationType.Payment)
             .Select(ToPaymentDto)
-            .ToList()
+            .ToList(),
+        Refunds = entity.ReceiptAllocations
+            .Where(a => a.AllocationType == AllocationType.Refund)
+            .Select(ToPaymentDto)
+            .ToList(),
+        WriteOffs = entity.WriteOffs.Select(ToDto).ToList()
     };
 
     public static InvoiceItemDto ToDto(InvoiceItem entity) => new()
@@ -723,6 +730,54 @@ public static class EntityMapper
             PaymentDate = receipt?.ReceiptDate ?? entity.CreatedAt
         };
     }
+
+    public static InvoiceWriteOffDto ToDto(InvoiceWriteOff entity) => new()
+    {
+        Id = entity.Id,
+        Amount = entity.Amount,
+        Reason = entity.Reason,
+        CreatedAt = entity.CreatedAt
+    };
+
+    /// <summary>Clones an invoice's header fields for Split — deliberately not routed through
+    /// ToEntity(CreateInvoiceDto,...), which re-derives fields this needs to preserve verbatim.</summary>
+    public static Invoice CloneInvoiceHeader(Invoice source, string invoiceNumber) => new()
+    {
+        ClinicId = source.ClinicId,
+        ClientId = source.ClientId,
+        AppointmentId = source.AppointmentId,
+        PractitionerId = source.PractitionerId,
+        AccountType = source.AccountType,
+        PlaceOfService = source.PlaceOfService,
+        InvoiceNumber = invoiceNumber,
+        InvoiceDate = source.InvoiceDate,
+        DueDate = source.DueDate,
+        Notes = source.Notes,
+        Status = source.Status,
+        TotalAmount = 0,
+        AmountPaid = 0,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    /// <summary>Clones a line item for Split, preserving its already-resolved Rebate/GST rather than
+    /// re-pricing against today's fee schedule (which routing through CreateInvoiceItemDto would do).
+    /// LegacyGuid is dropped since its unique index would otherwise collide with the source item's.</summary>
+    public static InvoiceItem CloneForSplit(InvoiceItem source) => new()
+    {
+        BillingItemId = source.BillingItemId,
+        FeeScheduleId = source.FeeScheduleId,
+        Description = source.Description,
+        ServiceDate = source.ServiceDate,
+        Quantity = source.Quantity,
+        UnitPrice = source.UnitPrice,
+        RebatePerUnit = source.RebatePerUnit,
+        Discount = source.Discount,
+        GstAmount = source.GstAmount,
+        PercentGst = source.PercentGst,
+        FeeIncludeGst = source.FeeIncludeGst,
+        DerivedQuantity = source.DerivedQuantity,
+        Note = source.Note
+    };
 
     public static Invoice ToEntity(CreateInvoiceDto dto, string invoiceNumber) => new()
     {

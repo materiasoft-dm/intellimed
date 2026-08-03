@@ -100,20 +100,110 @@ public class ReceiptRepository : Repository<Receipt>, IReceiptRepository
         await _context.SaveChangesAsync();
 
         foreach (var invoiceId in dto.Allocations.Select(a => a.InvoiceId).Distinct())
-        {
-            var invoice = await _context.Invoices.FirstAsync(i => i.Id == invoiceId);
-            invoice.AmountPaid = BillingMath.RoundMoney(await _context.ReceiptAllocations
-                .Where(a => a.InvoiceId == invoiceId && a.AllocationType == AllocationType.Payment)
-                .SumAsync(a => a.Amount));
-
-            if (invoice.AmountPaid >= invoice.TotalAmount)
-                invoice.Status = InvoiceStatus.Paid;
-            else if (invoice.AmountPaid > 0)
-                invoice.Status = InvoiceStatus.PartiallyPaid;
-        }
+            await RecomputeInvoiceAmountsAsync(invoiceId);
         await _context.SaveChangesAsync();
 
         return receipt.Id;
+    }
+
+    public async Task<int> CreateRefundAsync(CreateRefundDto dto)
+    {
+        if (dto.Amount <= 0)
+            throw new InvalidOperationException("Refund amount must be greater than zero.");
+        if (string.IsNullOrWhiteSpace(dto.Reason))
+            throw new InvalidOperationException("A reason is required to record a refund.");
+
+        if (dto.InvoiceId.HasValue)
+        {
+            var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == dto.InvoiceId.Value);
+            if (invoice == null || invoice.ClinicId != dto.ClinicId)
+                throw new InvalidOperationException($"Invoice {dto.InvoiceId} was not found in this clinic.");
+            if (invoice.Status == InvoiceStatus.Cancelled)
+                throw new InvalidOperationException("Cannot refund a cancelled invoice.");
+
+            // AmountPaid is already net of every prior refund (RecomputeInvoiceAmountsAsync computes
+            // it as SUM(Payment allocations) - SUM(Refund allocations)), so it IS the refundable cap —
+            // subtracting prior refunds again here would double-count them.
+            if (dto.Amount > invoice.AmountPaid)
+                throw new InvalidOperationException($"Refund amount exceeds the refundable balance of {invoice.AmountPaid:C}.");
+        }
+        else
+        {
+            var available = await GetAvailableCreditAsync(dto.ClinicId, dto.PayerClientId);
+            if (dto.Amount > available)
+                throw new InvalidOperationException($"Refund amount exceeds the available credit balance of {available:C}.");
+        }
+
+        var receipt = new Receipt
+        {
+            ClinicId = dto.ClinicId,
+            PayerClientId = dto.PayerClientId,
+            ReceiptDate = dto.RefundDate,
+            Notes = dto.Reason,
+            CreatedAt = DateTime.UtcNow,
+            Payments = new List<ReceiptPayment>
+            {
+                new() { Amount = dto.Amount, Method = dto.Method, Reference = dto.Reference, CreatedAt = DateTime.UtcNow }
+            },
+            Allocations = new List<ReceiptAllocation>
+            {
+                new()
+                {
+                    InvoiceId = dto.InvoiceId,
+                    InvoiceItemId = null,
+                    Amount = dto.Amount,
+                    AllocationType = AllocationType.Refund,
+                    CreatedAt = DateTime.UtcNow
+                }
+            }
+        };
+
+        await _dbSet.AddAsync(receipt);
+        await _context.SaveChangesAsync();
+
+        if (dto.InvoiceId.HasValue)
+        {
+            await RecomputeInvoiceAmountsAsync(dto.InvoiceId.Value);
+            await _context.SaveChangesAsync();
+        }
+
+        return receipt.Id;
+    }
+
+    public async Task<decimal> GetAvailableCreditAsync(int clinicId, int payerClientId)
+    {
+        var credit = await _context.ReceiptAllocations
+            .Where(a => a.Receipt!.ClinicId == clinicId && a.Receipt.PayerClientId == payerClientId
+                && a.InvoiceId == null && a.AllocationType == AllocationType.Credit)
+            .SumAsync(a => a.Amount);
+        var refunded = await _context.ReceiptAllocations
+            .Where(a => a.Receipt!.ClinicId == clinicId && a.Receipt.PayerClientId == payerClientId
+                && a.InvoiceId == null && a.AllocationType == AllocationType.Refund)
+            .SumAsync(a => a.Amount);
+
+        return BillingMath.RoundMoney(credit - refunded);
+    }
+
+    /// <summary>Recomputes AmountPaid/Status for one invoice from its ReceiptAllocations — shared by
+    /// CreateAsync (Payment allocations) and CreateRefundAsync (Refund allocations net against them).</summary>
+    private async Task RecomputeInvoiceAmountsAsync(int invoiceId)
+    {
+        var invoice = await _context.Invoices.FirstAsync(i => i.Id == invoiceId);
+
+        var paid = await _context.ReceiptAllocations
+            .Where(a => a.InvoiceId == invoiceId && a.AllocationType == AllocationType.Payment)
+            .SumAsync(a => a.Amount);
+        var refunded = await _context.ReceiptAllocations
+            .Where(a => a.InvoiceId == invoiceId && a.AllocationType == AllocationType.Refund)
+            .SumAsync(a => a.Amount);
+        invoice.AmountPaid = BillingMath.RoundMoney(paid - refunded);
+
+        if (invoice.AmountPaid >= invoice.TotalAmount && invoice.AmountPaid > 0)
+            invoice.Status = InvoiceStatus.Paid;
+        else if (invoice.AmountPaid > 0)
+            invoice.Status = InvoiceStatus.PartiallyPaid;
+        else
+            invoice.Status = InvoiceStatus.Sent;
     }
 
     public async Task<List<OutstandingInvoiceDto>> GetOutstandingInvoicesForPayerAsync(int clinicId, int payerClientId, int? excludeInvoiceId = null)

@@ -22,6 +22,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Receipt> Receipts => Set<Receipt>();
     public DbSet<ReceiptPayment> ReceiptPayments => Set<ReceiptPayment>();
     public DbSet<ReceiptAllocation> ReceiptAllocations => Set<ReceiptAllocation>();
+    public DbSet<InvoiceWriteOff> InvoiceWriteOffs => Set<InvoiceWriteOff>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<ClientAddress> ClientAddresses => Set<ClientAddress>();
     public DbSet<ClientReferral> ClientReferrals => Set<ClientReferral>();
@@ -630,6 +631,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(e => e.Receipt)
                 .WithMany(r => r.Payments)
                 .HasForeignKey(e => e.ReceiptId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // InvoiceWriteOff configuration (invoice-level debt forgiveness, no money movement)
+        modelBuilder.Entity<InvoiceWriteOff>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(500);
+            entity.HasIndex(e => e.InvoiceId);
+            entity.HasOne(e => e.Invoice)
+                .WithMany(i => i.WriteOffs)
+                .HasForeignKey(e => e.InvoiceId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

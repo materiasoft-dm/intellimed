@@ -47,6 +47,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             .Include(i => i.ReceiptAllocations)
                 .ThenInclude(a => a.Receipt)
                     .ThenInclude(r => r!.Payments)
+            .Include(i => i.WriteOffs)
             .FirstOrDefaultAsync(i => i.Id == id);
         if (invoice == null) return null;
 
@@ -268,6 +269,134 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             .ToListAsync();
 
         return (allocations.Select(EntityMapper.ToPaymentDto), totalCount);
+    }
+
+    public async Task WriteOffAsync(int invoiceId, CreateWriteOffDto dto)
+    {
+        var invoice = await _dbSet.Include(i => i.WriteOffs).FirstOrDefaultAsync(i => i.Id == invoiceId);
+        if (invoice == null)
+            throw new InvalidOperationException($"Invoice with ID {invoiceId} not found");
+        if (invoice.Status == InvoiceStatus.Cancelled)
+            throw new InvalidOperationException("Cannot write off a cancelled invoice.");
+        if (dto.Amount <= 0)
+            throw new InvalidOperationException("Write-off amount must be greater than zero.");
+        if (dto.Amount > invoice.AmountOwing)
+            throw new InvalidOperationException($"Write-off amount exceeds the outstanding balance of {invoice.AmountOwing:C}.");
+        if (string.IsNullOrWhiteSpace(dto.Reason))
+            throw new InvalidOperationException("A reason is required to write off an invoice.");
+
+        invoice.WriteOffs.Add(new InvoiceWriteOff
+        {
+            Amount = dto.Amount,
+            Reason = dto.Reason,
+            CreatedAt = DateTime.UtcNow
+        });
+        // Recomputed from the collection (not just added) so repeated partial write-offs accumulate correctly.
+        invoice.AmountWrittenOff = BillingMath.RoundMoney(invoice.WriteOffs.Sum(w => w.Amount));
+        invoice.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task CancelAsync(int invoiceId, CancelInvoiceDto dto)
+    {
+        var invoice = await _dbSet.FindAsync(invoiceId);
+        if (invoice == null)
+            throw new InvalidOperationException($"Invoice with ID {invoiceId} not found");
+        if (invoice.Status == InvoiceStatus.Cancelled)
+            throw new InvalidOperationException("This invoice is already cancelled.");
+        if (invoice.AmountPaid > 0)
+            throw new InvalidOperationException("Cannot cancel an invoice with payments — refund it first.");
+        if (string.IsNullOrWhiteSpace(dto.Reason))
+            throw new InvalidOperationException("A reason is required to cancel an invoice.");
+
+        invoice.Status = InvoiceStatus.Cancelled;
+        invoice.CancelReason = dto.Reason;
+        invoice.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<SplitInvoiceResultDto> SplitAsync(int sourceInvoiceId, SplitInvoiceDto dto)
+    {
+        var source = await _dbSet.Include(i => i.Items).FirstOrDefaultAsync(i => i.Id == sourceInvoiceId);
+        if (source == null)
+            throw new InvalidOperationException($"Invoice with ID {sourceInvoiceId} not found");
+        if (source.Status == InvoiceStatus.Cancelled)
+            throw new InvalidOperationException("Cannot split a cancelled invoice.");
+        // Whole-invoice gate, not per-item: a payment recorded at invoice level (the only mode any
+        // current UI creates) can't be traced back to a specific item, so partial movability can't be
+        // determined safely once any money has moved.
+        if (source.AmountPaid > 0 || source.AmountWrittenOff > 0)
+            throw new InvalidOperationException("Cannot split an invoice that has payments or write-offs — refund or reverse them first.");
+        if (string.IsNullOrWhiteSpace(dto.Reason))
+            throw new InvalidOperationException("A reason is required to split an invoice.");
+        if (dto.NewInvoices == null || dto.NewInvoices.Count == 0)
+            throw new InvalidOperationException("At least one new invoice group is required.");
+
+        var sourceItemIds = source.Items.Select(i => i.Id).ToHashSet();
+        var claimedItemIds = new HashSet<int>();
+        foreach (var group in dto.NewInvoices)
+        {
+            if (group.InvoiceItemIds == null || group.InvoiceItemIds.Count == 0)
+                throw new InvalidOperationException("Each new invoice must receive at least one item.");
+
+            foreach (var itemId in group.InvoiceItemIds)
+            {
+                if (!sourceItemIds.Contains(itemId))
+                    throw new InvalidOperationException($"Invoice item {itemId} does not belong to invoice {sourceInvoiceId}.");
+                if (!claimedItemIds.Add(itemId))
+                    throw new InvalidOperationException($"Invoice item {itemId} was assigned to more than one new invoice.");
+            }
+        }
+
+        if (claimedItemIds.Count >= sourceItemIds.Count)
+            throw new InvalidOperationException("The source invoice must retain at least one item.");
+
+        // A genuine multi-step mutation (several new invoices + item deletions + source total
+        // recompute) where a partial failure would leave real damage — this codebase's first use of
+        // an explicit transaction, used deliberately rather than reflexively. Guarded by IsRelational
+        // since the EF InMemory provider (used by the repository test suite) doesn't support transactions.
+        var transaction = _context.Database.IsRelational()
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
+        await using var _ = transaction;
+
+        var newInvoiceIds = new List<int>();
+        foreach (var group in dto.NewInvoices)
+        {
+            // GenerateInvoiceNumberAsync queries the DB directly, so each sibling must be saved
+            // before the next number is generated or two siblings could collide on the same number.
+            var invoiceNumber = await GenerateInvoiceNumberAsync();
+            var newInvoice = EntityMapper.CloneInvoiceHeader(source, invoiceNumber);
+            if (group.DueDate.HasValue)
+                newInvoice.DueDate = group.DueDate.Value;
+
+            foreach (var itemId in group.InvoiceItemIds)
+            {
+                var sourceItem = source.Items.First(i => i.Id == itemId);
+                newInvoice.Items.Add(EntityMapper.CloneForSplit(sourceItem));
+            }
+            newInvoice.TotalAmount = BillingMath.RoundMoney(newInvoice.Items.Sum(i => i.TotalPrice));
+
+            await _dbSet.AddAsync(newInvoice);
+            await _context.SaveChangesAsync();
+            newInvoiceIds.Add(newInvoice.Id);
+        }
+
+        var movedItems = source.Items.Where(i => claimedItemIds.Contains(i.Id)).ToList();
+        _context.InvoiceItems.RemoveRange(movedItems);
+        source.TotalAmount = BillingMath.RoundMoney(source.Items.Where(i => !claimedItemIds.Contains(i.Id)).Sum(i => i.TotalPrice));
+        source.Notes = string.IsNullOrWhiteSpace(source.Notes)
+            ? $"Split on {DateTime.UtcNow:yyyy-MM-dd}: {dto.Reason}"
+            : $"{source.Notes}\nSplit on {DateTime.UtcNow:yyyy-MM-dd}: {dto.Reason}";
+        source.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        if (transaction != null)
+            await transaction.CommitAsync();
+
+        return new SplitInvoiceResultDto { SourceInvoiceId = sourceInvoiceId, NewInvoiceIds = newInvoiceIds };
     }
 
     private IQueryable<Invoice> BuildSearchQuery(InvoiceSearchDto search)
