@@ -69,6 +69,24 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         ClockSkew = TimeSpan.Zero
     };
+    options.Events = new JwtBearerEvents
+    {
+        // context.Token is NOT populated from the Authorization header by this point — the header
+        // is only read as a fallback AFTER this event returns, and only if it's still empty. So we
+        // must check the header ourselves rather than context.Token, or this cookie would silently
+        // win over a real Bearer header on every request in the app. Scoped to /dbadmin so a stray
+        // dbadmin_token cookie can never affect authentication on any other route, even in theory.
+        OnMessageReceived = context =>
+        {
+            var isDbAdminPath = context.Request.Path.StartsWithSegments("/dbadmin");
+            if (isDbAdminPath && !context.Request.Headers.ContainsKey("Authorization")
+                && context.Request.Cookies.TryGetValue("dbadmin_token", out var cookieToken))
+            {
+                context.Token = cookieToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization(options =>
@@ -78,7 +96,15 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
+
+    // Satisfied only by the separate token DbAdminController.Login issues, never by a regular
+    // staff JWT (even SuperAdmin) — that token type is never given this claim at all.
+    options.AddPolicy("DbAdminOnly", policy => policy.RequireClaim("scope", "dbadmin"));
 });
+
+// Backs the /dbadmin login IP lockout — deliberately not using ASP.NET Identity's own lockout,
+// which is tied to an ApplicationUser row that this separate credential doesn't have.
+builder.Services.AddMemoryCache();
 
 // ============================================================================
 // CONTROLLERS & API CONFIGURATION

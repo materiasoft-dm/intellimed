@@ -68,3 +68,6 @@ Thumbs.db
 
 # Scratch publish output (may contain live secrets, never meant for version control)
 publish-freeasp/
+
+# Automatic/manual SQLite backups (runtime artifacts, not source)
+src/IntelliMed.Api/backups/

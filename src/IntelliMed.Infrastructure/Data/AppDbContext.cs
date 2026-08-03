@@ -50,6 +50,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<DatabaseBackup> DatabaseBackups => Set<DatabaseBackup>();
     public DbSet<DatabaseBackupSettings> DatabaseBackupSettings => Set<DatabaseBackupSettings>();
+    public DbSet<DbAdminAuditLog> DbAdminAuditLogs => Set<DbAdminAuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -700,6 +701,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasKey(e => e.Id);
             entity.Property(e => e.FileName).IsRequired().HasMaxLength(255);
             entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // DbAdminAuditLog configuration (the /dbadmin tool's only audit trail)
+        modelBuilder.Entity<DbAdminAuditLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Timestamp);
         });
 
         // DatabaseBackupSettings configuration (single-row settings table)
