@@ -152,7 +152,7 @@ public class DbAdminController : ControllerBase
         sql = (sql ?? string.Empty).Trim();
 
         if (string.IsNullOrWhiteSpace(sql))
-            return Content(RenderDashboard(await GetTablesAsync(), "Enter a SQL statement."), "text/html");
+            return Content(RenderDashboard(await GetTablesAsync(), sql, null, "Enter a SQL statement."), "text/html");
 
         var trimmed = sql.TrimStart();
         var isReadOnly = trimmed.StartsWith("select", StringComparison.OrdinalIgnoreCase)
@@ -172,6 +172,7 @@ public class DbAdminController : ControllerBase
         await using var connection = new SqliteConnection(ConnectionString());
         await connection.OpenAsync();
 
+        string resultsHtml;
         try
         {
             await using var cmd = connection.CreateCommand();
@@ -181,18 +182,24 @@ public class DbAdminController : ControllerBase
             {
                 var (columns, rows) = await ReadResultsAsync(cmd);
                 await LogAsync(DbAdminEventType.QueryExecuted, sql, ip);
-                return Content(RenderQueryResults(sql, columns, rows, backupFileName), "text/html");
+                resultsHtml = BuildResultsFragment(columns, rows, backupFileName);
             }
-
-            var affected = await cmd.ExecuteNonQueryAsync();
-            await LogAsync(DbAdminEventType.QueryExecuted, sql, ip);
-            return Content(RenderQueryAffected(sql, affected, backupFileName), "text/html");
+            else
+            {
+                var affected = await cmd.ExecuteNonQueryAsync();
+                await LogAsync(DbAdminEventType.QueryExecuted, sql, ip);
+                resultsHtml = BuildAffectedFragment(affected, backupFileName);
+            }
         }
         catch (Exception ex)
         {
             await LogAsync(DbAdminEventType.QueryExecuted, $"FAILED: {sql} — {ex.Message}", ip);
-            return Content(RenderError($"Query failed: {WebUtility.HtmlEncode(ex.Message)}", backupFileName), "text/html");
+            resultsHtml = BuildErrorFragment($"Query failed: {WebUtility.HtmlEncode(ex.Message)}", backupFileName);
         }
+
+        // Re-fetch the table list too — a CREATE/DROP/ALTER just now would otherwise leave the
+        // left column showing a stale schema until the next full page load.
+        return Content(RenderDashboard(await GetTablesAsync(), sql, resultsHtml), "text/html");
     }
 
     // ------------------------------------------------------------------
@@ -340,13 +347,24 @@ public class DbAdminController : ControllerBase
           th, td { border: 1px solid #444; padding: 4px 8px; text-align: left; }
           th { background: #2a2a2a; }
           tr:nth-child(even) { background: #252525; }
-          textarea { width: 100%; min-height: 100px; font-family: Consolas, monospace; background: #111; color: #ddd; border: 1px solid #444; padding: 8px; box-sizing: border-box; }
+          textarea { width: 100%; min-height: 80px; resize: vertical; font-family: Consolas, monospace; background: #111; color: #ddd; border: 1px solid #444; padding: 8px; box-sizing: border-box; }
           button { background: #c0392b; color: #fff; border: none; padding: 8px 16px; cursor: pointer; margin-top: 8px; font-size: 14px; }
           button:hover { background: #a93226; }
           .error { color: #e74c3c; font-weight: bold; }
           .warn { color: #f39c12; }
           .muted { color: #888; font-size: 12px; }
           a.tbl { color: #5dade2; }
+          .results-wrap { overflow-x: auto; }
+          .dashboard-grid { display: flex; }
+          .dashboard-grid .col-tables { flex: 0 0 auto; width: 320px; overflow: auto; }
+          .dashboard-grid .col-resizer { flex: 0 0 6px; width: 6px; margin: 0 10px; border-radius: 3px; background: #333; cursor: col-resize; }
+          .dashboard-grid .col-resizer:hover, .dashboard-grid .col-resizer.active { background: #c0392b; }
+          .dashboard-grid .col-console { flex: 1 1 auto; min-width: 0; }
+          @media (max-width: 720px) {
+            .dashboard-grid { flex-direction: column; }
+            .dashboard-grid .col-resizer { display: none; }
+            .dashboard-grid .col-tables { width: 100% !important; flex: none; }
+          }
         </style>
         </head>
         <body>
@@ -393,26 +411,67 @@ public class DbAdminController : ControllerBase
         """;
     }
 
-    private string RenderDashboard(List<(string Name, long RowCount)> tables, string? queryError = null)
+    private string RenderDashboard(List<(string Name, long RowCount)> tables, string? sqlValue = null, string? resultsHtml = null, string? queryError = null)
     {
         var rowsHtml = string.Join("", tables.Select(t =>
             $"<tr><td><a class=\"tbl\" href=\"/dbadmin/table/{Uri.EscapeDataString(t.Name)}\">{WebUtility.HtmlEncode(t.Name)}</a></td><td>{t.RowCount:N0}</td></tr>"));
         var errorHtml = queryError != null ? $"<div class=\"error\">{WebUtility.HtmlEncode(queryError)}</div>" : "";
+        var sqlEncoded = WebUtility.HtmlEncode(sqlValue ?? "");
 
-        var body = $"""
-            <h1>Tables</h1>
-            <table>
-              <thead><tr><th>Name</th><th>Rows</th></tr></thead>
-              <tbody>{rowsHtml}</tbody>
-            </table>
+        var body = $$"""
+            <h1>Dashboard</h1>
+            <div class="dashboard-grid">
+              <div class="col-tables" id="colTables">
+                <h2>Tables</h2>
+                <table>
+                  <thead><tr><th>Name</th><th>Rows</th></tr></thead>
+                  <tbody>{{rowsHtml}}</tbody>
+                </table>
+              </div>
+              <div class="col-resizer" id="colResizer"></div>
+              <div class="col-console">
+                <h2>SQL Console</h2>
+                {{errorHtml}}
+                <form method="post" action="/dbadmin/query">
+                  <textarea name="sql" placeholder="SELECT * FROM Clients LIMIT 10;">{{sqlEncoded}}</textarea>
+                  <button type="submit">Run</button>
+                </form>
+                <p class="muted">Non-SELECT statements trigger an automatic backup first. Every query is logged to DbAdminAuditLogs.</p>
+                {{resultsHtml}}
+              </div>
+            </div>
+            <script>
+              (function () {
+                var resizer = document.getElementById('colResizer');
+                var tables = document.getElementById('colTables');
+                if (!resizer || !tables) return;
 
-            <h2>SQL Console</h2>
-            {errorHtml}
-            <form method="post" action="/dbadmin/query">
-              <textarea name="sql" placeholder="SELECT * FROM Clients LIMIT 10;"></textarea>
-              <button type="submit">Run</button>
-            </form>
-            <p class="muted">Non-SELECT statements trigger an automatic backup first. Every query is logged to DbAdminAuditLogs.</p>
+                var saved = localStorage.getItem('dbadmin_tables_col_width');
+                if (saved) tables.style.width = saved + 'px';
+
+                resizer.addEventListener('mousedown', function (e) {
+                  e.preventDefault();
+                  var startX = e.clientX;
+                  var startWidth = tables.offsetWidth;
+                  resizer.classList.add('active');
+                  document.body.style.userSelect = 'none';
+
+                  function onMove(ev) {
+                    var next = Math.max(180, Math.min(700, startWidth + (ev.clientX - startX)));
+                    tables.style.width = next + 'px';
+                  }
+                  function onUp() {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    resizer.classList.remove('active');
+                    document.body.style.userSelect = '';
+                    localStorage.setItem('dbadmin_tables_col_width', tables.offsetWidth);
+                  }
+                  document.addEventListener('mousemove', onMove);
+                  document.addEventListener('mouseup', onUp);
+                });
+              })();
+            </script>
             """;
 
         return Layout("Dashboard", body);
@@ -444,43 +503,49 @@ public class DbAdminController : ControllerBase
         return Layout(tableName, body);
     }
 
-    private static string RenderQueryResults(string sql, List<string> columns, List<List<string?>> rows, string? backupFileName)
+    // These render just the fragment slotted below the SQL Console form on the dashboard itself
+    // (see RenderDashboard/RunQuery) — results stay next to the query that produced them instead
+    // of navigating to a separate page.
+    private static string BuildResultsFragment(List<string> columns, List<List<string?>> rows, string? backupFileName)
     {
         var headerHtml = string.Join("", columns.Select(c => $"<th>{WebUtility.HtmlEncode(c)}</th>"));
         var rowsHtml = string.Join("", rows.Select(r =>
             "<tr>" + string.Join("", r.Select(v => $"<td>{(v == null ? "<span class=\"muted\">NULL</span>" : WebUtility.HtmlEncode(v))}</td>")) + "</tr>"));
         var backupHtml = backupFileName != null ? $"<p class=\"warn\">Backup created before running: {WebUtility.HtmlEncode(backupFileName)}</p>" : "";
 
-        var body = $"""
-            <h1>Query Result</h1>
-            <p class="muted">{WebUtility.HtmlEncode(sql)}</p>
+        return $"""
+            <h3>Results</h3>
             {backupHtml}
-            <p>{rows.Count:N0} row(s) returned.</p>
-            <div style="overflow-x:auto">
+            <p class="muted">{rows.Count:N0} row(s) returned.</p>
+            <div class="results-wrap">
             <table>
               <thead><tr>{headerHtml}</tr></thead>
               <tbody>{rowsHtml}</tbody>
             </table>
             </div>
-            <p><a class="tbl" href="/dbadmin">&laquo; Back to dashboard</a></p>
             """;
-
-        return Layout("Query Result", body);
     }
 
-    private static string RenderQueryAffected(string sql, int affected, string? backupFileName)
+    private static string BuildAffectedFragment(int affected, string? backupFileName)
     {
         var backupHtml = backupFileName != null ? $"<p class=\"warn\">Backup created before running: {WebUtility.HtmlEncode(backupFileName)}</p>" : "";
 
-        var body = $"""
-            <h1>Query Executed</h1>
-            <p class="muted">{WebUtility.HtmlEncode(sql)}</p>
+        return $"""
+            <h3>Query Executed</h3>
             {backupHtml}
             <p>{affected:N0} row(s) affected.</p>
-            <p><a class="tbl" href="/dbadmin">&laquo; Back to dashboard</a></p>
             """;
+    }
 
-        return Layout("Query Executed", body);
+    private static string BuildErrorFragment(string safeHtmlMessage, string? backupFileName)
+    {
+        var backupHtml = backupFileName != null ? $"<p class=\"warn\">A backup was still created before this failed: {WebUtility.HtmlEncode(backupFileName)}</p>" : "";
+
+        return $"""
+            <h3 class="error">Error</h3>
+            <p>{safeHtmlMessage}</p>
+            {backupHtml}
+            """;
     }
 
     private static string RenderError(string safeHtmlMessage, string? backupFileName = null)
