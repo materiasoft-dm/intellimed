@@ -182,6 +182,8 @@
 @code {
     [SupplyParameterFromQuery] public int? ClientId { get; set; }
     [SupplyParameterFromQuery] public string? Date { get; set; }
+    [SupplyParameterFromQuery] public string? Time { get; set; }
+    [SupplyParameterFromQuery] public int? Duration { get; set; }
     [SupplyParameterFromQuery] public int? PractitionerId { get; set; }
 
     private CreateAppointmentDto _model = new()
@@ -224,6 +226,11 @@
         if (ClientId.HasValue) _model.ClientId = ClientId.Value;
         if (PractitionerId.HasValue) _model.PractitionerId = PractitionerId.Value;
         if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out var parsed)) _model.AppointmentDate = parsed;
+        if (!string.IsNullOrEmpty(Time) && TimeSpan.TryParse(Time, out var startTime))
+        {
+            _model.StartTime = startTime;
+            _model.EndTime = startTime.Add(TimeSpan.FromMinutes(Duration is > 0 ? Duration.Value : 15));
+        }
 
         await OnPractitionerOrDateChangedAsync();
     }

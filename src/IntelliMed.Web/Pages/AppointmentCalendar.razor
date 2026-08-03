@@ -8,6 +8,9 @@
 @inject IClinicSettingsService ClinicSettingsService
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
+@inject ContextMenuService ContextMenuService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <PageTitle>Appointment Calendar - IntelliMed</PageTitle>
 
@@ -113,7 +116,9 @@
 
 <div class="imed-calendar-header">
     <h4><i class="bi bi-calendar3"></i> Appointment Calendar</h4>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 align-items-center">
+        <input type="date" class="form-control form-control-sm" style="width: auto;" title="Jump to date"
+               value="@_jumpDate.ToString("yyyy-MM-dd")" @onchange="OnJumpDateChanged" />
         <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo($"/appointments/print?date={_lastLoadStart:yyyy-MM-dd}"))">
             <i class="bi bi-printer"></i> Print Day List
         </button>
@@ -140,18 +145,20 @@
 </div>
 
 <div class="card imed-calendar-card">
-    <div class="card-body p-0">
-        <RadzenScheduler @ref="_scheduler" TItem="SchedulerAppointmentVm" Data="@_events"
+    <div class="card-body p-0" @ref="_calendarContainerRef">
+        <RadzenScheduler @key="_schedulerKey" @ref="_scheduler" TItem="SchedulerAppointmentVm" Data="@_events"
                           Style="height: calc(100vh - 280px); width: 100%;"
                           StartProperty="Start" EndProperty="End" TextProperty="Text"
                           SelectedIndex="1"
+                          Date="@_jumpDate"
                           LoadData="@OnLoadDataAsync"
                           SlotSelect="@OnSlotSelect"
                           AppointmentSelect="@OnAppointmentSelect"
                           AppointmentMove="@OnAppointmentMoveAsync"
-                          AppointmentRender="@OnAppointmentRender">
+                          AppointmentRender="@OnAppointmentRender"
+                          SlotRender="@OnSlotRender">
             <RadzenDayView StartTime="@_dayStart" EndTime="@_dayEnd" MinutesPerSlot="@_slotMinutes" />
-            <RadzenWeekView StartTime="@_dayStart" EndTime="@_dayEnd" MinutesPerSlot="@_slotMinutes" />
+            <RadzenWeekView StartTime="@_dayStart" EndTime="@_dayEnd" MinutesPerSlot="@_slotMinutes" HeaderFormat="MMM d (ddd)" />
             <RadzenMonthView />
         </RadzenScheduler>
     </div>
@@ -166,6 +173,7 @@
 
 @code {
     private RadzenScheduler<SchedulerAppointmentVm>? _scheduler;
+    private ElementReference _calendarContainerRef;
     private List<PractitionerDto> _practitioners = new();
     private HashSet<int> _selectedPractitionerIds = new();
 
@@ -184,6 +192,20 @@
     private string? _statusMessage;
     private bool _statusIsError;
 
+    private DateTime _jumpDate = DateTime.Today;
+
+    // RadzenScheduler's Date parameter is only honored as an *initial* value, so jumping to an
+    // arbitrary date forces a remount (a fresh @key) rather than relying on an internal navigation
+    // method — SelectDay/SelectMonth turned out not to move the view when called from outside.
+    private Guid _schedulerKey = Guid.NewGuid();
+
+    // Set by SlotSelect (a single click or a multi-slot drag) and consumed by the "Add Appointment"
+    // context-menu action, so a dragged range survives until the user right-clicks to commit it.
+    private DateTime? _pendingSlotStart;
+    private DateTime? _pendingSlotEnd;
+
+    private DotNetObjectReference<AppointmentCalendar>? _dotNetRef;
+
     protected override async Task OnInitializedAsync()
     {
         _practitioners = await PractitionerService.GetAllActiveAsync();
@@ -192,6 +214,15 @@
         var profile = await AuthService.GetMyProfileAsync();
         var clinicSettings = await ClinicSettingsService.GetAsync();
         _slotMinutes = profile?.DefaultAppointmentTimeslotMinutes ?? clinicSettings?.MinimumTimeslotMinutes ?? 15;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("IntelliMedCalendarContextMenu.init", _calendarContainerRef, _dotNetRef);
+        }
     }
 
     private async Task OnLoadDataAsync(SchedulerLoadDataEventArgs args)
@@ -233,9 +264,71 @@
 
     private void OnSlotSelect(SchedulerSlotSelectEventArgs args)
     {
+        // Adding an appointment now happens via the right-click "Add Appointment" context menu
+        // (see OnSlotContextMenu) instead of navigating immediately on click — this just remembers
+        // the clicked or dragged range so a multi-slot drag survives until the user right-clicks.
+        _pendingSlotStart = args.Start;
+        _pendingSlotEnd = args.End;
+    }
+
+    private void OnJumpDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var picked))
+        {
+            _jumpDate = picked;
+            _schedulerKey = Guid.NewGuid();
+        }
+    }
+
+    private void NavigateToNewAppointment(DateTime start, DateTime end)
+    {
         var practitionerId = _selectedPractitionerIds.Count == 1 ? _selectedPractitionerIds.First() : (int?)null;
-        var url = $"/appointments/new?date={args.Start:yyyy-MM-dd}" + (practitionerId.HasValue ? $"&practitionerId={practitionerId}" : "");
+        var duration = end - start;
+        if (duration <= TimeSpan.Zero) duration = TimeSpan.FromMinutes(_slotMinutes);
+
+        var url = $"/appointments/new?date={start:yyyy-MM-dd}&time={start:HH\\:mm}&duration={(int)duration.TotalMinutes}"
+            + (practitionerId.HasValue ? $"&practitionerId={practitionerId}" : "");
         Navigation.NavigateTo(url);
+    }
+
+    [JSInvokable]
+    public void OnSlotContextMenu(string startIso, string endIso, double x, double y)
+    {
+        var start = DateTime.Parse(startIso, null, System.Globalization.DateTimeStyles.RoundtripKind);
+        var end = DateTime.Parse(endIso, null, System.Globalization.DateTimeStyles.RoundtripKind);
+
+        // Honor a prior drag-selection if the right-clicked cell falls inside it; otherwise this is
+        // just a right-click on a single, un-dragged slot.
+        if (_pendingSlotStart.HasValue && _pendingSlotEnd.HasValue
+            && start >= _pendingSlotStart.Value && start < _pendingSlotEnd.Value)
+        {
+            start = _pendingSlotStart.Value;
+            end = _pendingSlotEnd.Value;
+        }
+
+        ContextMenuService.Open(new MouseEventArgs { ClientX = x, ClientY = y },
+            new List<ContextMenuItem> { new() { Text = "Add Appointment", Value = "add", Icon = "add" } },
+            e =>
+            {
+                ContextMenuService.Close();
+                if ((string?)e.Value == "add") NavigateToNewAppointment(start, end);
+            });
+    }
+
+    [JSInvokable]
+    public void OnAppointmentContextMenu(int appointmentId, double x, double y)
+    {
+        ContextMenuService.Open(new MouseEventArgs { ClientX = x, ClientY = y },
+            new List<ContextMenuItem> { new() { Text = "View / Edit Appointment", Value = "view", Icon = "edit" } },
+            e =>
+            {
+                ContextMenuService.Close();
+                if ((string?)e.Value == "view")
+                {
+                    _selectedAppointmentId = appointmentId;
+                    StateHasChanged();
+                }
+            });
     }
 
     private int? _selectedAppointmentId;
@@ -299,6 +392,19 @@
             _ => ("#8b95a5", "#fff")
         };
         args.Attributes["style"] = $"background-color: {bg}; border-color: {bg}; color: {text};";
+        args.Attributes["data-appt-id"] = args.Data.Appointment.Id.ToString();
+    }
+
+    private void OnSlotRender(SchedulerSlotRenderEventArgs args)
+    {
+        args.Attributes["data-slot-start"] = args.Start.ToString("O");
+        args.Attributes["data-slot-end"] = args.End.ToString("O");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("IntelliMedCalendarContextMenu.dispose"); } catch (JSDisconnectedException) { }
+        _dotNetRef?.Dispose();
     }
 
     /// <summary>Flattens an AppointmentDto into the Start/End/Text shape RadzenScheduler binds via StartProperty/EndProperty/TextProperty.</summary>
