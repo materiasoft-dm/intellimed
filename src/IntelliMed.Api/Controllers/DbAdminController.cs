@@ -354,7 +354,8 @@ public class DbAdminController : ControllerBase
           .warn { color: #f39c12; }
           .muted { color: #888; font-size: 12px; }
           a.tbl { color: #5dade2; }
-          .results-wrap { overflow-x: auto; }
+          .scroll-wrap { overflow-x: auto; }
+          .scroll-wrap table { width: auto; min-width: 100%; }
           .dashboard-grid { display: flex; }
           .dashboard-grid .col-tables { flex: 0 0 auto; width: 320px; overflow: auto; }
           .dashboard-grid .col-resizer { flex: 0 0 6px; width: 6px; margin: 0 10px; border-radius: 3px; background: #333; cursor: col-resize; }
@@ -492,7 +493,7 @@ public class DbAdminController : ControllerBase
         var body = $"""
             <h1>{WebUtility.HtmlEncode(tableName)}</h1>
             <p class="muted">Page {page} of {totalPages} — {totalRows:N0} rows total. {string.Join(" &middot; ", pagerLinks)}</p>
-            <div style="overflow-x:auto">
+            <div class="scroll-wrap">
             <table>
               <thead><tr>{headerHtml}</tr></thead>
               <tbody>{rowsHtml}</tbody>
@@ -517,7 +518,7 @@ public class DbAdminController : ControllerBase
             <h3>Results</h3>
             {backupHtml}
             <p class="muted">{rows.Count:N0} row(s) returned.</p>
-            <div class="results-wrap">
+            <div class="scroll-wrap">
             <table>
               <thead><tr>{headerHtml}</tr></thead>
               <tbody>{rowsHtml}</tbody>
