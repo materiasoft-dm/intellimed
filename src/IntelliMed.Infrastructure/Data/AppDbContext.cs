@@ -37,6 +37,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Clinic> Clinics => Set<Clinic>();
     public DbSet<UserClinic> UserClinics => Set<UserClinic>();
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
+    public DbSet<Medicine> Medicines => Set<Medicine>();
+    public DbSet<ActiveIngredient> ActiveIngredients => Set<ActiveIngredient>();
+    public DbSet<MedicineIngredient> MedicineIngredients => Set<MedicineIngredient>();
     public DbSet<FeeSchedule> FeeSchedules => Set<FeeSchedule>();
     public DbSet<FeeScheduleItem> FeeScheduleItems => Set<FeeScheduleItem>();
     public DbSet<FeeScheduleItemPriceHistory> FeeScheduleItemPriceHistories => Set<FeeScheduleItemPriceHistory>();
@@ -511,6 +514,50 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Group).HasMaxLength(10);
             entity.Property(e => e.Description).IsRequired();
             entity.HasIndex(e => e.ItemNumber).IsUnique();
+        });
+
+        // Medicine configuration — reference data, never hard-deleted (see BillingItem)
+        modelBuilder.Entity<Medicine>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.GenericName).HasMaxLength(255);
+            entity.Property(e => e.Strength).HasMaxLength(100);
+            entity.Property(e => e.Form).HasMaxLength(100);
+            entity.Property(e => e.Manufacturer).HasMaxLength(200);
+            entity.Property(e => e.ArtgId).HasMaxLength(50);
+            entity.Property(e => e.AmtConceptId).HasMaxLength(50);
+            entity.Property(e => e.PbsItemCode).HasMaxLength(20);
+            entity.Property(e => e.AtcCode).HasMaxLength(20);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.AmtConceptId).IsUnique();
+        });
+
+        // ActiveIngredient configuration
+        modelBuilder.Entity<ActiveIngredient>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.AmtSubstanceId).HasMaxLength(50);
+            entity.Property(e => e.AtcCode).HasMaxLength(20);
+            entity.Property(e => e.WikidataId).HasMaxLength(20);
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        // MedicineIngredient configuration — bridge, modeled on ClientProviderAccess
+        modelBuilder.Entity<MedicineIngredient>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.MedicineId, e.ActiveIngredientId }).IsUnique();
+
+            entity.HasOne(e => e.Medicine)
+                .WithMany(m => m.Ingredients)
+                .HasForeignKey(e => e.MedicineId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ActiveIngredient)
+                .WithMany()
+                .HasForeignKey(e => e.ActiveIngredientId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // FeeSchedule configuration

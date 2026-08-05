@@ -1,0 +1,31 @@
+Name,GenericName,Strength,Form,Manufacturer,ActiveIngredients,IsPbsListed,Schedule
+Panadol,Paracetamol,500mg,Tablet,GlaxoSmithKline,Paracetamol,true,S2
+Nurofen,Ibuprofen,200mg,Tablet,Reckitt Benckiser,Ibuprofen,false,S2
+Amoxil,Amoxicillin,500mg,Capsule,GlaxoSmithKline,Amoxicillin,true,S4
+Diabex,Metformin,500mg,Tablet,Alphapharm,Metformin,true,S4
+Lipitor,Atorvastatin,20mg,Tablet,Pfizer,Atorvastatin,true,S4
+Norvasc,Amlodipine,5mg,Tablet,Pfizer,Amlodipine,true,S4
+Ventolin,Salbutamol,100mcg,Inhaler,GlaxoSmithKline,Salbutamol,true,S3
+Losec,Omeprazole,20mg,Capsule,AstraZeneca,Omeprazole,true,S3
+Zoloft,Sertraline,50mg,Tablet,Pfizer,Sertraline,true,S4
+Marevan,Warfarin,5mg,Tablet,Aspen,Warfarin,true,S4
+Cartia,Aspirin,100mg,Tablet,Bayer,Aspirin,true,S2
+Zyrtec,Cetirizine,10mg,Tablet,GlaxoSmithKline,Cetirizine,false,S2
+Panafcort,Prednisolone,25mg,Tablet,Aspen,Prednisolone,true,S4
+Lantus,Insulin glargine,100units/mL,Injection,Sanofi,Insulin glargine,true,S4
+Aropax,Paroxetine,20mg,Tablet,GlaxoSmithKline,Paroxetine,true,S4
+Valium,Diazepam,5mg,Tablet,Roche,Diazepam,true,S4
+Panadeine,Paracetamol/Codeine,500mg/8mg,Tablet,GlaxoSmithKline,Paracetamol;Codeine,true,S4
+Betaloc,Metoprolol,50mg,Tablet,AstraZeneca,Metoprolol,true,S4
+Cozaar,Losartan,50mg,Tablet,MSD,Losartan,true,S4
+Zocor,Simvastatin,20mg,Tablet,MSD,Simvastatin,true,S4
+Tritace,Ramipril,5mg,Tablet,Sanofi,Ramipril,true,S4
+Somac,Pantoprazole,40mg,Tablet,Takeda,Pantoprazole,true,S4
+Prozac,Fluoxetine,20mg,Capsule,Eli Lilly,Fluoxetine,true,S4
+Cipramil,Citalopram,20mg,Tablet,Lundbeck,Citalopram,true,S4
+Plavix,Clopidogrel,75mg,Tablet,Sanofi,Clopidogrel,true,S4
+Oroxine,Levothyroxine,100mcg,Tablet,Aspen,Levothyroxine,true,S4
+Lasix,Furosemide,40mg,Tablet,Sanofi,Furosemide,true,S4
+Vibramycin,Doxycycline,100mg,Capsule,Pfizer,Doxycycline,true,S4
+Keflex,Cephalexin,500mg,Capsule,Aspen,Cephalexin,true,S4
+Endep,Amitriptyline,25mg,Tablet,Alphapharm,Amitriptyline,true,S4

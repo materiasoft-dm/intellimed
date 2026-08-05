@@ -34,6 +34,13 @@ public static class ServiceExtensions
         services.AddScoped<IClinicRepository, ClinicRepository>();
         services.AddScoped<IBillingItemRepository, BillingItemRepository>();
         services.AddHttpClient<IBillingItemSyncService, BillingItemSyncService>();
+        services.AddScoped<IMedicineRepository, MedicineRepository>();
+        services.AddScoped<IMedicineImportService, MedicineImportService>();
+        // Wikimedia API etiquette expects a descriptive User-Agent identifying the calling application.
+        services.AddHttpClient<IIngredientEnrichmentService, WikidataIngredientEnrichmentService>(client =>
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("IntelliMed-MedicineCatalog/1.0");
+        });
         services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
         services.AddScoped<IAccountTypeFeeScheduleMappingRepository, AccountTypeFeeScheduleMappingRepository>();
         services.AddScoped<IBillingCalculator, BillingCalculator>();

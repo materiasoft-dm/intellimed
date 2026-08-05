@@ -195,6 +195,12 @@
                             <i class="bi bi-hdd-stack me-2"></i> <span class="mdi-nav-label">Database Backups</span>
                         </a>
                     }
+                    @if (_accessiblePages.Contains("admin/medicines"))
+                    {
+                        <a href="/admin/medicines" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <i class="bi bi-capsule me-2"></i> <span class="mdi-nav-label">Medicine Catalog</span>
+                        </a>
+                    }
                 }
 
                 <hr class="my-2" />

@@ -1,0 +1,434 @@
+@page "/admin/medicines"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IMedicineService MedicineService
+
+<PageTitle>Medicine Catalog - IntelliMed</PageTitle>
+
+<h4 class="mb-1">Medicine Catalog</h4>
+<p class="text-muted small mb-4">
+    A self-hosted medicines reference list — built without a MIMS subscription. Today this is seeded
+    from a CSV import rather than a live government feed; see the plan doc for the licensing status of
+    AMT/PBS/ARTG as future sources.
+</p>
+
+<div class="card mb-3">
+    <div class="card-header"><strong>Import</strong></div>
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small mb-0">CSV file</label>
+                <InputFile OnChange="OnFileSelected" class="form-control form-control-sm" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">&nbsp;</label>
+                <button type="button" class="btn btn-sm btn-primary d-block" disabled="@(_selectedFile == null || _isImporting)" @onclick="ImportAsync">
+                    @if (_isImporting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-upload me-1"></i> Import
+                </button>
+            </div>
+        </div>
+        @if (_lastImportResult != null)
+        {
+            <div class="small text-muted mt-3">
+                Last import @_lastImportResult.ImportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"):
+                @_lastImportResult.Added added, @_lastImportResult.Updated updated,
+                @_lastImportResult.Unmatched new ingredient(s) auto-created (not AMT-confirmed).
+            </div>
+        }
+        else if (_importError != null)
+        {
+            <div class="small text-danger mt-3">@_importError</div>
+        }
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><strong>Enrichment</strong></div>
+    <div class="card-body">
+        <p class="small text-muted mb-2">
+            Looks up each ingredient on Wikidata (CC0-licensed, safe for commercial use) for an ATC
+            code — identification-layer cross-reference only, not a clinical authority.
+        </p>
+        <button type="button" class="btn btn-sm btn-outline-primary" disabled="@_isEnriching" @onclick="EnrichIngredientsAsync">
+            @if (_isEnriching)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            <i class="bi bi-magic me-1"></i> Enrich Ingredients from Wikidata
+        </button>
+        @if (_lastEnrichmentResult != null)
+        {
+            <div class="small text-muted mt-3">
+                Last run @_lastEnrichmentResult.CompletedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"):
+                @_lastEnrichmentResult.Enriched of @_lastEnrichmentResult.TotalProcessed ingredient(s)
+                matched, @_lastEnrichmentResult.NotFound not found on Wikidata.
+            </div>
+        }
+        else if (_enrichmentError != null)
+        {
+            <div class="small text-danger mt-3">@_enrichmentError</div>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <strong>Search</strong>
+        <button class="btn btn-sm btn-primary" @onclick="OpenNew"><i class="bi bi-plus-lg"></i> Add Medicine</button>
+    </div>
+    <div class="card-body">
+        <div class="row g-2 mb-3">
+            <div class="col-auto">
+                <input type="text" class="form-control form-control-sm" style="width:280px"
+                       placeholder="Search by name..." @bind="_query" @bind:event="oninput" @bind:after="SearchAsync" />
+            </div>
+            <div class="col-auto">
+                <select class="form-select form-select-sm" style="width:180px" @bind="_sourceFilter" @bind:after="SearchAsync">
+                    <option value="">All sources</option>
+                    <option value="@MedicineSource.Manual">Manually created</option>
+                    <option value="@MedicineSource.Synced">Synced / imported</option>
+                </select>
+            </div>
+        </div>
+
+        @if (_isSearching)
+        {
+            <div class="text-muted small">Searching...</div>
+        }
+        else if (_results.Count == 0)
+        {
+            <div class="text-muted small">No medicines found. Import a CSV above to get started.</div>
+        }
+        else
+        {
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Generic Name</th>
+                        <th>Strength</th>
+                        <th>Form</th>
+                        <th>Active Ingredient(s)</th>
+                        <th>Schedule</th>
+                        <th>PBS</th>
+                        <th>Source</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in _results)
+                    {
+                        <tr>
+                            <td><a href="javascript:void(0)" class="link-primary" @onclick="() => OpenRecord(m)">@m.Name</a></td>
+                            <td>@m.GenericName</td>
+                            <td>@m.Strength</td>
+                            <td>@m.Form</td>
+                            <td>@string.Join(", ", m.ActiveIngredients.Select(IngredientLabel))</td>
+                            <td>
+                                @if (m.Schedule != null)
+                                {
+                                    <span class="badge @ScheduleBadgeClass(m.Schedule.Value)">@ScheduleLabel(m.Schedule.Value)</span>
+                                }
+                            </td>
+                            <td>
+                                @if (m.IsPbsListed)
+                                {
+                                    <span class="badge bg-info text-dark">PBS</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @(m.Source == MedicineSource.Manual ? "bg-secondary" : "bg-light text-dark border")">
+                                    @(m.Source == MedicineSource.Manual ? "Manual" : "Synced")
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                @if (m.Source == MedicineSource.Manual)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeactivateAsync(m)">Deactivate</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@if (_showModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">@(_isReadOnly ? "View" : _editingId.HasValue ? "Edit" : "New") Medicine</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_isReadOnly)
+                    {
+                        <div class="alert alert-secondary small py-2 mb-3">
+                            This medicine was synced/imported, not manually created — it can be viewed here but
+                            only edited by re-importing an updated CSV.
+                        </div>
+                    }
+                    <div class="mb-2">
+                        <label class="form-label small mb-0">Name</label>
+                        <input class="form-control form-control-sm" @bind="_form.Name" disabled="@_isReadOnly" />
+                    </div>
+                    <div class="row g-2">
+                        <div class="col">
+                            <label class="form-label small mb-0">Generic Name</label>
+                            <input class="form-control form-control-sm" @bind="_form.GenericName" disabled="@_isReadOnly" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label small mb-0">Strength</label>
+                            <input class="form-control form-control-sm" @bind="_form.Strength" disabled="@_isReadOnly" />
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col">
+                            <label class="form-label small mb-0">Form</label>
+                            <input class="form-control form-control-sm" @bind="_form.Form" disabled="@_isReadOnly" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label small mb-0">Manufacturer</label>
+                            <input class="form-control form-control-sm" @bind="_form.Manufacturer" disabled="@_isReadOnly" />
+                        </div>
+                    </div>
+                    <div class="mb-2 mt-2">
+                        <label class="form-label small mb-0">Active Ingredient(s)</label>
+                        <input class="form-control form-control-sm" @bind="_form.ActiveIngredientNames" placeholder="Semicolon-separated, e.g. Paracetamol;Codeine" disabled="@_isReadOnly" />
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col">
+                            <label class="form-label small mb-0">Schedule</label>
+                            <select class="form-select form-select-sm" @bind="_form.Schedule" disabled="@_isReadOnly">
+                                <option value="">Unknown</option>
+                                @foreach (var s in Enum.GetValues<MedicineSchedule>())
+                                {
+                                    <option value="@s">@ScheduleLabel(s)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chkPbs" @bind="_form.IsPbsListed" disabled="@_isReadOnly" />
+                                <label class="form-check-label small" for="chkPbs">PBS listed</label>
+                            </div>
+                        </div>
+                    </div>
+                    @if (_editingId.HasValue)
+                    {
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="chkActive" @bind="_form.IsActive" disabled="@_isReadOnly" />
+                            <label class="form-check-label small" for="chkActive">Active</label>
+                        </div>
+                    }
+                    @if (_formError != null)
+                    {
+                        <div class="small text-danger mt-2">@_formError</div>
+                    }
+                </div>
+                <div class="modal-footer py-2">
+                    @if (_isReadOnly)
+                    {
+                        <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showModal = false)">Close</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showModal = false)">Cancel</button>
+                        <button type="button" class="btn btn-sm btn-primary" @onclick="SaveAsync">Save</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<MedicineDto> _results = new();
+    private string _query = string.Empty;
+    private MedicineSource? _sourceFilter;
+    private bool _isSearching;
+
+    private IBrowserFile? _selectedFile;
+    private bool _isImporting;
+    private MedicineImportResultDto? _lastImportResult;
+    private string? _importError;
+
+    private bool _isEnriching;
+    private IngredientEnrichmentResultDto? _lastEnrichmentResult;
+    private string? _enrichmentError;
+
+    private bool _showModal;
+    private bool _isReadOnly;
+    private int? _editingId;
+    private UpdateMedicineDto _form = new();
+    private string? _formError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SearchAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        _isSearching = true;
+        _results = await MedicineService.SearchAsync(_query, _sourceFilter);
+        _isSearching = false;
+    }
+
+    private static string ScheduleLabel(MedicineSchedule schedule) =>
+        schedule == MedicineSchedule.Unscheduled ? "Unscheduled" : schedule.ToString();
+
+    private static string ScheduleBadgeClass(MedicineSchedule schedule) => schedule switch
+    {
+        MedicineSchedule.S8 => "bg-danger",
+        MedicineSchedule.S4 => "bg-primary",
+        MedicineSchedule.S3 => "bg-warning text-dark",
+        MedicineSchedule.S2 => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    private static string IngredientLabel(IngredientRefDto i) => i.AtcCode == null ? i.Name : $"{i.Name} ({i.AtcCode})";
+
+    private void OpenNew()
+    {
+        _editingId = null;
+        _isReadOnly = false;
+        _form = new UpdateMedicineDto { IsActive = true };
+        _formError = null;
+        _showModal = true;
+    }
+
+    /// <summary>Opens the modal for an existing row — editable for Manual entries, read-only for
+    /// Synced ones (see MedicineSource).</summary>
+    private void OpenRecord(MedicineDto m)
+    {
+        _editingId = m.Id;
+        _isReadOnly = m.Source != MedicineSource.Manual;
+        _form = new UpdateMedicineDto
+        {
+            Name = m.Name,
+            GenericName = m.GenericName,
+            Strength = m.Strength,
+            Form = m.Form,
+            Manufacturer = m.Manufacturer,
+            IsPbsListed = m.IsPbsListed,
+            Schedule = m.Schedule,
+            IsActive = m.IsActive,
+            ActiveIngredientNames = string.Join(";", m.ActiveIngredients.Select(i => i.Name))
+        };
+        _formError = null;
+        _showModal = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name))
+        {
+            _formError = "Name is required.";
+            return;
+        }
+
+        if (_editingId.HasValue)
+        {
+            var ok = await MedicineService.UpdateAsync(_editingId.Value, _form);
+            if (!ok)
+            {
+                _formError = "Save failed — check your permissions.";
+                return;
+            }
+        }
+        else
+        {
+            var created = await MedicineService.CreateAsync(new CreateMedicineDto
+            {
+                Name = _form.Name,
+                GenericName = _form.GenericName,
+                Strength = _form.Strength,
+                Form = _form.Form,
+                Manufacturer = _form.Manufacturer,
+                IsPbsListed = _form.IsPbsListed,
+                Schedule = _form.Schedule,
+                ActiveIngredientNames = _form.ActiveIngredientNames
+            });
+            if (created == null)
+            {
+                _formError = "Save failed — check your permissions.";
+                return;
+            }
+        }
+
+        _showModal = false;
+        await SearchAsync();
+    }
+
+    private async Task DeactivateAsync(MedicineDto m)
+    {
+        await MedicineService.DeactivateAsync(m.Id);
+        await SearchAsync();
+    }
+
+    private async Task EnrichIngredientsAsync()
+    {
+        _isEnriching = true;
+        _enrichmentError = null;
+        var result = await MedicineService.EnrichIngredientsAsync();
+        if (result == null)
+        {
+            _enrichmentError = "Enrichment failed — check your permissions.";
+        }
+        else
+        {
+            _lastEnrichmentResult = result;
+            await SearchAsync();
+        }
+        _isEnriching = false;
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        _lastImportResult = null;
+        _importError = null;
+    }
+
+    private async Task ImportAsync()
+    {
+        if (_selectedFile == null) return;
+
+        _isImporting = true;
+        _importError = null;
+        try
+        {
+            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: 20_000_000);
+            var result = await MedicineService.ImportAsync(stream, _selectedFile.Name);
+            if (result == null)
+            {
+                _importError = "Import failed — check the file format and your permissions.";
+            }
+            else
+            {
+                _lastImportResult = result;
+                await SearchAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _importError = $"Import failed: {ex.Message}";
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+}

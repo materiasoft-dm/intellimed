@@ -850,6 +850,28 @@ public static class EntityMapper
         IsActive = entity.IsActive
     };
 
+    // Medicine mappings
+    public static MedicineDto ToDto(Medicine entity) => new()
+    {
+        Id = entity.Id,
+        Name = entity.Name,
+        GenericName = entity.GenericName,
+        Strength = entity.Strength,
+        Form = entity.Form,
+        Manufacturer = entity.Manufacturer,
+        IsPbsListed = entity.IsPbsListed,
+        Schedule = entity.Schedule,
+        Source = entity.Source,
+        ArtgId = entity.ArtgId,
+        AmtConceptId = entity.AmtConceptId,
+        PbsItemCode = entity.PbsItemCode,
+        IsActive = entity.IsActive,
+        ActiveIngredients = entity.Ingredients
+            .Where(i => i.ActiveIngredient != null)
+            .Select(i => new IngredientRefDto { Name = i.ActiveIngredient!.Name, AtcCode = i.ActiveIngredient!.AtcCode })
+            .ToList()
+    };
+
     // FeeSchedule mappings
     public static FeeScheduleDto ToDto(FeeSchedule entity) => new()
     {
