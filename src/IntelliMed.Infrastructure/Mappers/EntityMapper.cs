@@ -80,6 +80,8 @@ public static class EntityMapper
         Deceased = entity.Deceased,
         ProviderId = entity.ProviderId,
         LastSeenDate = entity.LastSeenDate,
+        VisibleToAllProviders = entity.VisibleToAllProviders,
+        ProviderAccess = BuildProviderAccessDtos(entity),
         IhiNumber = entity.IhiNumber,
         IhiRecordStatus = entity.IhiRecordStatus,
         IhiAssignedDate = entity.IhiAssignedDate,
@@ -90,6 +92,40 @@ public static class EntityMapper
         CreatedAt = entity.CreatedAt,
         UpdatedAt = entity.UpdatedAt
     };
+
+    /// <summary>Combines the always-implicit, locked creator with the explicit grant list into one
+    /// display list for ClientDto. Relies on the caller (ClientRepository.GetByIdAsync) having
+    /// eager-loaded CreatedByPractitioner and ProviderAccess.Practitioner.</summary>
+    private static List<ClientProviderAccessDto> BuildProviderAccessDtos(Client entity)
+    {
+        var result = new List<ClientProviderAccessDto>();
+
+        if (entity.CreatedByPractitionerId.HasValue)
+        {
+            result.Add(new ClientProviderAccessDto
+            {
+                PractitionerId = entity.CreatedByPractitionerId.Value,
+                PractitionerName = entity.CreatedByPractitioner == null
+                    ? string.Empty
+                    : $"{entity.CreatedByPractitioner.Title} {entity.CreatedByPractitioner.FirstName} {entity.CreatedByPractitioner.LastName}".Trim(),
+                IsCreator = true
+            });
+        }
+
+        foreach (var grant in entity.ProviderAccess.Where(a => a.PractitionerId != entity.CreatedByPractitionerId))
+        {
+            result.Add(new ClientProviderAccessDto
+            {
+                PractitionerId = grant.PractitionerId,
+                PractitionerName = grant.Practitioner == null
+                    ? string.Empty
+                    : $"{grant.Practitioner.Title} {grant.Practitioner.FirstName} {grant.Practitioner.LastName}".Trim(),
+                IsCreator = false
+            });
+        }
+
+        return result;
+    }
 
     public static Client ToEntity(CreateClientDto dto) => new()
     {
@@ -162,6 +198,8 @@ public static class EntityMapper
         Deceased = dto.Deceased,
         ProviderId = dto.ProviderId,
         LastSeenDate = dto.LastSeenDate,
+        CreatedByPractitionerId = dto.CreatedByPractitionerId,
+        VisibleToAllProviders = dto.VisibleToAllProviders,
         IhiNumber = dto.IhiNumber,
         IhiRecordStatus = dto.IhiRecordStatus,
         IhiAssignedDate = dto.IhiAssignedDate,
@@ -242,6 +280,7 @@ public static class EntityMapper
         entity.Deceased = dto.Deceased;
         entity.ProviderId = dto.ProviderId;
         entity.LastSeenDate = dto.LastSeenDate;
+        entity.VisibleToAllProviders = dto.VisibleToAllProviders;
         entity.IhiNumber = dto.IhiNumber;
         entity.IhiRecordStatus = dto.IhiRecordStatus;
         entity.IhiAssignedDate = dto.IhiAssignedDate;
@@ -858,14 +897,18 @@ public static class EntityMapper
         GenericName = entity.GenericName,
         Strength = entity.Strength,
         Form = entity.Form,
+        PackSize = entity.PackSize,
         Manufacturer = entity.Manufacturer,
         IsPbsListed = entity.IsPbsListed,
+        IsRpbsListed = entity.IsRpbsListed,
+        RestrictionLevel = entity.RestrictionLevel,
         Schedule = entity.Schedule,
         Source = entity.Source,
         ArtgId = entity.ArtgId,
         AmtConceptId = entity.AmtConceptId,
         PbsItemCode = entity.PbsItemCode,
         IsActive = entity.IsActive,
+        LastSyncedAt = entity.LastSyncedAt,
         ActiveIngredients = entity.Ingredients
             .Where(i => i.ActiveIngredient != null)
             .Select(i => new IngredientRefDto { Name = i.ActiveIngredient!.Name, AtcCode = i.ActiveIngredient!.AtcCode })

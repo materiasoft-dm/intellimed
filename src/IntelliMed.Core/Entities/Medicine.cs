@@ -7,8 +7,14 @@ public class Medicine
     public string? GenericName { get; set; }
     public string? Strength { get; set; }
     public string? Form { get; set; }
+    // Distinguishes real PBS items that otherwise share Name+Strength+Form — PBS assigns a
+    // different item code per pack quantity (see MedicineCsvAssemblyService's MatchKey comment),
+    // so this must be part of the identity key, not just a display detail.
+    public string? PackSize { get; set; }
     public string? Manufacturer { get; set; }
     public bool IsPbsListed { get; set; }
+    public bool IsRpbsListed { get; set; }
+    public PbsRestrictionLevel? RestrictionLevel { get; set; }
     public MedicineSchedule? Schedule { get; set; }
     public MedicineSource Source { get; set; } = MedicineSource.Manual;
 

@@ -107,10 +107,22 @@ public class Client
     /// <summary>The legacy Pracnet Contacts.GUID this record was imported from (PrimaryClinic Migrator) — the idempotency key for re-imports. Null for clients created natively in IntelliMed.</summary>
     public string? LegacyGuid { get; set; }
 
+    // Provider visibility — see ClientProviderAccess for the explicit per-practitioner grant list.
+    // When true, every staff member can see this client and the grant list below isn't consulted.
+    public bool VisibleToAllProviders { get; set; } = true;
+
+    /// <summary>The practitioner who created this record, if the creator was a linked Doctor/Nurse
+    /// (see Practitioner.ApplicationUserId). Always implicitly granted access and can never be
+    /// removed from the provider-access list, regardless of who edits it later. Null if this client
+    /// was created by a non-clinician (Receptionist/Admin) — those default VisibleToAllProviders=true.</summary>
+    public int? CreatedByPractitionerId { get; set; }
+    public Practitioner? CreatedByPractitioner { get; set; }
+
     // Navigation properties
     public Client? NextOfKinClient { get; set; }
     public Client? EmergencyContactClient { get; set; }
     public Client? PayerClient { get; set; }
     public Practitioner? Provider { get; set; }
     public HealthFund? HealthFund { get; set; }
+    public ICollection<ClientProviderAccess> ProviderAccess { get; set; } = new List<ClientProviderAccess>();
 }

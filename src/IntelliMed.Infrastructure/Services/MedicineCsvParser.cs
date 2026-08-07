@@ -7,18 +7,29 @@ public record ParsedMedicineRow(
     string? GenericName,
     string? Strength,
     string? Form,
+    string? PackSize,
     string? Manufacturer,
     string? ArtgId,
     bool IsPbsListed,
+    bool IsRpbsListed,
+    PbsRestrictionLevel? RestrictionLevel,
     MedicineSchedule? Schedule,
-    IReadOnlyList<string> ActiveIngredients);
+    IReadOnlyList<string> ActiveIngredients,
+    // Provenance — populated by sources that carry stable external IDs (PBS API Public v3 today).
+    // All nullable: a row from a source without these (Wikidata, the self-compiled starter CSV) just
+    // leaves them null. Stored verbatim from the source — never rewritten — so the same row can be
+    // re-synced and matched against the same external record.
+    string? PbsItemCode = null,
+    string? AmtConceptId = null,
+    string? AtcCode = null);
 
 /// <summary>
 /// Minimal CSV parser for the medicine reference-data import format: a header row naming any of
-/// Name (required), GenericName, Strength, Form, Manufacturer, ArtgId, IsPbsListed, and
-/// ActiveIngredients (semicolon-separated, for combination products), matched case-insensitively in
-/// any column order. Handles comma delimiters and simple double-quoted fields, mirroring
-/// FeeScheduleCsvParser. Deliberately source-agnostic — see MedicineImportService for why.
+/// Name (required), GenericName, Strength, Form, PackSize, Manufacturer, ArtgId, IsPbsListed, IsRpbsListed,
+/// RestrictionLevel (Unrestricted/Restricted/AuthorityRequired), Schedule, and ActiveIngredients
+/// (semicolon-separated, for combination products), matched case-insensitively in any column order.
+/// Handles comma delimiters and simple double-quoted fields, mirroring FeeScheduleCsvParser.
+/// Deliberately source-agnostic — see MedicineImportService for why.
 /// </summary>
 public static class MedicineCsvParser
 {
@@ -38,11 +49,17 @@ public static class MedicineCsvParser
         var genericCol = FindColumn(headers, "genericname");
         var strengthCol = FindColumn(headers, "strength");
         var formCol = FindColumn(headers, "form");
+        var packSizeCol = FindColumn(headers, "packsize");
         var manufacturerCol = FindColumn(headers, "manufacturer");
         var artgCol = FindColumn(headers, "artgid");
         var pbsCol = FindColumn(headers, "ispbslisted");
+        var rpbsCol = FindColumn(headers, "isrpbslisted");
+        var restrictionCol = FindColumn(headers, "restrictionlevel");
         var scheduleCol = FindColumn(headers, "schedule");
         var ingredientsCol = FindColumn(headers, "activeingredients");
+        var pbsItemCodeCol = FindColumn(headers, "pbsitemcode");
+        var amtConceptIdCol = FindColumn(headers, "amtconceptid");
+        var atcCodeCol = FindColumn(headers, "atccode");
 
         string? line;
         while ((line = reader.ReadLine()) != null)
@@ -64,11 +81,17 @@ public static class MedicineCsvParser
                 GenericName: NullIfEmpty(Field(fields, genericCol)),
                 Strength: NullIfEmpty(Field(fields, strengthCol)),
                 Form: NullIfEmpty(Field(fields, formCol)),
+                PackSize: NullIfEmpty(Field(fields, packSizeCol)),
                 Manufacturer: NullIfEmpty(Field(fields, manufacturerCol)),
                 ArtgId: NullIfEmpty(Field(fields, artgCol)),
                 IsPbsListed: bool.TryParse(Field(fields, pbsCol), out var pbs) && pbs,
+                IsRpbsListed: bool.TryParse(Field(fields, rpbsCol), out var rpbs) && rpbs,
+                RestrictionLevel: ParseRestrictionLevel(Field(fields, restrictionCol)),
                 Schedule: ParseSchedule(Field(fields, scheduleCol)),
-                ActiveIngredients: ingredients));
+                ActiveIngredients: ingredients,
+                PbsItemCode: NullIfEmpty(Field(fields, pbsItemCodeCol)),
+                AmtConceptId: NullIfEmpty(Field(fields, amtConceptIdCol)),
+                AtcCode: NullIfEmpty(Field(fields, atcCodeCol))));
         }
 
         return result;
@@ -89,6 +112,13 @@ public static class MedicineCsvParser
             "8" => MedicineSchedule.S8,
             _ => Enum.TryParse<MedicineSchedule>(value.Trim(), ignoreCase: true, out var parsed) ? parsed : null
         };
+    }
+
+    private static PbsRestrictionLevel? ParseRestrictionLevel(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var normalized = value.Trim().Replace(" ", "").Replace("-", "");
+        return Enum.TryParse<PbsRestrictionLevel>(normalized, ignoreCase: true, out var parsed) ? parsed : null;
     }
 
     private static int FindColumn(string[] headers, string normalizedName)

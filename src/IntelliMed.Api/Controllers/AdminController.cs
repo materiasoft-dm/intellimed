@@ -21,6 +21,7 @@ public class AdminController : ControllerBase
     private readonly UserManager<IdentityCore.ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IClinicRepository _clinicRepository;
+    private readonly IPractitionerRepository _practitionerRepository;
     private readonly IEmailTemplateRepository _emailTemplateRepository;
     private readonly IEmailSender _emailSender;
     private readonly INotificationRepository _notificationRepository;
@@ -30,6 +31,7 @@ public class AdminController : ControllerBase
         UserManager<IdentityCore.ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         IClinicRepository clinicRepository,
+        IPractitionerRepository practitionerRepository,
         IEmailTemplateRepository emailTemplateRepository,
         IEmailSender emailSender,
         INotificationRepository notificationRepository,
@@ -38,6 +40,7 @@ public class AdminController : ControllerBase
         _userManager = userManager;
         _roleManager = roleManager;
         _clinicRepository = clinicRepository;
+        _practitionerRepository = practitionerRepository;
         _emailTemplateRepository = emailTemplateRepository;
         _emailSender = emailSender;
         _notificationRepository = notificationRepository;
@@ -47,6 +50,7 @@ public class AdminController : ControllerBase
     private async Task<UserDto> ToUserDtoAsync(IdentityCore.ApplicationUser user, IList<string> roles)
     {
         var clinics = (await _clinicRepository.GetMyClinicsAsync(user.Id)).ToList();
+        var practitioner = await _practitionerRepository.GetByApplicationUserIdAsync(user.Id);
         return new UserDto
         {
             Id = user.Id,
@@ -60,7 +64,9 @@ public class AdminController : ControllerBase
             LastLoginAt = user.LastLoginAt,
             InviteSentAt = user.InviteSentAt,
             ClinicIds = clinics.Select(c => c.Id).ToList(),
-            ClinicNames = clinics.Select(c => c.Name).ToList()
+            ClinicNames = clinics.Select(c => c.Name).ToList(),
+            PractitionerId = practitioner?.Id,
+            PractitionerName = practitioner == null ? null : $"{practitioner.Title} {practitioner.FirstName} {practitioner.LastName}".Trim()
         };
     }
 
@@ -234,6 +240,18 @@ public class AdminController : ControllerBase
         if (request.ClinicIds != null)
         {
             await _clinicRepository.SetUserClinicsAsync(user.Id, request.ClinicIds);
+        }
+
+        // Update the linked Practitioner (drives per-provider patient visibility) — always applied,
+        // since the edit-user form always submits the current dropdown state, unlike the "if
+        // provided" Roles/ClinicIds fields above.
+        var currentlyLinked = await _practitionerRepository.GetByApplicationUserIdAsync(user.Id);
+        if (currentlyLinked?.Id != request.PractitionerId)
+        {
+            if (currentlyLinked != null)
+                await _practitionerRepository.SetLinkedUserAsync(currentlyLinked.Id, null);
+            if (request.PractitionerId.HasValue)
+                await _practitionerRepository.SetLinkedUserAsync(request.PractitionerId.Value, user.Id);
         }
 
         var finalRoles = await _userManager.GetRolesAsync(user);

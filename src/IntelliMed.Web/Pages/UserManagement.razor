@@ -6,6 +6,7 @@
 @inject IAdminService AdminService
 @inject IAuthService AuthService
 @inject IClinicService ClinicService
+@inject IPractitionerService PractitionerService
 @inject NavigationManager Navigation
 
 <PageTitle>User Management - IntelliMed</PageTitle>
@@ -339,6 +340,34 @@
                             </div>
                         </div>
 
+                        @if (_isEditing && (_dialogModel.IsRoleSelected("Doctor") || _dialogModel.IsRoleSelected("Nurse")))
+                        {
+                            <h6 class="mt-4 mb-2">Linked Practitioner</h6>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <p class="small text-muted mb-2">
+                                        Links this login to a Practitioner record, which drives per-provider patient
+                                        visibility — a Doctor/Nurse only sees patients assigned to them unless linked here.
+                                    </p>
+                                    @if (_availablePractitioners != null)
+                                    {
+                                        <select class="form-select" value="@(_dialogModel.SelectedPractitionerId?.ToString() ?? "")"
+                                                @onchange="(ChangeEventArgs e) => _dialogModel.SelectedPractitionerId = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value.ToString()!)">
+                                            <option value="">— Not linked —</option>
+                                            @foreach (var practitioner in _availablePractitioners.OrderBy(p => p.LastName))
+                                            {
+                                                <option value="@practitioner.Id">@practitioner.Title @practitioner.FirstName @practitioner.LastName</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Loading practitioners...</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
                         @if (_isEditing)
                         {
                             <div class="form-check form-switch mt-4">
@@ -475,6 +504,7 @@
     private List<UserDto>? _users;
     private List<RoleDto>? _availableRoles;
     private List<MyClinicDto>? _availableClinics;
+    private List<PractitionerDto>? _availablePractitioners;
     private string _filter = string.Empty;
     private bool _isLoading = true;
     private string? _error;
@@ -538,6 +568,7 @@
         await LoadUsers();
         await LoadRoles();
         await LoadClinics();
+        await LoadPractitioners();
     }
 
     private async Task LoadClinics()
@@ -549,6 +580,18 @@
         catch (Exception ex)
         {
             Console.Error.WriteLine($"LoadClinics error: {ex.Message}");
+        }
+    }
+
+    private async Task LoadPractitioners()
+    {
+        try
+        {
+            _availablePractitioners = await PractitionerService.GetAllActiveAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"LoadPractitioners error: {ex.Message}");
         }
     }
 
@@ -742,7 +785,8 @@
             Email = user.Email,
             IsActive = user.IsActive,
             SelectedRoles = user.Roles.ToList(),
-            SelectedClinics = user.ClinicIds.ToList()
+            SelectedClinics = user.ClinicIds.ToList(),
+            SelectedPractitionerId = user.PractitionerId
         };
         _dialogSaving = false;
         _showDialogPassword = false;
@@ -774,7 +818,8 @@
                     LastName = _dialogModel.LastName,
                     IsActive = _dialogModel.IsActive,
                     Roles = _dialogModel.SelectedRoles,
-                    ClinicIds = _dialogModel.SelectedClinics
+                    ClinicIds = _dialogModel.SelectedClinics,
+                    PractitionerId = _dialogModel.SelectedPractitionerId
                 };
 
                 var result = await AdminService.UpdateUserAsync(_editingUser.Id, request);
@@ -972,6 +1017,11 @@
         public List<string> SelectedRoles { get; set; } = new();
         public List<int> SelectedClinics { get; set; } = new();
 
+        /// <summary>Practitioner linked to this login — see Practitioner.ApplicationUserId. Only
+        /// editable (and shown) while Doctor or Nurse is selected; cleared automatically if both are
+        /// deselected, so a role change can't silently leave a stale link driving visibility restriction.</summary>
+        public int? SelectedPractitionerId { get; set; }
+
         public bool IsRoleSelected(string role)
         {
             return SelectedRoles.Contains(role);
@@ -983,6 +1033,9 @@
                 SelectedRoles.Add(role);
             else if (!isChecked && SelectedRoles.Contains(role))
                 SelectedRoles.Remove(role);
+
+            if (!IsRoleSelected("Doctor") && !IsRoleSelected("Nurse"))
+                SelectedPractitionerId = null;
         }
 
         public bool IsClinicSelected(int clinicId)

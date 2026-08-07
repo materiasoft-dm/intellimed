@@ -14,6 +14,7 @@
 @inject IClientUdfValueService UdfValueService
 @inject IUdfDefinitionService UdfDefinitionService
 @inject IHealthFundService HealthFundService
+@inject IPractitionerService PractitionerService
 @inject NavigationManager NavManager
 
 <PageTitle>@(Id.HasValue ? "Edit Client" : "Add Client") - IntelliMed</PageTitle>
@@ -513,6 +514,51 @@ else
             </div>
         </div>
 
+        @* ===================== PROVIDERS WITH ACCESS ===================== *@
+        <div class="row g-1 mb-1">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header py-1 d-flex justify-content-between align-items-center">
+                        <strong>Providers with Access</strong>
+                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenProviderPicker">+ Add Provider</button>
+                    </div>
+                    <div class="card-body py-2">
+                        @if (_model.VisibleToAllProviders)
+                        {
+                            <span class="badge bg-info text-dark me-2">All Providers</span>
+                            <button type="button" class="btn btn-sm btn-link text-danger py-0 px-0" @onclick="@(() => _model.VisibleToAllProviders = false)">Remove</button>
+                            <div class="small text-muted mt-1">Visible to everyone. Remove to restrict to specific providers instead.</div>
+                        }
+                        else if (!_providerAccessDisplay.Any())
+                        {
+                            <span class="text-muted small">No providers assigned yet — this patient won't be visible to anyone until at least one is added.</span>
+                        }
+                        else
+                        {
+                            <ul class="list-group list-group-flush">
+                                @foreach (var access in _providerAccessDisplay)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-0">
+                                        <span>
+                                            @access.PractitionerName
+                                            @if (access.IsCreator)
+                                            {
+                                                <span class="badge bg-secondary ms-1">Creator</span>
+                                            }
+                                        </span>
+                                        @if (!access.IsCreator)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-link text-danger py-0" @onclick="@(() => RemoveProvider(access.PractitionerId))">Remove</button>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
         @* ===================== BOTTOM TAB STRIP ===================== *@
         <div class="card mb-1">
             <div class="card-header py-1">
@@ -708,6 +754,39 @@ else
             </div>
         </div>
     }
+
+    @if (_showProviderPickerModal)
+    {
+        <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title">Add Provider</h6>
+                        <button type="button" class="btn-close" @onclick="@(() => _showProviderPickerModal = false)"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="max-height: 320px; overflow-y: auto;">
+                            <ul class="list-group">
+                                <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="SelectAllProviders">
+                                    <strong>All Providers</strong>
+                                    <div class="small text-muted">Visible to everyone, not just specific providers.</div>
+                                </li>
+                                @foreach (var practitioner in _availablePractitioners.OrderBy(p => p.LastName))
+                                {
+                                    <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectProvider(practitioner))">
+                                        @practitioner.Title @practitioner.FirstName @practitioner.LastName
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showProviderPickerModal = false)">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
     </div>
 }
 
@@ -772,6 +851,13 @@ else
     private string _payerSearchTerm = string.Empty;
     private List<ClientDto> _payerSearchResults = new();
 
+    // Provider access — who can see this patient. _model.ProviderIds holds the additional grants
+    // (not the creator, which is locked/displayed separately); _providerAccessDisplay is the richer
+    // read-only list (names, IsCreator) loaded alongside the client, for rendering the current list.
+    private List<PractitionerDto> _availablePractitioners = new();
+    private List<ClientProviderAccessDto> _providerAccessDisplay = new();
+    private bool _showProviderPickerModal;
+
     // UDF
     private List<ClientUserDefinedFieldValueDto> _udfValues = new();
     private List<UserDefinedFieldTypeDto> _udfDefinitions = new();
@@ -784,6 +870,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         _healthFunds = (await HealthFundService.GetAllActiveAsync()).ToList();
+        _availablePractitioners = await PractitionerService.GetAllActiveAsync();
     }
 
     protected override async Task OnParametersSetAsync()
@@ -800,6 +887,7 @@ else
             if (client != null)
             {
                 _model = MapToFormModel(client);
+                _providerAccessDisplay = client.ProviderAccess;
                 await LoadAddressesAsync();
                 await LoadTabDataAsync();
             }
@@ -810,6 +898,7 @@ else
                 ? ClientTypeEnum.Organisation
                 : ClientTypeEnum.Person;
             _model = new ClientFormModel { DateOfBirth = DateTime.Today.AddYears(-30), Type = type };
+            _providerAccessDisplay = new();
         }
         _isLoading = false;
     }
@@ -941,6 +1030,36 @@ else
     {
         _model.PayerClientId = null;
         _model.PayerName = null;
+    }
+
+    // ===================== Provider access =====================
+    private void OpenProviderPicker() => _showProviderPickerModal = true;
+
+    private void SelectAllProviders()
+    {
+        _model.VisibleToAllProviders = true;
+        _showProviderPickerModal = false;
+    }
+
+    private void SelectProvider(PractitionerDto practitioner)
+    {
+        if (!_model.ProviderIds.Contains(practitioner.Id) && !_providerAccessDisplay.Any(a => a.IsCreator && a.PractitionerId == practitioner.Id))
+        {
+            _model.ProviderIds.Add(practitioner.Id);
+            _providerAccessDisplay.Add(new ClientProviderAccessDto
+            {
+                PractitionerId = practitioner.Id,
+                PractitionerName = $"{practitioner.Title} {practitioner.FirstName} {practitioner.LastName}".Trim(),
+                IsCreator = false
+            });
+        }
+        _showProviderPickerModal = false;
+    }
+
+    private void RemoveProvider(int practitionerId)
+    {
+        _model.ProviderIds.Remove(practitionerId);
+        _providerAccessDisplay.RemoveAll(a => a.PractitionerId == practitionerId && !a.IsCreator);
     }
 
     private ClientAddressDto GetOrCreateAddress(ClientAddressType type)
@@ -1095,6 +1214,8 @@ else
         Deceased = dto.Deceased,
         ProviderId = dto.ProviderId,
         LastSeenDate = dto.LastSeenDate,
+        VisibleToAllProviders = dto.VisibleToAllProviders,
+        ProviderIds = dto.ProviderAccess.Where(a => !a.IsCreator).Select(a => a.PractitionerId).ToList(),
         IhiNumber = dto.IhiNumber,
         IhiRecordStatus = dto.IhiRecordStatus,
         IhiAssignedDate = dto.IhiAssignedDate,
@@ -1174,6 +1295,8 @@ else
         Deceased = m.Deceased,
         ProviderId = m.ProviderId,
         LastSeenDate = m.LastSeenDate,
+        VisibleToAllProviders = m.VisibleToAllProviders,
+        ProviderIds = m.ProviderIds,
         IhiNumber = m.IhiNumber,
         IhiRecordStatus = m.IhiRecordStatus,
         IhiAssignedDate = m.IhiAssignedDate,

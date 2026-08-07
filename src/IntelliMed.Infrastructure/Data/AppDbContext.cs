@@ -31,6 +31,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ClientFamilyRelationship> ClientFamilyRelationships => Set<ClientFamilyRelationship>();
     public DbSet<UserDefinedFieldType> UserDefinedFieldTypes => Set<UserDefinedFieldType>();
     public DbSet<ClientUserDefinedFieldValue> ClientUserDefinedFieldValues => Set<ClientUserDefinedFieldValue>();
+    public DbSet<ClientProviderAccess> ClientProviderAccesses => Set<ClientProviderAccess>();
     public DbSet<HealthFund> HealthFunds => Set<HealthFund>();
     public DbSet<ProviderGroup> ProviderGroups => Set<ProviderGroup>();
     public DbSet<ClinicSettings> ClinicSettings => Set<ClinicSettings>();
@@ -134,6 +135,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.LifeCardNum).HasMaxLength(50);
             entity.HasIndex(e => e.MedicareNumber);
             entity.HasIndex(e => new { e.LastName, e.FirstName });
+            // Explicit DB-level default (not just the C# initializer) so the migration backfills
+            // every existing patient as visible-to-all — no one loses access when this ships.
+            entity.Property(e => e.VisibleToAllProviders).HasDefaultValue(true);
 
             entity.HasOne(e => e.NextOfKinClient)
                 .WithMany()
@@ -150,6 +154,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(e => e.Provider)
                 .WithMany()
                 .HasForeignKey(e => e.ProviderId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedByPractitioner)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByPractitionerId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.HealthFund)
                 .WithMany()
@@ -407,6 +415,24 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Profession).IsRequired().HasMaxLength(100);
             entity.Property(e => e.ProviderNumber).HasMaxLength(20);
             entity.HasIndex(e => e.ProviderNumber);
+            entity.HasIndex(e => e.ApplicationUserId);
+        });
+
+        // ClientProviderAccess configuration — explicit per-practitioner visibility grants beyond
+        // the always-implicit creator (Client.CreatedByPractitionerId). See ClientRepository.
+        modelBuilder.Entity<ClientProviderAccess>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ClientId, e.PractitionerId }).IsUnique();
+
+            entity.HasOne(e => e.Client)
+                .WithMany(c => c.ProviderAccess)
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Practitioner)
+                .WithMany()
+                .HasForeignKey(e => e.PractitionerId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Appointment configuration

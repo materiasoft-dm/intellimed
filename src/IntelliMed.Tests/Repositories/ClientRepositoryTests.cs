@@ -1052,6 +1052,120 @@ public class ClientRepositoryTests : IDisposable
 
     #endregion
 
+    #region Provider Visibility Tests
+
+    private async Task<Practitioner> CreatePractitionerAsync(string lastName)
+    {
+        var practitioner = new Practitioner { FirstName = "Dr", LastName = lastName, Title = "Dr", Profession = "GP", Email = $"{lastName.ToLower()}@example.com", Phone = "0400000000" };
+        _context.Practitioners.Add(practitioner);
+        await _context.SaveChangesAsync();
+        return practitioner;
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithRestriction_ExcludesClientNotGrantedToThatPractitioner()
+    {
+        // Arrange
+        var doctorA = await CreatePractitionerAsync("A");
+        var doctorB = await CreatePractitionerAsync("B");
+        _context.Clients.Add(new Client { FirstName = "Restricted", LastName = "Patient", IsActive = true, VisibleToAllProviders = false, CreatedByPractitionerId = doctorA.Id });
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (itemsForA, _) = await _repository.GetPagedAsync(new ClientSearchDto { RestrictToPractitionerId = doctorA.Id });
+        var (itemsForB, _) = await _repository.GetPagedAsync(new ClientSearchDto { RestrictToPractitionerId = doctorB.Id });
+
+        // Assert
+        itemsForA.Should().Contain(c => c.FirstName == "Restricted");
+        itemsForB.Should().NotContain(c => c.FirstName == "Restricted");
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithRestriction_IncludesClientAfterExplicitGrant()
+    {
+        // Arrange
+        var doctorA = await CreatePractitionerAsync("A");
+        var doctorB = await CreatePractitionerAsync("B");
+        var client = new Client { FirstName = "Shared", LastName = "Patient", IsActive = true, VisibleToAllProviders = false, CreatedByPractitionerId = doctorA.Id };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+        _context.ClientProviderAccesses.Add(new ClientProviderAccess { ClientId = client.Id, PractitionerId = doctorB.Id });
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (itemsForB, _) = await _repository.GetPagedAsync(new ClientSearchDto { RestrictToPractitionerId = doctorB.Id });
+
+        // Assert
+        itemsForB.Should().Contain(c => c.FirstName == "Shared");
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithRestriction_VisibleToAllProvidersBypassesRestriction()
+    {
+        // Arrange
+        var doctorA = await CreatePractitionerAsync("A");
+        var doctorB = await CreatePractitionerAsync("B");
+        _context.Clients.Add(new Client { FirstName = "Public", LastName = "Patient", IsActive = true, VisibleToAllProviders = true, CreatedByPractitionerId = doctorA.Id });
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (itemsForB, _) = await _repository.GetPagedAsync(new ClientSearchDto { RestrictToPractitionerId = doctorB.Id });
+
+        // Assert
+        itemsForB.Should().Contain(c => c.FirstName == "Public");
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithNoRestriction_ReturnsEverything()
+    {
+        // Arrange — matches today's behavior for Receptionist/Admin/SuperAdmin (no linked practitioner)
+        var doctorA = await CreatePractitionerAsync("A");
+        _context.Clients.Add(new Client { FirstName = "Restricted", LastName = "Patient", IsActive = true, VisibleToAllProviders = false, CreatedByPractitionerId = doctorA.Id });
+        await _context.SaveChangesAsync();
+
+        // Act
+        var (items, _) = await _repository.GetPagedAsync(new ClientSearchDto { RestrictToPractitionerId = null });
+
+        // Assert
+        items.Should().Contain(c => c.FirstName == "Restricted");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithRestriction_ReturnsNullWhenNotGranted()
+    {
+        // Arrange
+        var doctorA = await CreatePractitionerAsync("A");
+        var doctorB = await CreatePractitionerAsync("B");
+        var client = new Client { FirstName = "Restricted", LastName = "Patient", IsActive = true, VisibleToAllProviders = false, CreatedByPractitionerId = doctorA.Id };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        // Act — a doctor guessing another patient's id directly (not via search) must also be blocked
+        var result = await _repository.GetByIdAsync(client.Id, doctorB.Id);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithRestriction_ReturnsClientForCreator()
+    {
+        // Arrange
+        var doctorA = await CreatePractitionerAsync("A");
+        var client = new Client { FirstName = "Restricted", LastName = "Patient", IsActive = true, VisibleToAllProviders = false, CreatedByPractitionerId = doctorA.Id };
+        _context.Clients.Add(client);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _repository.GetByIdAsync(client.Id, doctorA.Id);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.VisibleToAllProviders.Should().BeFalse();
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static CreateClientDto CreateMinimalClientDto()

@@ -69,4 +69,26 @@ public class PractitionerRepository : Repository<Practitioner>, IPractitionerRep
         EntityMapper.UpdateEntity(practitioner, dto);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<Practitioner?> GetByApplicationUserIdAsync(string userId)
+    {
+        return await _dbSet.FirstOrDefaultAsync(p => p.ApplicationUserId == userId);
+    }
+
+    public async Task SetLinkedUserAsync(int practitionerId, string? applicationUserId)
+    {
+        if (!string.IsNullOrEmpty(applicationUserId))
+        {
+            var previouslyLinked = await _dbSet.Where(p => p.ApplicationUserId == applicationUserId && p.Id != practitionerId).ToListAsync();
+            foreach (var p in previouslyLinked)
+                p.ApplicationUserId = null;
+        }
+
+        var practitioner = await _dbSet.FindAsync(practitionerId);
+        if (practitioner == null)
+            throw new InvalidOperationException($"Practitioner with ID {practitionerId} not found");
+
+        practitioner.ApplicationUserId = applicationUserId;
+        await _context.SaveChangesAsync();
+    }
 }

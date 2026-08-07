@@ -3,6 +3,7 @@ using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
 using IntelliMed.Infrastructure.Data;
 using IntelliMed.Infrastructure.Mappers;
+using IntelliMed.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace IntelliMed.Infrastructure.Repositories;
@@ -57,8 +58,11 @@ public class MedicineRepository : Repository<Medicine>, IMedicineRepository
             GenericName = dto.GenericName,
             Strength = dto.Strength,
             Form = dto.Form,
+            PackSize = dto.PackSize,
             Manufacturer = dto.Manufacturer,
             IsPbsListed = dto.IsPbsListed,
+            IsRpbsListed = dto.IsRpbsListed,
+            RestrictionLevel = dto.RestrictionLevel,
             Schedule = dto.Schedule,
             Source = MedicineSource.Manual,
             IsActive = true,
@@ -83,8 +87,11 @@ public class MedicineRepository : Repository<Medicine>, IMedicineRepository
         medicine.GenericName = dto.GenericName;
         medicine.Strength = dto.Strength;
         medicine.Form = dto.Form;
+        medicine.PackSize = dto.PackSize;
         medicine.Manufacturer = dto.Manufacturer;
         medicine.IsPbsListed = dto.IsPbsListed;
+        medicine.IsRpbsListed = dto.IsRpbsListed;
+        medicine.RestrictionLevel = dto.RestrictionLevel;
         medicine.Schedule = dto.Schedule;
         medicine.IsActive = dto.IsActive;
 
@@ -103,6 +110,34 @@ public class MedicineRepository : Repository<Medicine>, IMedicineRepository
 
         medicine.IsActive = false;
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<string> ExportCsvAsync()
+    {
+        var medicines = await _dbSet
+            .Include(m => m.Ingredients).ThenInclude(mi => mi.ActiveIngredient)
+            .Where(m => m.IsActive)
+            .OrderBy(m => m.Name)
+            .ToListAsync();
+
+        var rows = medicines.Select(m => new ParsedMedicineRow(
+            Name: m.Name,
+            GenericName: m.GenericName,
+            Strength: m.Strength,
+            Form: m.Form,
+            PackSize: m.PackSize,
+            Manufacturer: m.Manufacturer,
+            ArtgId: m.ArtgId,
+            IsPbsListed: m.IsPbsListed,
+            IsRpbsListed: m.IsRpbsListed,
+            RestrictionLevel: m.RestrictionLevel,
+            Schedule: m.Schedule,
+            ActiveIngredients: m.Ingredients.Select(mi => mi.ActiveIngredient.Name).ToList(),
+            PbsItemCode: m.PbsItemCode,
+            AmtConceptId: m.AmtConceptId,
+            AtcCode: m.AtcCode));
+
+        return MedicineCsvAssemblyService.ToCsv(rows);
     }
 
     private async Task LinkIngredientsAsync(Medicine medicine, string? namesText)

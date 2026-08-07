@@ -3,13 +3,14 @@ using IntelliMed.Infrastructure.Data;
 using IntelliMed.Infrastructure.Repositories;
 using IntelliMed.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IntelliMed.Infrastructure;
 
 public static class ServiceExtensions
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, IConfiguration configuration)
     {
         // Add DbContext
         services.AddDbContext<AppDbContext>(options =>
@@ -19,6 +20,7 @@ public static class ServiceExtensions
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IPractitionerRepository, PractitionerRepository>();
+        services.AddScoped<IClientProviderAccessRepository, ClientProviderAccessRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IReceiptRepository, ReceiptRepository>();
         services.AddScoped<IClientAddressRepository, ClientAddressRepository>();
@@ -41,6 +43,26 @@ public static class ServiceExtensions
         {
             client.DefaultRequestHeaders.UserAgent.ParseAdd("IntelliMed-MedicineCatalog/1.0");
         });
+        // Each catalog-discovery source is its own IMedicineSourceProvider registration —
+        // MedicineCsvAssemblyService resolves all of them via IEnumerable<IMedicineSourceProvider>, so
+        // adding a new source is one more line here, not a rewrite. Sources are resolved in registration
+        // order — the first to report a given name wins, so register the most authoritative first.
+        // PBS API Public v3: subscription key read from config (Pbs:ApiSubscriptionKey) — it's the
+        // public, low-volume key published on the API portal, not a private credential, but it still
+        // lives in config rather than hardcoded so it can be swapped per environment without a code
+        // change. Data is stored verbatim per the Commonwealth copyright licence.
+        var pbsSubscriptionKey = configuration["Pbs:ApiSubscriptionKey"];
+        services.AddHttpClient<IMedicineSourceProvider, PbsApiMedicineSourceProvider>(client =>
+        {
+            if (!string.IsNullOrWhiteSpace(pbsSubscriptionKey))
+                client.DefaultRequestHeaders.Add("Subscription-Key", pbsSubscriptionKey);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("IntelliMed-MedicineCatalog/1.0");
+        });
+        services.AddHttpClient<IMedicineSourceProvider, WikidataMedicineSourceProvider>(client =>
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("IntelliMed-MedicineCatalog/1.0");
+        });
+        services.AddScoped<IMedicineCsvAssemblyService, MedicineCsvAssemblyService>();
         services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
         services.AddScoped<IAccountTypeFeeScheduleMappingRepository, AccountTypeFeeScheduleMappingRepository>();
         services.AddScoped<IBillingCalculator, BillingCalculator>();

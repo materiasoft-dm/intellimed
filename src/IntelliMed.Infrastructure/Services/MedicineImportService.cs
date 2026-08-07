@@ -8,12 +8,14 @@ namespace IntelliMed.Infrastructure.Services;
 
 /// <summary>
 /// Imports Medicine/ActiveIngredient reference data from the CSV format documented in
-/// MedicineCsvParser. Deliberately source-agnostic: PBS's copyright terms restrict reproduction to
-/// personal reference use, and TGA/ARTG's terms are believed similarly restrictive, so this is
-/// currently pointed at a small self-compiled starter list (medicines_starter.csv at the repo root)
-/// rather than a copy of either published database. Once a source is actually cleared for this use
-/// (an AMT affiliate sub-license, or written permission from TGA/Health), map that export into this
-/// same CSV shape — no changes needed here.
+/// MedicineCsvParser. Deliberately source-agnostic: the CSV is produced by
+/// MedicineCsvAssemblyService from any number of registered IMedicineSourceProvider implementations
+/// (Wikidata today, PBS API Public v3 added 2026-08 — see README "Medicine data sources & licensing"
+/// for the exact terms of each). PBS data is stored verbatim per its redistribution licence
+/// (retain copyright, do not modify); TGA/ARTG is not currently ingested. New sources plug in as
+/// additional IMedicineSourceProvider registrations — no changes needed here. A PBS item missing
+/// from a full-size PBS batch is treated as delisted and deactivated (never hard-deleted) — see the
+/// delist-check block below for the exact safety gating.
 /// </summary>
 public class MedicineImportService : IMedicineImportService
 {
@@ -36,14 +38,14 @@ public class MedicineImportService : IMedicineImportService
         var existingMedicines = await _context.Medicines
             .Include(m => m.Ingredients).ThenInclude(mi => mi.ActiveIngredient)
             .ToListAsync();
-        var existingByKey = existingMedicines.ToDictionary(m => MatchKey(m.Name, m.Strength, m.Form), StringComparer.OrdinalIgnoreCase);
+        var existingByKey = existingMedicines.ToDictionary(m => MatchKey(m.Name, m.Strength, m.Form, m.PackSize), StringComparer.OrdinalIgnoreCase);
 
         var ingredientsByName = (await _context.ActiveIngredients.ToListAsync())
             .ToDictionary(i => i.Name, StringComparer.OrdinalIgnoreCase);
 
         foreach (var row in rows)
         {
-            var key = MatchKey(row.Name, row.Strength, row.Form);
+            var key = MatchKey(row.Name, row.Strength, row.Form, row.PackSize);
             if (!existingByKey.TryGetValue(key, out var medicine))
             {
                 // Source is set here, once, and never touched again below — a row that started
@@ -63,10 +65,19 @@ public class MedicineImportService : IMedicineImportService
             medicine.GenericName = row.GenericName;
             medicine.Strength = row.Strength;
             medicine.Form = row.Form;
+            medicine.PackSize = row.PackSize;
             medicine.Manufacturer = row.Manufacturer;
             medicine.ArtgId = row.ArtgId;
             medicine.IsPbsListed = row.IsPbsListed;
+            medicine.IsRpbsListed = row.IsRpbsListed;
+            medicine.RestrictionLevel = row.RestrictionLevel;
             medicine.Schedule = row.Schedule;
+            // Provenance IDs — only overwrite when the source actually supplied one, so a later
+            // import that doesn't carry these (e.g. a hand-edited CSV) doesn't blank out a value
+            // a prior PBS sync had set. PBS data is stored verbatim per its redistribution licence.
+            if (!string.IsNullOrWhiteSpace(row.PbsItemCode)) medicine.PbsItemCode = row.PbsItemCode;
+            if (!string.IsNullOrWhiteSpace(row.AmtConceptId)) medicine.AmtConceptId = row.AmtConceptId;
+            if (!string.IsNullOrWhiteSpace(row.AtcCode)) medicine.AtcCode = row.AtcCode;
             medicine.IsActive = true;
             medicine.LastSyncedAt = now;
 
@@ -90,6 +101,35 @@ public class MedicineImportService : IMedicineImportService
             }
         }
 
+        // PBS items that no longer appear in a full PBS pull have been delisted from the schedule —
+        // deactivate them rather than leaving a stale, still-active record behind indefinitely.
+        // Scoped strictly to PbsItemCode (only ever set by the PBS provider, and PBS's own stable
+        // identifier for that exact prescribing rule — never touched by manual create/update) and
+        // gated on this batch actually looking like a real PBS pull, so a small hand-edited or
+        // non-PBS CSV import can never accidentally deactivate the whole PBS-derived catalog.
+        // Mirrors BillingItemSyncService's "no longer in this quarter's feed = retired" rule.
+        const int MinPbsRowsForDelistCheck = 1000;
+        var pbsCodesInBatch = rows
+            .Where(r => !string.IsNullOrWhiteSpace(r.PbsItemCode))
+            .Select(r => r.PbsItemCode!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        int deactivated = 0;
+        if (pbsCodesInBatch.Count >= MinPbsRowsForDelistCheck)
+        {
+            foreach (var medicine in existingMedicines)
+            {
+                if (medicine.IsActive &&
+                    !string.IsNullOrWhiteSpace(medicine.PbsItemCode) &&
+                    !pbsCodesInBatch.Contains(medicine.PbsItemCode))
+                {
+                    medicine.IsActive = false;
+                    medicine.LastSyncedAt = now;
+                    deactivated++;
+                }
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         return new MedicineImportResultDto
@@ -97,11 +137,13 @@ public class MedicineImportService : IMedicineImportService
             Added = added,
             Updated = updated,
             Unmatched = unmatched,
+            Deactivated = deactivated,
             ImportedAt = now,
-            Message = $"{added} added, {updated} updated, {unmatched} new ingredient(s) auto-created (not AMT-confirmed)."
+            Message = $"{added} added, {updated} updated, {deactivated} deactivated (no longer PBS-listed), " +
+                      $"{unmatched} new ingredient(s) auto-created (not AMT-confirmed)."
         };
     }
 
-    private static string MatchKey(string name, string? strength, string? form) =>
-        $"{name.Trim()}|{strength?.Trim()}|{form?.Trim()}".ToLowerInvariant();
+    private static string MatchKey(string name, string? strength, string? form, string? packSize) =>
+        $"{name.Trim()}|{strength?.Trim()}|{form?.Trim()}|{packSize?.Trim()}".ToLowerInvariant();
 }

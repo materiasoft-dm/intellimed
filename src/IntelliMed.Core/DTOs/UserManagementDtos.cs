@@ -19,6 +19,11 @@ public class UserDto
     public DateTime? InviteSentAt { get; set; }
     public IList<int> ClinicIds { get; set; } = new List<int>();
     public IList<string> ClinicNames { get; set; } = new List<string>();
+
+    /// <summary>The Practitioner record (if any) linked to this login — drives per-provider patient
+    /// visibility for Doctor/Nurse users. See Practitioner.ApplicationUserId.</summary>
+    public int? PractitionerId { get; set; }
+    public string? PractitionerName { get; set; }
 }
 
 /// <summary>
@@ -79,6 +84,13 @@ public class UpdateUserRequest
     /// If null, clinic assignments are left unchanged.
     /// </summary>
     public IList<int>? ClinicIds { get; set; }
+
+    /// <summary>
+    /// Always applied (unlike Roles/ClinicIds above, this isn't "if provided" — the edit-user form
+    /// always submits the current dropdown state). Null clears the link. Any practitioner previously
+    /// linked to this user is unlinked first, since a login can only correspond to one at a time.
+    /// </summary>
+    public int? PractitionerId { get; set; }
 }
 
 /// <summary>

@@ -13,11 +13,26 @@ public class ClientRepository : Repository<Client>, IClientRepository
     {
     }
 
-    public async Task<ClientDto?> GetByIdAsync(int id)
+    public async Task<ClientDto?> GetByIdAsync(int id) => await GetByIdAsync(id, null);
+
+    public async Task<ClientDto?> GetByIdAsync(int id, int? restrictToPractitionerId)
     {
-        var client = await _dbSet.Include(p => p.HealthFund).FirstOrDefaultAsync(p => p.Id == id);
-        return client == null ? null : EntityMapper.ToDto(client);
+        var client = await _dbSet
+            .Include(p => p.HealthFund)
+            .Include(p => p.CreatedByPractitioner)
+            .Include(p => p.ProviderAccess).ThenInclude(a => a.Practitioner)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (client == null) return null;
+        if (restrictToPractitionerId.HasValue && !CanSee(client, restrictToPractitionerId.Value)) return null;
+
+        return EntityMapper.ToDto(client);
     }
+
+    private static bool CanSee(Client client, int practitionerId) =>
+        client.VisibleToAllProviders
+        || client.CreatedByPractitionerId == practitionerId
+        || client.ProviderAccess.Any(a => a.PractitionerId == practitionerId);
 
     public async Task<IEnumerable<ClientDto>> SearchAsync(ClientSearchDto search)
     {
@@ -77,6 +92,14 @@ public class ClientRepository : Repository<Client>, IClientRepository
         if (search.ClinicId.HasValue)
         {
             query = query.Where(p => p.ClinicId == search.ClinicId.Value);
+        }
+
+        if (search.RestrictToPractitionerId.HasValue)
+        {
+            var pid = search.RestrictToPractitionerId.Value;
+            query = query.Where(p => p.VisibleToAllProviders
+                || p.CreatedByPractitionerId == pid
+                || _context.Set<ClientProviderAccess>().Any(a => a.ClientId == p.Id && a.PractitionerId == pid));
         }
 
         if (!string.IsNullOrWhiteSpace(search.Query))

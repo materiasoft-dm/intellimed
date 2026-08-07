@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
 
@@ -40,19 +42,76 @@ public class MedicineService : IMedicineService
         }
     }
 
-    public async Task<IngredientEnrichmentResultDto?> EnrichIngredientsAsync()
+    public async Task<byte[]?> ExportCsvAsync()
     {
         try
         {
-            var response = await _httpClient.PostAsync("api/medicines/ingredients/enrich", null);
+            var response = await _httpClient.GetAsync("api/medicines/export");
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<IngredientEnrichmentResultDto>();
+            return await response.Content.ReadAsByteArrayAsync();
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Enrich ingredients error: {ex.Message}");
+            Console.Error.WriteLine($"Export medicines CSV error: {ex.Message}");
             return null;
         }
+    }
+
+    public async Task<SyncProgressDto?> SyncFromSourcesAsync(IProgress<string> progress, Action<string> onJobStarted)
+    {
+        try
+        {
+            var startResponse = await _httpClient.PostAsync("api/medicines/sync", null);
+            if (!startResponse.IsSuccessStatusCode) return null;
+
+            var startJson = await startResponse.Content.ReadFromJsonAsync<JsonDocument>();
+            var jobId = startJson!.RootElement.GetProperty("jobId").GetString()!;
+            onJobStarted(jobId);
+
+            var lastLogCount = 0;
+            while (true)
+            {
+                await Task.Delay(500);
+
+                var pollResponse = await _httpClient.GetAsync($"api/medicines/sync/{jobId}/progress");
+                if (pollResponse.StatusCode == HttpStatusCode.NotFound)
+                {
+                    // The job store is in-memory only — a 404 here specifically means the API
+                    // restarted mid-run and lost the job, not that the request was unauthorized.
+                    // Rethrown below past the generic catch so the UI shows this exact message
+                    // instead of the misleading "check your permissions".
+                    throw new InvalidOperationException(
+                        "The sync job was lost — the server may have restarted while it was running. Please try again.");
+                }
+                if (!pollResponse.IsSuccessStatusCode) return null;
+
+                var state = await pollResponse.Content.ReadFromJsonAsync<SyncProgressDto>();
+                if (state == null) return null;
+
+                for (var i = lastLogCount; i < state.Log.Count; i++)
+                {
+                    progress.Report(state.Log[i]);
+                }
+                lastLogCount = state.Log.Count;
+
+                if (state.IsComplete) return state;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            throw; // job-lost message from above — let it reach the UI rather than swallowing it
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Sync medicines error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> CancelSyncAsync(string jobId)
+    {
+        var response = await _httpClient.PostAsync($"api/medicines/sync/{jobId}/cancel", null);
+        return response.IsSuccessStatusCode;
     }
 
     public async Task<MedicineDto?> CreateAsync(CreateMedicineDto dto)

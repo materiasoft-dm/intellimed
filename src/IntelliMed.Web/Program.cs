@@ -45,6 +45,7 @@ builder.Services.AddScoped<IClinicSettingsService, ClinicSettingsService>();
 builder.Services.AddScoped<IClinicContextService, ClinicContextService>();
 builder.Services.AddScoped<IClinicService, ClinicService>();
 builder.Services.AddScoped<IBillingItemService, BillingItemService>();
+builder.Services.AddScoped<IMedicineService, MedicineService>();
 builder.Services.AddScoped<IPractitionerService, PractitionerService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IFeeScheduleService, FeeScheduleService>();

@@ -485,6 +485,9 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("CreatedByPractitionerId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("CtgCoPaymentRelief")
                         .HasColumnType("INTEGER");
 
@@ -719,12 +722,19 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<bool>("UseMedicareRegisteredBankAccount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("VisibleToAllProviders")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("Warnings")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ClinicId");
+
+                    b.HasIndex("CreatedByPractitionerId");
 
                     b.HasIndex("EmergencyContactClientId");
 
@@ -962,6 +972,31 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("ClientOccupations");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ClientProviderAccess", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PractitionerId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PractitionerId");
+
+                    b.HasIndex("ClientId", "PractitionerId")
+                        .IsUnique();
+
+                    b.ToTable("ClientProviderAccesses");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientReferral", b =>
@@ -1905,6 +1940,9 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<bool>("IsPbsListed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsRpbsListed")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("LastSyncedAt")
                         .HasColumnType("TEXT");
 
@@ -1917,9 +1955,15 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PackSize")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PbsItemCode")
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("RestrictionLevel")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("Schedule")
                         .HasColumnType("INTEGER");
@@ -2048,6 +2092,9 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<string>("AhpraNumber")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -2097,6 +2144,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId");
 
                     b.HasIndex("ProviderNumber");
 
@@ -2627,6 +2676,11 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("IntelliMed.Core.Entities.Practitioner", "CreatedByPractitioner")
+                        .WithMany()
+                        .HasForeignKey("CreatedByPractitionerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("IntelliMed.Core.Entities.Client", "EmergencyContactClient")
                         .WithMany()
                         .HasForeignKey("EmergencyContactClientId")
@@ -2653,6 +2707,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Clinic");
+
+                    b.Navigation("CreatedByPractitioner");
 
                     b.Navigation("EmergencyContactClient");
 
@@ -2715,6 +2771,25 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ClientProviderAccess", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Client", "Client")
+                        .WithMany("ProviderAccess")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IntelliMed.Core.Entities.Practitioner", "Practitioner")
+                        .WithMany()
+                        .HasForeignKey("PractitionerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Practitioner");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientReferral", b =>
@@ -3070,6 +3145,11 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.Client", b =>
+                {
+                    b.Navigation("ProviderAccess");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.Clinic", b =>

@@ -96,6 +96,10 @@ public class ClientDto
     public int? ProviderId { get; set; }
     public DateTime? LastSeenDate { get; set; }
 
+    // Provider visibility
+    public bool VisibleToAllProviders { get; set; }
+    public List<ClientProviderAccessDto> ProviderAccess { get; set; } = new();
+
     // eHealth
     public string? IhiNumber { get; set; }
     public string? IhiRecordStatus { get; set; }
@@ -207,6 +211,18 @@ public class CreateClientDto
     public int? ProviderId { get; set; }
     public DateTime? LastSeenDate { get; set; }
 
+    // Provider visibility
+    /// <summary>Set server-side from the caller's linked Practitioner (never client-supplied) — the
+    /// creator, auto-granted access and locked in permanently. Null for non-clinician creators
+    /// (Receptionist/Admin), who instead force VisibleToAllProviders true regardless of what's posted.</summary>
+    public int? CreatedByPractitionerId { get; set; }
+    /// <summary>Defaults to false (bool's natural default) — a linked Doctor/Nurse creating their
+    /// own patient defaults to visible-only-to-them unless they explicitly opt in. The controller
+    /// forces this true regardless of what's posted when the creator has no linked Practitioner.</summary>
+    public bool VisibleToAllProviders { get; set; }
+    /// <summary>Additional practitioners to grant access to, beyond the auto-added creator.</summary>
+    public List<int> ProviderIds { get; set; } = new();
+
     // eHealth
     public string? IhiNumber { get; set; }
     public string? IhiRecordStatus { get; set; }
@@ -303,6 +319,11 @@ public class UpdateClientDto
     public int? ProviderId { get; set; }
     public DateTime? LastSeenDate { get; set; }
 
+    // Provider visibility
+    public bool VisibleToAllProviders { get; set; }
+    /// <summary>Additional practitioners to grant access to, beyond the (immutable) creator.</summary>
+    public List<int> ProviderIds { get; set; } = new();
+
     // eHealth
     public string? IhiNumber { get; set; }
     public string? IhiRecordStatus { get; set; }
@@ -325,6 +346,11 @@ public class ClientSearchDto
 
     /// <summary>Set server-side from the caller's current clinic context (X-Clinic-Id header). Null = no clinic filtering.</summary>
     public int? ClinicId { get; set; }
+
+    /// <summary>Set server-side from the caller's linked Practitioner (never client-supplied). Null
+    /// means unrestricted (SuperAdmin/Admin, or a login with no linked Practitioner) — a value
+    /// limits results to clients visible to that practitioner. See ClientRepository.BuildSearchQuery.</summary>
+    public int? RestrictToPractitionerId { get; set; }
 
     // Basic
     public string? Surname { get; set; }

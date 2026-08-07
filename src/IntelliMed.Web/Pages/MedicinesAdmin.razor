@@ -5,18 +5,99 @@
 @using IntelliMed.Web.Services
 @using Microsoft.AspNetCore.Components.Forms
 @inject IMedicineService MedicineService
+@inject IJSRuntime JS
 
 <PageTitle>Medicine Catalog - IntelliMed</PageTitle>
 
 <h4 class="mb-1">Medicine Catalog</h4>
 <p class="text-muted small mb-4">
     A self-hosted medicines reference list — built without a MIMS subscription. Today this is seeded
-    from a CSV import rather than a live government feed; see the plan doc for the licensing status of
-    AMT/PBS/ARTG as future sources.
+    from the PBS API Public v3 (Australian Pharmaceutical Benefits Scheme), Wikidata (CC0-licensed
+    generic names with ATC codes), and CSV import. See the README for the licensing status of each
+    source.
 </p>
 
 <div class="card mb-3">
-    <div class="card-header"><strong>Import</strong></div>
+    <div class="card-header"><strong>Sync from Sources</strong></div>
+    <div class="card-body">
+        <p class="small text-muted mb-2">
+            Fetches candidate rows from every registered data source (PBS API Public v3 — Australian
+            Pharmaceutical Benefits Scheme, and Wikidata — CC0-licensed generic names with ATC codes),
+            imports them directly into the catalog below, then automatically looks up each newly-added
+            ingredient on Wikidata for an ATC code. Takes 10-15 minutes — almost all of it spent
+            waiting out the PBS API's rate limit, not local work.
+        </p>
+        <button type="button" class="btn btn-sm btn-outline-primary" disabled="@_isSyncing" @onclick="SyncFromSourcesAsync">
+            @if (_isSyncing)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            <i class="bi bi-arrow-repeat me-1"></i> Sync from Sources
+        </button>
+        @if (_syncError != null)
+        {
+            <div class="small text-danger mt-3">@_syncError</div>
+        }
+        @if (_lastSyncResult?.ImportResult != null)
+        {
+            <div class="small text-muted mt-3">
+                Last sync: @_lastSyncResult.ImportResult.Added added, @_lastSyncResult.ImportResult.Updated updated,
+                @_lastSyncResult.ImportResult.Deactivated deactivated (no longer PBS-listed),
+                @_lastSyncResult.ImportResult.Unmatched new ingredient(s) auto-created.
+                @if (_lastSyncResult.EnrichmentResult != null)
+                {
+                    <text> Then enriched @_lastSyncResult.EnrichmentResult.Enriched of @_lastSyncResult.EnrichmentResult.TotalProcessed new ingredient(s) (@_lastSyncResult.EnrichmentResult.NotFound not found on Wikidata).</text>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@if (_isSyncing)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title"><i class="bi bi-arrow-repeat me-1"></i> Syncing Medicine Catalog</h6>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex gap-2 mb-3">
+                        <span class="badge @StepClass("gather")">1. Gather from sources</span>
+                        <span class="badge @StepClass("import")">2. Import</span>
+                        <span class="badge @StepClass("enrich")">3. Enrich ingredients</span>
+                    </div>
+                    <div class="mb-3">
+                        <div class="small text-muted mb-1">@_progressStatus</div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                    <div class="border rounded bg-light p-2" style="max-height: 300px; overflow-y: auto;">
+                        <div class="small font-monospace">
+                            @foreach (var entry in _progressLog)
+                            {
+                                <div class="text-@(entry.Contains("FAILED", StringComparison.OrdinalIgnoreCase) || entry.Contains("ERROR", StringComparison.OrdinalIgnoreCase) ? "danger" : "muted") mb-1">@entry</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger" disabled="@(_currentSyncJobId == null || _isCancelling)" @onclick="CancelSyncAsync">
+                        @if (_isCancelling)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        Cancel Sync
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header"><strong>Import / Export</strong></div>
     <div class="card-body">
         <div class="row g-2 align-items-end">
             <div class="col-auto">
@@ -33,12 +114,23 @@
                     <i class="bi bi-upload me-1"></i> Import
                 </button>
             </div>
+            <div class="col-auto ms-auto">
+                <label class="form-label small mb-0">&nbsp;</label>
+                <button type="button" class="btn btn-sm btn-outline-secondary d-block" disabled="@_isExporting" @onclick="ExportCsvAsync">
+                    @if (_isExporting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-download me-1"></i> Download Catalogue CSV
+                </button>
+            </div>
         </div>
         @if (_lastImportResult != null)
         {
             <div class="small text-muted mt-3">
                 Last import @_lastImportResult.ImportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"):
                 @_lastImportResult.Added added, @_lastImportResult.Updated updated,
+                @_lastImportResult.Deactivated deactivated (no longer PBS-listed),
                 @_lastImportResult.Unmatched new ingredient(s) auto-created (not AMT-confirmed).
             </div>
         }
@@ -46,34 +138,9 @@
         {
             <div class="small text-danger mt-3">@_importError</div>
         }
-    </div>
-</div>
-
-<div class="card mb-3">
-    <div class="card-header"><strong>Enrichment</strong></div>
-    <div class="card-body">
-        <p class="small text-muted mb-2">
-            Looks up each ingredient on Wikidata (CC0-licensed, safe for commercial use) for an ATC
-            code — identification-layer cross-reference only, not a clinical authority.
-        </p>
-        <button type="button" class="btn btn-sm btn-outline-primary" disabled="@_isEnriching" @onclick="EnrichIngredientsAsync">
-            @if (_isEnriching)
-            {
-                <span class="spinner-border spinner-border-sm me-1"></span>
-            }
-            <i class="bi bi-magic me-1"></i> Enrich Ingredients from Wikidata
-        </button>
-        @if (_lastEnrichmentResult != null)
+        @if (_exportError != null)
         {
-            <div class="small text-muted mt-3">
-                Last run @_lastEnrichmentResult.CompletedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"):
-                @_lastEnrichmentResult.Enriched of @_lastEnrichmentResult.TotalProcessed ingredient(s)
-                matched, @_lastEnrichmentResult.NotFound not found on Wikidata.
-            </div>
-        }
-        else if (_enrichmentError != null)
-        {
-            <div class="small text-danger mt-3">@_enrichmentError</div>
+            <div class="small text-danger mt-3">@_exportError</div>
         }
     </div>
 </div>
@@ -108,6 +175,7 @@
         }
         else
         {
+            <div style="overflow-x:auto">
             <table class="table table-sm align-middle mb-0">
                 <thead>
                     <tr>
@@ -115,10 +183,13 @@
                         <th>Generic Name</th>
                         <th>Strength</th>
                         <th>Form</th>
+                        <th>Pack Size</th>
                         <th>Active Ingredient(s)</th>
                         <th>Schedule</th>
-                        <th>PBS</th>
+                        <th>Subsidy</th>
+                        <th>Restriction</th>
                         <th>Source</th>
+                        <th>Last Updated</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -130,6 +201,7 @@
                             <td>@m.GenericName</td>
                             <td>@m.Strength</td>
                             <td>@m.Form</td>
+                            <td>@m.PackSize</td>
                             <td>@string.Join(", ", m.ActiveIngredients.Select(IngredientLabel))</td>
                             <td>
                                 @if (m.Schedule != null)
@@ -142,12 +214,23 @@
                                 {
                                     <span class="badge bg-info text-dark">PBS</span>
                                 }
+                                @if (m.IsRpbsListed)
+                                {
+                                    <span class="badge bg-info text-dark">RPBS</span>
+                                }
+                            </td>
+                            <td>
+                                @if (m.RestrictionLevel != null)
+                                {
+                                    <span class="badge @RestrictionBadgeClass(m.RestrictionLevel.Value)">@RestrictionLabel(m.RestrictionLevel.Value)</span>
+                                }
                             </td>
                             <td>
                                 <span class="badge @(m.Source == MedicineSource.Manual ? "bg-secondary" : "bg-light text-dark border")">
                                     @(m.Source == MedicineSource.Manual ? "Manual" : "Synced")
                                 </span>
                             </td>
+                            <td class="text-muted small">@(m.LastSyncedAt.HasValue ? m.LastSyncedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "—")</td>
                             <td class="text-end">
                                 @if (m.Source == MedicineSource.Manual)
                                 {
@@ -158,8 +241,16 @@
                     }
                 </tbody>
             </table>
+            </div>
         }
     </div>
+</div>
+
+<div class="small text-muted mt-4 border-top pt-3">
+    <strong>PBS data copyright:</strong> Copyright (c) 2024 Department of Health, Commonwealth of
+    Australia. Permission is granted to use and redistribute this content, as long as all copyright
+    statements are retained. Permission is not granted to modify this content.
+    <a href="https://www.health.gov.au/using-our-websites/copyright" target="_blank" rel="noopener">More information</a>.
 </div>
 
 @if (_showModal)
@@ -199,9 +290,13 @@
                             <input class="form-control form-control-sm" @bind="_form.Form" disabled="@_isReadOnly" />
                         </div>
                         <div class="col">
-                            <label class="form-label small mb-0">Manufacturer</label>
-                            <input class="form-control form-control-sm" @bind="_form.Manufacturer" disabled="@_isReadOnly" />
+                            <label class="form-label small mb-0">Pack Size</label>
+                            <input class="form-control form-control-sm" @bind="_form.PackSize" disabled="@_isReadOnly" />
                         </div>
+                    </div>
+                    <div class="mb-2 mt-1">
+                        <label class="form-label small mb-0">Manufacturer</label>
+                        <input class="form-control form-control-sm" @bind="_form.Manufacturer" disabled="@_isReadOnly" />
                     </div>
                     <div class="mb-2 mt-2">
                         <label class="form-label small mb-0">Active Ingredient(s)</label>
@@ -218,10 +313,28 @@
                                 }
                             </select>
                         </div>
-                        <div class="col d-flex align-items-end">
+                        <div class="col">
+                            <label class="form-label small mb-0">Restriction</label>
+                            <select class="form-select form-select-sm" @bind="_form.RestrictionLevel" disabled="@_isReadOnly">
+                                <option value="">N/A</option>
+                                @foreach (var r in Enum.GetValues<PbsRestrictionLevel>())
+                                {
+                                    <option value="@r">@RestrictionLabel(r)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-2">
+                        <div class="col d-flex align-items-center">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="chkPbs" @bind="_form.IsPbsListed" disabled="@_isReadOnly" />
                                 <label class="form-check-label small" for="chkPbs">PBS listed</label>
+                            </div>
+                        </div>
+                        <div class="col d-flex align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chkRpbs" @bind="_form.IsRpbsListed" disabled="@_isReadOnly" />
+                                <label class="form-check-label small" for="chkRpbs">RPBS listed</label>
                             </div>
                         </div>
                     </div>
@@ -259,14 +372,20 @@
     private MedicineSource? _sourceFilter;
     private bool _isSearching;
 
+    private bool _isSyncing;
+    private string? _syncError;
+    private string _progressStatus = string.Empty;
+    private List<string> _progressLog = new();
+    private string? _currentSyncJobId;
+    private bool _isCancelling;
+    private SyncProgressDto? _lastSyncResult;
+
     private IBrowserFile? _selectedFile;
     private bool _isImporting;
     private MedicineImportResultDto? _lastImportResult;
     private string? _importError;
-
-    private bool _isEnriching;
-    private IngredientEnrichmentResultDto? _lastEnrichmentResult;
-    private string? _enrichmentError;
+    private bool _isExporting;
+    private string? _exportError;
 
     private bool _showModal;
     private bool _isReadOnly;
@@ -300,6 +419,19 @@
 
     private static string IngredientLabel(IngredientRefDto i) => i.AtcCode == null ? i.Name : $"{i.Name} ({i.AtcCode})";
 
+    private static string RestrictionLabel(PbsRestrictionLevel level) => level switch
+    {
+        PbsRestrictionLevel.AuthorityRequired => "Authority Required",
+        _ => level.ToString()
+    };
+
+    private static string RestrictionBadgeClass(PbsRestrictionLevel level) => level switch
+    {
+        PbsRestrictionLevel.AuthorityRequired => "bg-danger",
+        PbsRestrictionLevel.Restricted => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
     private void OpenNew()
     {
         _editingId = null;
@@ -321,8 +453,11 @@
             GenericName = m.GenericName,
             Strength = m.Strength,
             Form = m.Form,
+            PackSize = m.PackSize,
             Manufacturer = m.Manufacturer,
             IsPbsListed = m.IsPbsListed,
+            IsRpbsListed = m.IsRpbsListed,
+            RestrictionLevel = m.RestrictionLevel,
             Schedule = m.Schedule,
             IsActive = m.IsActive,
             ActiveIngredientNames = string.Join(";", m.ActiveIngredients.Select(i => i.Name))
@@ -356,8 +491,11 @@
                 GenericName = _form.GenericName,
                 Strength = _form.Strength,
                 Form = _form.Form,
+                PackSize = _form.PackSize,
                 Manufacturer = _form.Manufacturer,
                 IsPbsListed = _form.IsPbsListed,
+                IsRpbsListed = _form.IsRpbsListed,
+                RestrictionLevel = _form.RestrictionLevel,
                 Schedule = _form.Schedule,
                 ActiveIngredientNames = _form.ActiveIngredientNames
             });
@@ -378,21 +516,109 @@
         await SearchAsync();
     }
 
-    private async Task EnrichIngredientsAsync()
+    /// <summary>Which of the three Sync phases we're in, inferred from the whole accumulated log
+    /// rather than just the latest message — the final line of a phase (e.g. the import tally) doesn't
+    /// necessarily repeat a phase keyword, so checking only the latest message could fall back to
+    /// "gather" right after a phase most people would call complete.</summary>
+    private string CurrentSyncPhase =>
+        _progressLog.Any(m => m.Contains("Enrich", StringComparison.OrdinalIgnoreCase)) ? "enrich" :
+        _progressLog.Any(m => m.Contains("Importing into catalogue", StringComparison.OrdinalIgnoreCase)) ? "import" :
+        "gather";
+
+    private string StepClass(string step)
     {
-        _isEnriching = true;
-        _enrichmentError = null;
-        var result = await MedicineService.EnrichIngredientsAsync();
-        if (result == null)
+        string[] order = ["gather", "import", "enrich"];
+        var current = Array.IndexOf(order, CurrentSyncPhase);
+        var target = Array.IndexOf(order, step);
+        if (target < current) return "bg-success";
+        return target == current ? "bg-primary" : "bg-secondary";
+    }
+
+    private async Task SyncFromSourcesAsync()
+    {
+        _isSyncing = true;
+        _syncError = null;
+        _lastSyncResult = null;
+        _progressStatus = "Starting...";
+        _progressLog = new List<string>();
+        _currentSyncJobId = null;
+
+        var progress = new Progress<string>(msg =>
         {
-            _enrichmentError = "Enrichment failed — check your permissions.";
-        }
-        else
+            // msg is relayed from the server's progress log and already carries a "[HH:mm:ss]"
+            // (UTC) prefix stamped by MedicinesController — adding a second client-local one here
+            // would produce confusing double timestamps.
+            _progressLog.Add(msg);
+            _progressStatus = msg;
+            InvokeAsync(StateHasChanged);
+        });
+
+        try
         {
-            _lastEnrichmentResult = result;
-            await SearchAsync();
+            var result = await MedicineService.SyncFromSourcesAsync(progress, jobId =>
+            {
+                _currentSyncJobId = jobId;
+                InvokeAsync(StateHasChanged);
+            });
+
+            if (result == null)
+            {
+                _syncError = "Sync failed — check your permissions.";
+            }
+            else
+            {
+                _lastSyncResult = result;
+                if (result.Error != null)
+                {
+                    _syncError = $"Sync failed: {result.Error}";
+                }
+                if (result.ImportResult != null)
+                {
+                    await SearchAsync();
+                }
+            }
         }
-        _isEnriching = false;
+        catch (Exception ex)
+        {
+            _syncError = $"Sync failed: {ex.Message}";
+            _progressLog.Add($"[{DateTime.Now:HH:mm:ss}] ERROR: {ex.Message}");
+        }
+
+        // Brief delay so the user sees the final status before the modal closes.
+        await Task.Delay(800);
+        _currentSyncJobId = null;
+        _isSyncing = false;
+    }
+
+    private async Task CancelSyncAsync()
+    {
+        if (_currentSyncJobId == null) return;
+        _isCancelling = true;
+        await MedicineService.CancelSyncAsync(_currentSyncJobId);
+        _isCancelling = false;
+    }
+
+    private async Task ExportCsvAsync()
+    {
+        _isExporting = true;
+        _exportError = null;
+        try
+        {
+            var bytes = await MedicineService.ExportCsvAsync();
+            if (bytes == null)
+            {
+                _exportError = "Export failed — check your permissions.";
+            }
+            else
+            {
+                var base64 = Convert.ToBase64String(bytes);
+                await JS.InvokeVoidAsync("IntelliMedDownload.fromBase64", $"medicine-catalogue-{DateTime.Now:yyyyMMdd-HHmmss}.csv", base64);
+            }
+        }
+        finally
+        {
+            _isExporting = false;
+        }
     }
 
     private void OnFileSelected(InputFileChangeEventArgs e)
