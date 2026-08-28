@@ -11,6 +11,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.6" />
+    <!-- Direct pin only to lift the transitive SQLitePCLRaw 2.1.11 that EF Core 10.0.6 resolves,
+         which carries a High-severity advisory (GHSA-2m69-gcr7-jv3q). Remove once an EF Core
+         update brings 2.1.12+ in on its own. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.6" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.6" />
   </ItemGroup>

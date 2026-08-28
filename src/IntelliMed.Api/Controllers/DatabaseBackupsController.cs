@@ -1,5 +1,4 @@
 using IntelliMed.Core.DTOs;
-using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,16 +17,13 @@ namespace IntelliMed.Api.Controllers;
 [Authorize(Roles = "SuperAdmin,Admin")]
 public class DatabaseBackupsController : ControllerBase
 {
-    private readonly IDatabaseBackupRepository _repository;
     private readonly IDatabaseBackupSettingsRepository _settingsRepository;
     private readonly IDatabaseBackupService _backupService;
 
     public DatabaseBackupsController(
-        IDatabaseBackupRepository repository,
         IDatabaseBackupSettingsRepository settingsRepository,
         IDatabaseBackupService backupService)
     {
-        _repository = repository;
         _settingsRepository = settingsRepository;
         _backupService = backupService;
     }
@@ -36,7 +32,7 @@ public class DatabaseBackupsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<DatabaseBackupDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
     {
-        return Ok(await _repository.GetAllAsync());
+        return Ok(await _backupService.GetAllAsync());
     }
 
     [HttpGet("settings")]
@@ -66,14 +62,22 @@ public class DatabaseBackupsController : ControllerBase
         return CreatedAtAction(nameof(GetAll), result);
     }
 
-    [HttpGet("{id:int}/download")]
+    [HttpGet("{fileName}/download")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Download(int id)
+    public async Task<IActionResult> Download(string fileName)
     {
-        var file = await _backupService.GetBackupFileAsync(id);
+        var file = await _backupService.GetBackupFileAsync(fileName);
         if (file == null) return NotFound();
 
         return File(file.Value.Content, "application/octet-stream", file.Value.FileName);
+    }
+
+    [HttpDelete("{fileName}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Delete(string fileName)
+    {
+        await _backupService.DeleteAsync(fileName);
+        return NoContent();
     }
 }

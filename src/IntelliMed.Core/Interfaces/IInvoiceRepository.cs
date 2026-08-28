@@ -5,7 +5,7 @@ namespace IntelliMed.Core.Interfaces;
 
 public interface IInvoiceRepository : IRepository<Invoice>
 {
-    Task<InvoiceDto?> GetByIdAsync(int id);
+    new Task<InvoiceDto?> GetByIdAsync(int id);
     Task<InvoiceDto?> GetByIdWithDetailsAsync(int id);
     Task<IEnumerable<InvoiceDto>> SearchAsync(InvoiceSearchDto search);
     Task<(IEnumerable<InvoiceDto> Items, int TotalCount)> GetPagedAsync(InvoiceSearchDto search);

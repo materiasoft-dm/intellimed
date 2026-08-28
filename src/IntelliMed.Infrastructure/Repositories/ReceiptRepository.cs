@@ -14,7 +14,7 @@ public class ReceiptRepository : Repository<Receipt>, IReceiptRepository
     {
     }
 
-    public async Task<ReceiptDto?> GetByIdAsync(int id)
+    public new async Task<ReceiptDto?> GetByIdAsync(int id)
     {
         var receipt = await _dbSet
             .Include(r => r.PayerClient)

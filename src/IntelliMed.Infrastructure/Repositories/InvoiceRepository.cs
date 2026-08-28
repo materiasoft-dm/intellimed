@@ -28,7 +28,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         _receiptRepository = receiptRepository;
     }
 
-    public async Task<InvoiceDto?> GetByIdAsync(int id)
+    public new async Task<InvoiceDto?> GetByIdAsync(int id)
     {
         var invoice = await _dbSet.FindAsync(id);
         return invoice == null ? null : EntityMapper.ToDto(invoice);

@@ -5,6 +5,6 @@ namespace IntelliMed.Core.Interfaces;
 
 public interface IProviderGroupRepository : IRepository<ProviderGroup>
 {
-    Task<ProviderGroupDto?> GetByIdAsync(int id);
+    new Task<ProviderGroupDto?> GetByIdAsync(int id);
     Task<IEnumerable<ProviderGroupDto>> GetAllActiveAsync();
 }

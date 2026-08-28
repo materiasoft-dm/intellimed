@@ -14,7 +14,7 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
     {
     }
 
-    public async Task<FeeScheduleDto?> GetByIdAsync(int id)
+    public new async Task<FeeScheduleDto?> GetByIdAsync(int id)
     {
         var schedule = await _dbSet
             .Include(f => f.HealthFund)

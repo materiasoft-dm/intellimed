@@ -12,7 +12,7 @@ public class ProviderGroupRepository : Repository<ProviderGroup>, IProviderGroup
     {
     }
 
-    public async Task<ProviderGroupDto?> GetByIdAsync(int id)
+    public new async Task<ProviderGroupDto?> GetByIdAsync(int id)
     {
         var group = await _dbSet.FindAsync(id);
         return group == null ? null : ToDto(group);

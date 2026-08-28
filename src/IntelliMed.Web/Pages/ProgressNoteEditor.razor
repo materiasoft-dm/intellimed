@@ -1,0 +1,512 @@
+@page "/clients/{ClientId:int}/progress-notes/new"
+@page "/clients/{ClientId:int}/progress-notes/{NoteId:int}"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IClientService ClientService
+@inject IPractitionerService PractitionerService
+@inject IEpisodeService EpisodeService
+@inject IProgressNoteService ProgressNoteService
+@inject IClientHealthIssueService HealthIssueService
+@inject IAppointmentService AppointmentService
+@inject IClinicContextService ClinicContextService
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>@(NoteId.HasValue ? "Progress Note" : "New Progress Note") - IntelliMed</PageTitle>
+
+<h4 class="mb-1">@(NoteId.HasValue ? "Progress Note" : "New Progress Note")</h4>
+<p class="text-muted small mb-2">@(_client == null ? "" : $"for {_client.FirstName} {_client.LastName}")</p>
+
+@if (_client != null)
+{
+    <ClientSafetyBanner Deceased="_client.Deceased" Warnings="@_client.Warnings"
+        InterpreterRequired="_client.InterpreterRequired" InterpreterLanguage="@_client.InterpreterLanguage"
+        Age="_client.Age" NextOfKinName="@_client.NextOfKinName" NextOfKinPhone="@_client.NextOfKinPhone" />
+}
+
+@if (_isLoading)
+{
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+            Loading...
+        </div>
+    </div>
+}
+else if (_note?.Status == ProgressNoteStatus.Finalized)
+{
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>@(_note.ReasonForVisit ?? "Progress Note") <span class="badge bg-success ms-1">Finalized</span></strong>
+            <span class="small text-muted">@_note.EncounterDate.ToString("d MMM yyyy") — @_note.PractitionerName</span>
+        </div>
+        <div class="card-body">
+            @if (_note.EpisodeTitle != null)
+            {
+                <div class="mb-2"><span class="badge bg-info text-dark"><i class="bi bi-diagram-3 me-1"></i>@_note.EpisodeTitle</span></div>
+            }
+            @if (!string.IsNullOrWhiteSpace(_note.Subjective))
+            {
+                <div class="mb-2"><strong class="small text-muted d-block">Subjective</strong><div style="white-space:pre-wrap">@_note.Subjective</div></div>
+            }
+            @if (!string.IsNullOrWhiteSpace(_note.Objective))
+            {
+                <div class="mb-2"><strong class="small text-muted d-block">Objective</strong><div style="white-space:pre-wrap">@_note.Objective</div></div>
+            }
+            @if (!string.IsNullOrWhiteSpace(_note.Assessment))
+            {
+                <div class="mb-2"><strong class="small text-muted d-block">Assessment</strong><div style="white-space:pre-wrap">@_note.Assessment</div></div>
+            }
+            @if (!string.IsNullOrWhiteSpace(_note.Plan))
+            {
+                <div class="mb-2"><strong class="small text-muted d-block">Plan</strong><div style="white-space:pre-wrap">@_note.Plan</div></div>
+            }
+            @if (_note.ReviewDate.HasValue)
+            {
+                <div class="small text-muted"><i class="bi bi-calendar-check me-1"></i>Review: @_note.ReviewDate.Value.ToString("d MMM yyyy")</div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><strong>Addenda</strong></div>
+        <div class="card-body">
+            @if (_note.Addenda.Count == 0)
+            {
+                <p class="text-muted small mb-0">No addenda yet.</p>
+            }
+            else
+            {
+                @foreach (var a in _note.Addenda)
+                {
+                    <div class="border-start border-3 ps-2 mb-2 @(a.Source == ProgressNoteAddendumSource.System ? "border-secondary" : "border-primary")">
+                        <div class="small text-muted">
+                            @a.CreatedAt.ToString("d MMM yyyy HH:mm") — @a.CreatedByPractitionerName
+                            @if (a.Source == ProgressNoteAddendumSource.System)
+                            {
+                                <span class="badge bg-secondary ms-1">Auto</span>
+                                @if (a.SourceReferenceType != null)
+                                {
+                                    <span class="ms-1">(via @a.SourceReferenceType)</span>
+                                }
+                            }
+                        </div>
+                        <div style="white-space:pre-wrap">@a.Content</div>
+                    </div>
+                }
+            }
+
+            <hr />
+            <label class="form-label small mb-0">Add addendum</label>
+            <textarea class="form-control form-control-sm mb-2" rows="2" @bind="_addendumDraft"></textarea>
+            <select class="form-select form-select-sm mb-2" style="max-width: 280px" @bind="_addendumPractitionerId">
+                @foreach (var p in _practitioners)
+                {
+                    <option value="@p.Id">@p.Title @p.FirstName @p.LastName</option>
+                }
+            </select>
+            <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(string.IsNullOrWhiteSpace(_addendumDraft) || _isSaving)" @onclick="AddAddendumAsync">Add Addendum</button>
+        </div>
+    </div>
+
+    <a href="@($"/clients/edit/{ClientId}")" class="btn btn-outline-secondary">Back to Client</a>
+}
+else
+{
+    @* Summary-flagged problems, so the clinician has the active problem list in view while writing.
+       Read-only here — editing lives on the client record's Health Issues tab. *@
+    @if (_summaryHealthIssues.Count > 0)
+    {
+        <div class="alert alert-light border small py-2 mb-3">
+            <strong class="me-1"><i class="bi bi-clipboard-pulse me-1"></i>Health issues:</strong>
+            @foreach (var h in _summaryHealthIssues)
+            {
+                <span class="badge bg-light text-dark border me-1">
+                    @h.Condition@(string.IsNullOrEmpty(h.OnsetDisplay) ? "" : $" ({h.OnsetDisplay})")
+                </span>
+            }
+        </div>
+    }
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Reason for Visit</label>
+                    <input class="form-control form-control-sm" @bind="_form.ReasonForVisit" placeholder="e.g. Headache" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Encounter Date</label>
+                    <input type="date" class="form-control form-control-sm" value="@_form.EncounterDate.ToString("yyyy-MM-dd")" @onchange="@(e => _form.EncounterDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : _form.EncounterDate)" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Review Date</label>
+                    <input type="date" class="form-control form-control-sm" value="@(_form.ReviewDate?.ToString("yyyy-MM-dd"))" @onchange="@(e => _form.ReviewDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : null)" />
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small mb-0">Subjective</label>
+                <textarea class="form-control form-control-sm" rows="3" @bind="_form.Subjective" placeholder="History, symptoms as reported by the patient..."></textarea>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small mb-0">Objective</label>
+                <textarea class="form-control form-control-sm" rows="3" @bind="_form.Objective" placeholder="Examination findings, observations..."></textarea>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small mb-0">Assessment</label>
+                <textarea class="form-control form-control-sm" rows="3" @bind="_form.Assessment" placeholder="Diagnosis / clinical impression..."></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small mb-0">Plan</label>
+                <textarea class="form-control form-control-sm" rows="3" @bind="_form.Plan" placeholder="Management, follow-up..."></textarea>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Episode</label>
+                    @if (_showNewEpisodeInput)
+                    {
+                        <div class="input-group input-group-sm">
+                            <input class="form-control" placeholder="New episode title" @bind="_newEpisodeTitle" />
+                            <button type="button" class="btn btn-outline-primary" @onclick="CreateEpisodeAsync">Add</button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="@(() => _showNewEpisodeInput = false)">Cancel</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex">
+                            <select class="form-select form-select-sm" @bind="_form.EpisodeId">
+                                <option value="">-- None (single visit) --</option>
+                                @foreach (var ep in _episodes)
+                                {
+                                    <option value="@ep.Id">@ep.Title</option>
+                                }
+                            </select>
+                            <button type="button" class="btn btn-sm btn-link" @onclick="@(() => _showNewEpisodeInput = true)">+ New</button>
+                        </div>
+                    }
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Practitioner</label>
+                    <select class="form-select form-select-sm" @bind="_form.PractitionerId">
+                        <option value="0">Select...</option>
+                        @foreach (var p in _practitioners)
+                        {
+                            <option value="@p.Id">@p.Title @p.FirstName @p.LastName</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            @if (_note?.Addenda.Count > 0)
+            {
+                <div class="mb-3">
+                    <label class="form-label small mb-0">Logged during this visit</label>
+                    @foreach (var a in _note.Addenda)
+                    {
+                        <div class="small text-muted border-start border-3 border-secondary ps-2 mb-1">
+                            @a.CreatedAt.ToString("HH:mm") — @a.Content
+                            @if (a.Source == ProgressNoteAddendumSource.System)
+                            {
+                                <span class="badge bg-secondary ms-1">Auto</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (HasLinkedAppointment)
+            {
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="chkMarkCompleted" @bind="_markAppointmentCompleted" />
+                    <label class="form-check-label small" for="chkMarkCompleted">Also mark the appointment as Completed</label>
+                </div>
+            }
+
+            @if (_saveError != null)
+            {
+                <div class="small text-danger mb-2">@_saveError</div>
+            }
+
+            <button type="button" class="btn btn-outline-primary" disabled="@(!CanSave || _isSaving)" @onclick="SaveDraftAsync">
+                @if (_isSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                Save Draft
+            </button>
+            <button type="button" class="btn btn-primary ms-1" disabled="@(!CanSave || _isSaving)" @onclick="FinalizeAsync">
+                <i class="bi bi-check-circle me-1"></i> Finalize &amp; Sign
+            </button>
+            @if (NoteId.HasValue)
+            {
+                <button type="button" class="btn btn-outline-danger ms-1" disabled="@_isSaving" @onclick="DeleteDraftAsync">Delete Draft</button>
+            }
+            <a href="@($"/clients/edit/{ClientId}")" class="btn btn-outline-secondary ms-1">Cancel</a>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ClientId { get; set; }
+    [Parameter] public int? NoteId { get; set; }
+    [SupplyParameterFromQuery] public int? AppointmentId { get; set; }
+
+    private ClientDto? _client;
+    private List<PractitionerDto> _practitioners = new();
+    private List<EpisodeDto> _episodes = new();
+    private List<ClientHealthIssueDto> _summaryHealthIssues = new();
+    private ProgressNoteDto? _note;
+    private NoteFormModel _form = new();
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _saveError;
+    private bool _markAppointmentCompleted = true;
+
+    private bool _showNewEpisodeInput;
+    private string _newEpisodeTitle = string.Empty;
+
+    private string _addendumDraft = string.Empty;
+    private int _addendumPractitionerId;
+    private int? _resolvedAppointmentId;
+
+    private bool HasLinkedAppointment => (NoteId.HasValue ? _note?.AppointmentId : AppointmentId).HasValue;
+
+    private bool CanSave => _form.PractitionerId > 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _client = await ClientService.GetClientByIdAsync(ClientId);
+        _practitioners = await PractitionerService.GetAllActiveAsync();
+        _episodes = await EpisodeService.GetByClientIdAsync(ClientId);
+        _summaryHealthIssues = await HealthIssueService.GetSummaryAsync(ClientId);
+
+        if (NoteId.HasValue)
+        {
+            await LoadNoteAsync(NoteId.Value);
+        }
+        else
+        {
+            _form.EncounterDate = DateTime.Today;
+
+            // Pre-fill (not lock) the author for a logged-in Doctor/Nurse with a linked practitioner
+            // record — same mechanism PrescribeNew.razor established for prescriber pre-fill, broadened
+            // to Nurse here since nurses can author progress notes.
+            var currentUser = await AuthService.GetCurrentUserAsync();
+            if (currentUser?.PractitionerId != null &&
+                ((currentUser.Roles?.Contains("Doctor") ?? false) || (currentUser.Roles?.Contains("Nurse") ?? false)))
+            {
+                _form.PractitionerId = currentUser.PractitionerId.Value;
+                _addendumPractitionerId = currentUser.PractitionerId.Value;
+            }
+        }
+
+        if (_addendumPractitionerId == 0 && _practitioners.Count > 0)
+            _addendumPractitionerId = _practitioners[0].Id;
+
+        _isLoading = false;
+    }
+
+    private async Task LoadNoteAsync(int id)
+    {
+        _note = await ProgressNoteService.GetByIdAsync(ClientId, id);
+        if (_note != null)
+        {
+            _form = new NoteFormModel
+            {
+                PractitionerId = _note.PractitionerId,
+                EpisodeId = _note.EpisodeId,
+                EncounterDate = _note.EncounterDate,
+                ReasonForVisit = _note.ReasonForVisit,
+                Subjective = _note.Subjective,
+                Objective = _note.Objective,
+                Assessment = _note.Assessment,
+                Plan = _note.Plan,
+                ReviewDate = _note.ReviewDate
+            };
+            _addendumPractitionerId = _note.PractitionerId;
+        }
+    }
+
+    /// <summary>Resolves which Appointment this note's AppointmentId should point at when first
+    /// created. If launched with ?appointmentId= (e.g. from the Waiting Room), uses that. Otherwise
+    /// this is a walk-in/phone consult with no pre-existing booking — creates a same-day Appointment on
+    /// the fly via the existing appointment-create endpoint rather than inventing a second "unscheduled
+    /// encounter" concept (see the Progress Notes plan's "no new Encounter entity" decision). Resolved
+    /// once and cached, since re-resolving on every keystroke/autosave would create duplicate
+    /// appointments.</summary>
+    private async Task<int?> ResolveAppointmentIdForCreateAsync()
+    {
+        if (_resolvedAppointmentId.HasValue) return _resolvedAppointmentId;
+        if (AppointmentId.HasValue) return AppointmentId;
+
+        var clinicId = await ClinicContextService.GetCurrentClinicIdAsync();
+        if (clinicId == null || _form.PractitionerId <= 0) return null;
+
+        var now = DateTime.Now.TimeOfDay;
+        _resolvedAppointmentId = await AppointmentService.CreateAppointmentAsync(new CreateAppointmentDto
+        {
+            ClinicId = clinicId.Value,
+            ClientId = ClientId,
+            PractitionerId = _form.PractitionerId,
+            AppointmentDate = DateTime.Today,
+            StartTime = now,
+            EndTime = now.Add(TimeSpan.FromMinutes(15)),
+            Type = AppointmentType.Standard,
+            Notes = "Auto-created for a walk-in progress note"
+        });
+        if (_resolvedAppointmentId.HasValue)
+        {
+            await AppointmentService.UpdateStatusAsync(_resolvedAppointmentId.Value, AppointmentStatus.InProgress);
+        }
+        return _resolvedAppointmentId;
+    }
+
+    private CreateProgressNoteDto BuildCreateDto() => new()
+    {
+        ClientId = ClientId,
+        AppointmentId = _resolvedAppointmentId ?? AppointmentId,
+        PractitionerId = _form.PractitionerId,
+        EpisodeId = _form.EpisodeId,
+        EncounterDate = _form.EncounterDate,
+        ReasonForVisit = _form.ReasonForVisit,
+        Subjective = _form.Subjective,
+        Objective = _form.Objective,
+        Assessment = _form.Assessment,
+        Plan = _form.Plan,
+        ReviewDate = _form.ReviewDate
+    };
+
+    private UpdateProgressNoteDto BuildUpdateDto() => new()
+    {
+        PractitionerId = _form.PractitionerId,
+        EpisodeId = _form.EpisodeId,
+        EncounterDate = _form.EncounterDate,
+        ReasonForVisit = _form.ReasonForVisit,
+        Subjective = _form.Subjective,
+        Objective = _form.Objective,
+        Assessment = _form.Assessment,
+        Plan = _form.Plan,
+        ReviewDate = _form.ReviewDate
+    };
+
+    private async Task SaveDraftAsync()
+    {
+        _isSaving = true;
+        _saveError = null;
+        try
+        {
+            if (NoteId == null)
+            {
+                await ResolveAppointmentIdForCreateAsync();
+                var id = await ProgressNoteService.CreateAsync(BuildCreateDto());
+                if (id == null) { _saveError = "Save failed — check your permissions."; return; }
+                NoteId = id;
+                Nav.NavigateTo($"/clients/{ClientId}/progress-notes/{id}", replace: true);
+                await LoadNoteAsync(id.Value);
+            }
+            else
+            {
+                var success = await ProgressNoteService.UpdateAsync(ClientId, NoteId.Value, BuildUpdateDto());
+                if (!success) { _saveError = "Save failed."; return; }
+                await LoadNoteAsync(NoteId.Value);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task FinalizeAsync()
+    {
+        _isSaving = true;
+        _saveError = null;
+        try
+        {
+            var id = NoteId;
+            if (id == null)
+            {
+                await ResolveAppointmentIdForCreateAsync();
+                id = await ProgressNoteService.CreateAsync(BuildCreateDto());
+                if (id == null) { _saveError = "Save failed — check your permissions."; return; }
+                NoteId = id;
+                Nav.NavigateTo($"/clients/{ClientId}/progress-notes/{id}", replace: true);
+            }
+            else
+            {
+                var updated = await ProgressNoteService.UpdateAsync(ClientId, id.Value, BuildUpdateDto());
+                if (!updated) { _saveError = "Save failed."; return; }
+            }
+
+            var finalized = await ProgressNoteService.FinalizeAsync(ClientId, id.Value, new FinalizeProgressNoteDto { MarkAppointmentCompleted = _markAppointmentCompleted });
+            if (!finalized) { _saveError = "Finalize failed."; return; }
+
+            await LoadNoteAsync(id.Value);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteDraftAsync()
+    {
+        if (NoteId == null) return;
+        var success = await ProgressNoteService.DeleteAsync(ClientId, NoteId.Value);
+        if (success)
+        {
+            Nav.NavigateTo($"/clients/edit/{ClientId}");
+        }
+    }
+
+    private async Task AddAddendumAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_addendumDraft) || NoteId == null || _addendumPractitionerId == 0) return;
+        _isSaving = true;
+        try
+        {
+            var success = await ProgressNoteService.AddAddendumAsync(ClientId, NoteId.Value, new AddProgressNoteAddendumDto
+            {
+                Content = _addendumDraft,
+                CreatedByPractitionerId = _addendumPractitionerId
+            });
+            if (success)
+            {
+                _addendumDraft = string.Empty;
+                await LoadNoteAsync(NoteId.Value);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task CreateEpisodeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newEpisodeTitle)) return;
+        var id = await EpisodeService.CreateAsync(new CreateEpisodeDto { ClientId = ClientId, Title = _newEpisodeTitle });
+        if (id != null)
+        {
+            _episodes = await EpisodeService.GetByClientIdAsync(ClientId);
+            _form.EpisodeId = id;
+            _newEpisodeTitle = string.Empty;
+            _showNewEpisodeInput = false;
+        }
+    }
+
+    private class NoteFormModel
+    {
+        public int PractitionerId { get; set; }
+        public int? EpisodeId { get; set; }
+        public DateTime EncounterDate { get; set; } = DateTime.Today;
+        public string? ReasonForVisit { get; set; }
+        public string? Subjective { get; set; }
+        public string? Objective { get; set; }
+        public string? Assessment { get; set; }
+        public string? Plan { get; set; }
+        public DateTime? ReviewDate { get; set; }
+    }
+}

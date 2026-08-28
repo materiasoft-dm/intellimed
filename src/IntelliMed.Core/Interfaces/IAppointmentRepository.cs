@@ -5,7 +5,7 @@ namespace IntelliMed.Core.Interfaces;
 
 public interface IAppointmentRepository : IRepository<Appointment>
 {
-    Task<AppointmentDto?> GetByIdAsync(int id);
+    new Task<AppointmentDto?> GetByIdAsync(int id);
     Task<IEnumerable<AppointmentDto>> SearchAsync(AppointmentSearchDto search);
     Task<(IEnumerable<AppointmentDto> Items, int TotalCount)> GetPagedAsync(AppointmentSearchDto search);
     Task<IEnumerable<AppointmentDto>> GetByDateAsync(DateTime date);

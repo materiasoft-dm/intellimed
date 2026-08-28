@@ -102,7 +102,7 @@
         <div class="row g-2 align-items-end">
             <div class="col-auto">
                 <label class="form-label small mb-0">CSV file</label>
-                <InputFile OnChange="OnFileSelected" class="form-control form-control-sm" />
+                <InputFile id="medicineImportFile" OnChange="OnFileSelected" class="form-control form-control-sm" />
             </div>
             <div class="col-auto">
                 <label class="form-label small mb-0">&nbsp;</label>
@@ -141,6 +141,66 @@
         @if (_exportError != null)
         {
             <div class="small text-danger mt-3">@_exportError</div>
+        }
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><strong>Poisons Scheduling (TGA ARTG)</strong></div>
+    <div class="card-body">
+        <p class="text-muted small">
+            The PBS feed publishes no poisons scheduling, so synced medicines have no S2/S3/S4/S8
+            value and the prescribing wizard's Schedule&nbsp;8 check can't fire for them. Upload a
+            TGA ARTG export to backfill it, along with ARTG ID, route and dosage form.
+        </p>
+        <div class="alert alert-secondary small py-2">
+            <i class="bi bi-info-circle me-1"></i>
+            Export from the
+            <a href="https://compliance.health.gov.au/artg/" target="_blank" rel="noopener">ARTG Search Visualisation Tool</a>
+            with the <strong>Medicines</strong> filter applied, then save as CSV. The unfiltered
+            export has only 8 columns and carries no scheduling. Existing values are never
+            overwritten — only empty fields are filled.
+        </div>
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small mb-0">ARTG Medicines CSV</label>
+                <InputFile id="artgEnrichFile" OnChange="OnArtgFileSelected" class="form-control form-control-sm" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">&nbsp;</label>
+                <button type="button" class="btn btn-sm btn-primary d-block" disabled="@(_artgFile == null || _isEnriching)" @onclick="EnrichFromArtgAsync">
+                    @if (_isEnriching)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-shield-plus me-1"></i> Backfill Scheduling
+                </button>
+            </div>
+        </div>
+        @if (_artgResult != null)
+        {
+            <div class="small mt-3">
+                <div class="text-success"><i class="bi bi-check-circle me-1"></i>@_artgResult.Message</div>
+                <div class="text-muted mt-1">
+                    @_artgResult.ArtgRows ARTG row(s) read ·
+                    @_artgResult.Unmatched catalogue row(s) had no brand match ·
+                    @_artgResult.AlreadyComplete already complete.
+                </div>
+                @if (_artgResult.ScheduleBreakdown.Count > 0)
+                {
+                    <div class="mt-1">
+                        Catalogue now scheduled:
+                        @foreach (var kv in _artgResult.ScheduleBreakdown.OrderBy(k => k.Key))
+                        {
+                            <span class="badge bg-light text-dark border me-1">@kv.Key: @kv.Value</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else if (_artgError != null)
+        {
+            <div class="small text-danger mt-3">@_artgError</div>
         }
     </div>
 </div>
@@ -207,6 +267,12 @@
                                 @if (m.Schedule != null)
                                 {
                                     <span class="badge @ScheduleBadgeClass(m.Schedule.Value)">@ScheduleLabel(m.Schedule.Value)</span>
+                                }
+                                else
+                                {
+                                    @* Blank would read as "unscheduled". PBS publishes no poisons
+                                       scheduling at all, so this is genuinely unknown — say so. *@
+                                    <span class="badge bg-light text-muted border" title="PBS does not publish poisons scheduling — verify independently">unknown</span>
                                 }
                             </td>
                             <td>
@@ -626,6 +692,51 @@
         _selectedFile = e.File;
         _lastImportResult = null;
         _importError = null;
+    }
+
+    private IBrowserFile? _artgFile;
+    private ArtgEnrichmentResultDto? _artgResult;
+    private string? _artgError;
+    private bool _isEnriching;
+
+    private void OnArtgFileSelected(InputFileChangeEventArgs e)
+    {
+        _artgFile = e.File;
+        _artgResult = null;
+        _artgError = null;
+    }
+
+    private async Task EnrichFromArtgAsync()
+    {
+        if (_artgFile == null) return;
+
+        _isEnriching = true;
+        _artgError = null;
+        try
+        {
+            // The full ARTG Medicines export is around 95 MB — mostly Indications/Warnings free text
+            // the server streams past without retaining. The cap is generous rather than tight so a
+            // slightly larger future export doesn't fail at the browser before reaching the API.
+            await using var stream = _artgFile.OpenReadStream(maxAllowedSize: 200_000_000);
+            var result = await MedicineService.EnrichFromArtgAsync(stream, _artgFile.Name);
+            if (result == null)
+            {
+                _artgError = "Backfill failed — check the file is a Medicines-filtered ARTG CSV export, and your permissions.";
+            }
+            else
+            {
+                _artgResult = result;
+                await SearchAsync();   // refresh the list so the new schedule badges show
+            }
+        }
+        catch (Exception ex)
+        {
+            _artgError = $"Backfill failed: {ex.Message}";
+        }
+        finally
+        {
+            _isEnriching = false;
+        }
     }
 
     private async Task ImportAsync()

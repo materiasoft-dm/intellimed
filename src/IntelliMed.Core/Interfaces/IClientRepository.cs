@@ -5,7 +5,7 @@ namespace IntelliMed.Core.Interfaces;
 
 public interface IClientRepository : IRepository<Client>
 {
-    Task<ClientDto?> GetByIdAsync(int id);
+    new Task<ClientDto?> GetByIdAsync(int id);
     Task<ClientDto?> GetByIdAsync(int id, int? restrictToPractitionerId);
     Task<IEnumerable<ClientDto>> SearchAsync(ClientSearchDto search);
     Task<(IEnumerable<ClientDto> Items, int TotalCount)> GetPagedAsync(ClientSearchDto search);

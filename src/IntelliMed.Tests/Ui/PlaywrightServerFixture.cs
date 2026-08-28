@@ -30,6 +30,11 @@ public class PlaywrightServerFixture : IAsyncLifetime
     public IBrowser Browser { get; private set; } = null!;
     public string BaseUrl { get; private set; } = string.Empty;
 
+    /// <summary>Path to this run's isolated SQLite file — for entities with no create UI/API yet
+    /// (e.g. Practitioner, see PractitionersController's read-only doc comment), tests seed directly
+    /// against this file with a short-lived AppDbContext rather than driving a nonexistent screen.</summary>
+    public string DbPath => _dbPath ?? throw new InvalidOperationException("Server not initialized yet.");
+
     public async Task InitializeAsync()
     {
         _dbPath = Path.Combine(Path.GetTempPath(), $"intellimed-ui-tests-{Guid.NewGuid():N}.db");
@@ -69,8 +74,11 @@ public class PlaywrightServerFixture : IAsyncLifetime
 
         await WaitUntilReadyAsync(TimeSpan.FromSeconds(60));
 
-        // Headed by default so the browser is always visible. Set HEADLESS=1 to run without a
-        // visible window (e.g. in CI).
+        // Headed by default so the run is watchable — that's wanted, and it is not what made
+        // windows pile up. The pile-up was CloseOpenContextsAsync not existing: every context a
+        // test opened stayed open until the whole collection finished, so headed mode accumulated
+        // a window per context (~2 per test) instead of showing one test at a time. Set HEADLESS=1
+        // for CI or an unattended run.
         var headless = Environment.GetEnvironmentVariable("HEADLESS") == "1";
 
         PlaywrightInstance = await Playwright.CreateAsync();
@@ -133,13 +141,36 @@ public class PlaywrightServerFixture : IAsyncLifetime
         throw new TimeoutException($"Test server did not become ready within {timeout}.", lastError);
     }
 
+    /// <summary>Contexts opened since the current test started. This fixture is a *collection*
+    /// fixture, so its own DisposeAsync only runs once the entire collection has finished — which
+    /// left every context a test opened alive until the end of the whole run (two per test in the
+    /// common "create a client, then open a fresh page" pattern, so hundreds across the suite).
+    /// UiTestBase drains this after each test instead. Tests within a collection run sequentially,
+    /// so a plain list needs no synchronisation.</summary>
+    private readonly List<IBrowserContext> _openContexts = new();
+
     public async Task<IPage> NewPageAsync()
     {
         var context = await Browser.NewContextAsync(new BrowserNewContextOptions
         {
             BaseURL = BaseUrl
         });
+        _openContexts.Add(context);
         return await context.NewPageAsync();
+    }
+
+    /// <summary>Closes every context opened since the last call. Called from UiTestBase.DisposeAsync,
+    /// i.e. after each test. Failures are swallowed deliberately: a context whose browser already
+    /// went away is exactly the state we want, and throwing here would mask the real test failure
+    /// that caused it.</summary>
+    public async Task CloseOpenContextsAsync()
+    {
+        foreach (var context in _openContexts)
+        {
+            try { await context.CloseAsync(); }
+            catch { /* already gone — nothing to release */ }
+        }
+        _openContexts.Clear();
     }
 
     /// <summary>

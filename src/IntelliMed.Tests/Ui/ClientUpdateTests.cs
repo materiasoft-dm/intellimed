@@ -5,14 +5,9 @@ using Xunit;
 namespace IntelliMed.Tests.Ui;
 
 [Collection("Playwright UI")]
-public class ClientUpdateTests
+public class ClientUpdateTests : UiTestBase
 {
-    private readonly PlaywrightServerFixture _fixture;
-
-    public ClientUpdateTests(PlaywrightServerFixture fixture)
-    {
-        _fixture = fixture;
-    }
+    public ClientUpdateTests(PlaywrightServerFixture fixture) : base(fixture) { }
 
     /// <summary>Creates a client through the real UI flow and returns the page (now on the edit route) plus its new id.</summary>
     private static async Task<(IPage Page, string Id)> CreateClientAsync(PlaywrightServerFixture fixture, string surname, string given)
@@ -32,7 +27,7 @@ public class ClientUpdateTests
     [Fact]
     public async Task EditClient_ReloadingPage_ShowsPreviouslySavedData()
     {
-        var (page, id) = await CreateClientAsync(_fixture, "Reload", "Test");
+        var (page, id) = await CreateClientAsync(Fixture, "Reload", "Test");
         await page.Field("Ethnicity").FillAsync("Vietnamese");
         await page.GetByRole(AriaRole.Button, new() { Name = "💾 Save" }).ClickAsync();
         await page.WaitForTimeoutAsync(300);
@@ -48,7 +43,7 @@ public class ClientUpdateTests
     [Fact]
     public async Task EditClient_UpdatingBasicFields_Persists()
     {
-        var (page, id) = await CreateClientAsync(_fixture, "Original", "Name");
+        var (page, id) = await CreateClientAsync(Fixture, "Original", "Name");
 
         await page.Field("Surname").FillAsync("Updated");
         await page.FieldInCard("Entitlement", "Medicare#").FillAsync("9998887776");
@@ -67,7 +62,7 @@ public class ClientUpdateTests
     [Fact]
     public async Task EditClient_UpdatingLifecard_Persists()
     {
-        var (page, id) = await CreateClientAsync(_fixture, "Lifecard", "Holder");
+        var (page, id) = await CreateClientAsync(Fixture, "Lifecard", "Holder");
 
         await page.TabLink("Lifecard").ClickAsync();
         await page.Field("Lifecard#").FillAsync("1111-2222-3333-4444");
@@ -84,7 +79,7 @@ public class ClientUpdateTests
     [Fact]
     public async Task ReferralsTab_FullCrudLifecycle()
     {
-        var (page, _) = await CreateClientAsync(_fixture, "Referral", "Owner");
+        var (page, _) = await CreateClientAsync(Fixture, "Referral", "Owner");
 
         await page.TabLink("Referrals").ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "+ New" }).ClickAsync();
@@ -124,7 +119,7 @@ public class ClientUpdateTests
     [Fact]
     public async Task OccupationsTab_AddWithHazardFlags_ShowsHazardSummary()
     {
-        var (page, _) = await CreateClientAsync(_fixture, "Occupation", "Worker");
+        var (page, _) = await CreateClientAsync(Fixture, "Occupation", "Worker");
 
         await page.TabLink("Occupations").ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "+ New" }).ClickAsync();
@@ -144,9 +139,11 @@ public class ClientUpdateTests
     [Fact]
     public async Task NewFamily_CreateNewMode_CreatesLinkedClientAndShowsInFamilyTab()
     {
-        var (page, _) = await CreateClientAsync(_fixture, "Family", "Head");
+        var (page, _) = await CreateClientAsync(Fixture, "Family", "Head");
 
-        await page.GetByRole(AriaRole.Button, new() { Name = "New Family" }).ClickAsync();
+        // See the sibling test — "+ New" only exists once the Family tab is open.
+        await page.TabLink("Family").ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "+ New" }).ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Create New" }).ClickAsync();
         await page.Field("Surname").Last.FillAsync("Head"); // modal's Surname field (last one on the page)
         await page.Field("Given").Last.FillAsync("Sibling");
@@ -168,10 +165,13 @@ public class ClientUpdateTests
         // endpoint also only matches FirstName OR LastName individually (BuildSearchQuery in
         // ClientRepository), not the concatenated full name, so the search term must be a single
         // name part, not "Relative Candidate" as a whole.
-        var (page, _) = await CreateClientAsync(_fixture, "Relative", "Candidate");
-        var (headPage, _) = await CreateClientAsync(_fixture, "Family", "Head");
+        var (page, _) = await CreateClientAsync(Fixture, "Relative", "Candidate");
+        var (headPage, _) = await CreateClientAsync(Fixture, "Family", "Head");
 
-        await headPage.GetByRole(AriaRole.Button, new() { Name = "New Family" }).ClickAsync();
+        // The add button lives inside RenderFamilyTab() now (renamed from "New Family" to "+ New"),
+        // so the tab has to be open before it exists.
+        await headPage.TabLink("Family").ClickAsync();
+        await headPage.GetByRole(AriaRole.Button, new() { Name = "+ New" }).ClickAsync();
         // Link Existing is the default mode — no toggle click needed.
         await headPage.GetByPlaceholder("e.g. Spouse, Child, Parent").FillAsync("Sibling");
         await headPage.GetByPlaceholder("Search by name...").FillAsync("Relative");
@@ -185,7 +185,7 @@ public class ClientUpdateTests
     [Fact]
     public async Task PatientVerificationAndPrintLabel_ShowUnderConstructionMessage()
     {
-        var (page, _) = await CreateClientAsync(_fixture, "Construction", "Test");
+        var (page, _) = await CreateClientAsync(Fixture, "Construction", "Test");
 
         // "Patient Verification" is an external Medicare/eHealth service name, not a reference to
         // the Client entity — left unchanged intentionally.
@@ -200,7 +200,7 @@ public class ClientUpdateTests
     [Fact]
     public async Task UdfTab_WithSeededDefinition_CanAddAndDisplayValue()
     {
-        var (page, _) = await CreateClientAsync(_fixture, "Udf", "Test");
+        var (page, _) = await CreateClientAsync(Fixture, "Udf", "Test");
 
         // No UI exists yet to create UDF definitions (clinic-wide config) — seed one directly
         // via the API, the same way an admin screen would. Enums round-trip as their numeric
@@ -211,7 +211,7 @@ public class ClientUpdateTests
         // from localStorage and attached explicitly or this 401s.
         var token = await page.EvaluateAsync<string>("localStorage.getItem('intellimed_token')");
         var api = page.Context.APIRequest;
-        var response = await api.PostAsync($"{_fixture.BaseUrl}/api/udf-definitions", new()
+        var response = await api.PostAsync($"{Fixture.BaseUrl}/api/udf-definitions", new()
         {
             DataObject = new { name = "Preferred Pharmacy", fieldType = 0, displayOrder = 1 },
             Headers = new Dictionary<string, string> { ["Authorization"] = $"Bearer {token}" }

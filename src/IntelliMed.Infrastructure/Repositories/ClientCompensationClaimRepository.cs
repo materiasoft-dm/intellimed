@@ -13,7 +13,7 @@ public class ClientCompensationClaimRepository : Repository<ClientCompensationCl
     {
     }
 
-    public async Task<ClientCompensationClaimDto?> GetByIdAsync(int id)
+    public new async Task<ClientCompensationClaimDto?> GetByIdAsync(int id)
     {
         var claim = await _dbSet.FindAsync(id);
         return claim == null ? null : EntityMapper.ToDto(claim);

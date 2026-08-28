@@ -14,7 +14,7 @@ public class MedicineRepository : Repository<Medicine>, IMedicineRepository
     {
     }
 
-    public async Task<MedicineDto?> GetByIdAsync(int id)
+    public new async Task<MedicineDto?> GetByIdAsync(int id)
     {
         var item = await _dbSet
             .Include(m => m.Ingredients).ThenInclude(mi => mi.ActiveIngredient)
@@ -132,7 +132,19 @@ public class MedicineRepository : Repository<Medicine>, IMedicineRepository
             IsRpbsListed: m.IsRpbsListed,
             RestrictionLevel: m.RestrictionLevel,
             Schedule: m.Schedule,
-            ActiveIngredients: m.Ingredients.Select(mi => mi.ActiveIngredient.Name).ToList(),
+            // Same null-guard EntityMapper.ToDto(Medicine) uses — the Include above populates this in
+            // practice, but the navigation is nullable and an orphaned bridge row shouldn't take down
+            // a whole catalogue export.
+            ActiveIngredients: m.Ingredients
+                .Where(mi => mi.ActiveIngredient != null)
+                .Select(mi => mi.ActiveIngredient!.Name)
+                .ToList(),
+            MaxRepeats: m.MaxRepeats,
+            MaxQuantity: m.MaxQuantity,
+            Route: m.Route,
+            IsSection100: m.IsSection100,
+            TherapeuticGroupId: m.TherapeuticGroupId,
+            TherapeuticGroupTitle: m.TherapeuticGroupTitle,
             PbsItemCode: m.PbsItemCode,
             AmtConceptId: m.AmtConceptId,
             AtcCode: m.AtcCode));

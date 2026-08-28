@@ -5,7 +5,7 @@ namespace IntelliMed.Core.Interfaces;
 
 public interface IClinicRepository : IRepository<Clinic>
 {
-    Task<IEnumerable<ClinicDto>> GetAllAsync();
+    new Task<IEnumerable<ClinicDto>> GetAllAsync();
     Task<ClinicDto?> GetDtoByIdAsync(int id);
     Task<int> CreateAsync(CreateClinicDto dto);
     Task UpdateAsync(int id, UpdateClinicDto dto);

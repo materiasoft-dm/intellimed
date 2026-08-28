@@ -12,14 +12,9 @@ namespace IntelliMed.Tests.Ui;
 // Patients.razor (a separate list page) was consolidated into ClientSearch.razor — these tests
 // exercise the search page's results grid and toolbar instead of a standalone list page.
 [Collection("Playwright UI")]
-public class ClientListTests
+public class ClientListTests : UiTestBase
 {
-    private readonly PlaywrightServerFixture _fixture;
-
-    public ClientListTests(PlaywrightServerFixture fixture)
-    {
-        _fixture = fixture;
-    }
+    public ClientListTests(PlaywrightServerFixture fixture) : base(fixture) { }
 
     private async Task<int> GetTotalClientCountAsync(IPage page)
     {
@@ -28,7 +23,7 @@ public class ClientListTests
         // from localStorage and attached explicitly or the API 401s with an empty body.
         var token = await page.EvaluateAsync<string>("localStorage.getItem('intellimed_token')");
         var response = await page.APIRequest.GetAsync(
-            $"{_fixture.BaseUrl}/api/clients/search?page=1&pageSize=1",
+            $"{Fixture.BaseUrl}/api/clients/search?page=1&pageSize=1",
             new APIRequestContextOptions { Headers = new Dictionary<string, string> { ["Authorization"] = $"Bearer {token}" } });
         var json = await response.JsonAsync();
         return json!.Value.GetProperty("totalCount").GetInt32();
@@ -37,7 +32,7 @@ public class ClientListTests
     [Fact]
     public async Task ClientSearch_ShowsRefreshAndNewPersonButtons()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/search");
         await page.WaitForSelectorAsync("text=Client Search");
 
@@ -48,7 +43,7 @@ public class ClientListTests
     [Fact]
     public async Task NewPersonButton_NavigatesToAddClientPage()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/search");
         await page.WaitForSelectorAsync("text=Client Search");
 
@@ -60,7 +55,7 @@ public class ClientListTests
     [Fact]
     public async Task ClientSearch_AfterCreatingAClient_CountIncreasesByOne()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         var countBefore = await GetTotalClientCountAsync(page);
 
         await page.GotoAsync("/clients/add");
@@ -79,7 +74,7 @@ public class ClientListTests
     [Fact]
     public async Task ClientSearch_AfterCreatingAClient_ShowsClientRowInGrid()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
 
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");

@@ -13,7 +13,7 @@ public class ClientAddressRepository : Repository<ClientAddress>, IClientAddress
     {
     }
 
-    public async Task<ClientAddressDto?> GetByIdAsync(int id)
+    public new async Task<ClientAddressDto?> GetByIdAsync(int id)
     {
         var address = await _dbSet.FindAsync(id);
         return address == null ? null : EntityMapper.ToDto(address);

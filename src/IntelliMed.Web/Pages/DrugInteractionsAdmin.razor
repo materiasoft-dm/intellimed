@@ -1,0 +1,345 @@
+@page "/admin/drug-interactions"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IDrugInteractionService DrugInteractionService
+@inject IJSRuntime JS
+
+<PageTitle>Drug Interactions - IntelliMed</PageTitle>
+
+<h4 class="mb-1">Drug Interaction Reference Data</h4>
+<p class="text-muted small mb-4">
+    Known interactions between active ingredients, used by the prescribing safety check. Ships empty —
+    there's no bundled dataset (the obvious open source, DDInter, is CC-BY-NC and needs explicit
+    publisher permission before it can be redistributed here). Populate via CSV import below.
+</p>
+
+@if (!_isLoading && _interactions.Count == 0)
+{
+    <div class="alert alert-warning small py-2 mb-3">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <strong>No interaction data loaded.</strong> The prescribing safety check will run but has
+        nothing to check candidate medicines against — every check will report "no interactions found,"
+        which is not the same as "confirmed safe." Import a reference dataset below.
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header"><strong>Import / Export</strong></div>
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small mb-0">CSV file</label>
+                <InputFile OnChange="OnFileSelected" class="form-control form-control-sm" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">&nbsp;</label>
+                <button type="button" class="btn btn-sm btn-primary d-block" disabled="@(_selectedFile == null || _isImporting)" @onclick="ImportAsync">
+                    @if (_isImporting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-upload me-1"></i> Import
+                </button>
+            </div>
+            <div class="col-auto ms-auto">
+                <label class="form-label small mb-0">&nbsp;</label>
+                <button type="button" class="btn btn-sm btn-outline-secondary d-block" disabled="@_isExporting" @onclick="ExportCsvAsync">
+                    @if (_isExporting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-download me-1"></i> Download CSV
+                </button>
+            </div>
+        </div>
+        <p class="text-muted small mt-2 mb-0">
+            Columns: IngredientA, IngredientB, Severity (Minor/Moderate/Major), Description, SourceDataset.
+            Ingredient names are matched case-insensitively against the existing catalog, or created new.
+        </p>
+        @if (_lastImportResult != null)
+        {
+            <div class="small text-muted mt-3">
+                Last import @_lastImportResult.ImportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"):
+                @_lastImportResult.Added added, @_lastImportResult.Updated updated,
+                @_lastImportResult.IngredientsAutoCreated new ingredient(s) auto-created.
+            </div>
+        }
+        else if (_importError != null)
+        {
+            <div class="small text-danger mt-3">@_importError</div>
+        }
+        @if (_exportError != null)
+        {
+            <div class="small text-danger mt-3">@_exportError</div>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <strong>Reference Data (@_interactions.Count)</strong>
+        <button class="btn btn-sm btn-primary" @onclick="OpenNew"><i class="bi bi-plus-lg"></i> Add Interaction</button>
+    </div>
+    <div class="card-body">
+        @if (_isLoading)
+        {
+            <div class="text-muted small">Loading...</div>
+        }
+        else if (_interactions.Count == 0)
+        {
+            <div class="text-muted small">No interactions recorded.</div>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Ingredient A</th>
+                        <th>Ingredient B</th>
+                        <th>Severity</th>
+                        <th>Description</th>
+                        <th>Source</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var i in _interactions)
+                    {
+                        <tr>
+                            <td>@i.IngredientAName</td>
+                            <td>@i.IngredientBName</td>
+                            <td><span class="badge @SeverityBadgeClass(i.Severity)">@i.Severity</span></td>
+                            <td>@i.Description</td>
+                            <td class="text-muted small">@i.SourceDataset</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEdit(i)">Edit</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_showModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">@(_editingId.HasValue ? "Edit" : "New") Interaction</h6>
+                    <button type="button" class="btn-close" @onclick="@(() => _showModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col">
+                            <label class="form-label small mb-0">Ingredient A</label>
+                            <input class="form-control form-control-sm" @bind="_ingredientAName" disabled="@_editingId.HasValue" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label small mb-0">Ingredient B</label>
+                            <input class="form-control form-control-sm" @bind="_ingredientBName" disabled="@_editingId.HasValue" />
+                        </div>
+                    </div>
+                    <div class="mb-2 mt-2">
+                        <label class="form-label small mb-0">Severity</label>
+                        <select class="form-select form-select-sm" @bind="_form.Severity">
+                            @foreach (var s in Enum.GetValues<InteractionSeverity>())
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-0">Description</label>
+                        <textarea class="form-control form-control-sm" @bind="_form.Description"></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-0">Source dataset</label>
+                        <input class="form-control form-control-sm" @bind="_form.SourceDataset" placeholder="e.g. self-curated, dataset name/version" />
+                    </div>
+                    @if (_editingId.HasValue)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="chkActive" @bind="_form.IsActive" />
+                            <label class="form-check-label small" for="chkActive">Active</label>
+                        </div>
+                    }
+                    @if (_formError != null)
+                    {
+                        <div class="small text-danger mt-2">@_formError</div>
+                    }
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showModal = false)">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-primary" @onclick="SaveAsync">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<DrugInteractionDto> _interactions = new();
+    private bool _isLoading = true;
+
+    private IBrowserFile? _selectedFile;
+    private bool _isImporting;
+    private DrugInteractionImportResultDto? _lastImportResult;
+    private string? _importError;
+    private bool _isExporting;
+    private string? _exportError;
+
+    private bool _showModal;
+    private int? _editingId;
+    private string _ingredientAName = string.Empty;
+    private string _ingredientBName = string.Empty;
+    private UpdateDrugInteractionDto _form = new();
+    private string? _formError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _interactions = await DrugInteractionService.GetAllAsync();
+        _isLoading = false;
+    }
+
+    private static string SeverityBadgeClass(InteractionSeverity severity) => severity switch
+    {
+        InteractionSeverity.Major => "bg-danger",
+        InteractionSeverity.Moderate => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    private void OpenNew()
+    {
+        _editingId = null;
+        _ingredientAName = string.Empty;
+        _ingredientBName = string.Empty;
+        _form = new UpdateDrugInteractionDto { IsActive = true };
+        _formError = null;
+        _showModal = true;
+    }
+
+    private void OpenEdit(DrugInteractionDto i)
+    {
+        _editingId = i.Id;
+        _ingredientAName = i.IngredientAName;
+        _ingredientBName = i.IngredientBName;
+        _form = new UpdateDrugInteractionDto
+        {
+            Severity = i.Severity,
+            Description = i.Description,
+            SourceDataset = i.SourceDataset,
+            IsActive = i.IsActive
+        };
+        _formError = null;
+        _showModal = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_ingredientAName) || string.IsNullOrWhiteSpace(_ingredientBName))
+        {
+            _formError = "Both ingredients are required.";
+            return;
+        }
+
+        bool ok;
+        if (_editingId.HasValue)
+        {
+            ok = await DrugInteractionService.UpdateAsync(_editingId.Value, _form);
+        }
+        else
+        {
+            ok = await DrugInteractionService.CreateAsync(new CreateDrugInteractionDto
+            {
+                IngredientAName = _ingredientAName,
+                IngredientBName = _ingredientBName,
+                Severity = _form.Severity,
+                Description = _form.Description,
+                SourceDataset = _form.SourceDataset
+            });
+        }
+
+        if (!ok)
+        {
+            _formError = "Save failed — check your permissions.";
+            return;
+        }
+
+        _showModal = false;
+        await LoadAsync();
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        _lastImportResult = null;
+        _importError = null;
+    }
+
+    private async Task ImportAsync()
+    {
+        if (_selectedFile == null) return;
+
+        _isImporting = true;
+        _importError = null;
+        try
+        {
+            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: 20_000_000);
+            var result = await DrugInteractionService.ImportAsync(stream, _selectedFile.Name);
+            if (result == null)
+            {
+                _importError = "Import failed — check the file format and your permissions.";
+            }
+            else
+            {
+                _lastImportResult = result;
+                await LoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _importError = $"Import failed: {ex.Message}";
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+
+    private async Task ExportCsvAsync()
+    {
+        _isExporting = true;
+        _exportError = null;
+        try
+        {
+            var bytes = await DrugInteractionService.ExportCsvAsync();
+            if (bytes == null)
+            {
+                _exportError = "Export failed — check your permissions.";
+            }
+            else
+            {
+                var base64 = Convert.ToBase64String(bytes);
+                await JS.InvokeVoidAsync("IntelliMedDownload.fromBase64", $"drug-interactions-{DateTime.Now:yyyyMMdd-HHmmss}.csv", base64);
+            }
+        }
+        finally
+        {
+            _isExporting = false;
+        }
+    }
+}

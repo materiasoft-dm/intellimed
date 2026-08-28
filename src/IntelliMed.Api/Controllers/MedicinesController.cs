@@ -1,3 +1,4 @@
+using IntelliMed.Api.Authorization;
 using System.Security.Claims;
 using System.Text;
 using IntelliMed.Core.DTOs;
@@ -28,6 +29,7 @@ public class MedicinesController : ControllerBase
     private readonly IMedicineRepository _repository;
     private readonly IMedicineImportService _importService;
     private readonly IIngredientEnrichmentService _enrichmentService;
+    private readonly IArtgEnrichmentService _artgEnrichmentService;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly AppDbContext _context;
 
@@ -35,9 +37,11 @@ public class MedicinesController : ControllerBase
         IMedicineRepository repository,
         IMedicineImportService importService,
         IIngredientEnrichmentService enrichmentService,
+        IArtgEnrichmentService artgEnrichmentService,
         IServiceScopeFactory scopeFactory,
         AppDbContext context)
     {
+        _artgEnrichmentService = artgEnrichmentService;
         _repository = repository;
         _importService = importService;
         _enrichmentService = enrichmentService;
@@ -79,6 +83,41 @@ public class MedicinesController : ControllerBase
 
         await using var stream = file.OpenReadStream();
         var result = await _importService.ImportAsync(stream);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Backfills poisons schedule, ARTG ID, route and dosage form from a TGA ARTG "Medicines" export.
+    /// PBS publishes no scheduling, so without this every synced medicine has a null Schedule and the
+    /// prescribing wizard's Schedule 8 gate never fires — see MEDICINE_DATA_ENRICHMENT.md §1.
+    ///
+    /// The size limit is higher than the CSV import's because the full ARTG Medicines export runs to
+    /// roughly 95 MB — most of it Indications/Warnings free text the parser streams past without
+    /// retaining.
+    /// </summary>
+    [HttpPost("enrich-artg")]
+    [Authorize]
+    [RequestSizeLimit(200_000_000)]
+    [ProducesResponseType(typeof(ArtgEnrichmentResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> EnrichFromArtg(IFormFile file, CancellationToken cancellationToken)
+    {
+        if (!await HasAccessAsync()) return Forbid();
+        if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+
+        await using var stream = file.OpenReadStream();
+        using var reader = new StreamReader(stream);
+        var result = await _artgEnrichmentService.EnrichAsync(reader, cancellationToken);
+
+        if (result.ArtgRows == 0)
+        {
+            return BadRequest(
+                "No ARTG rows found. Export from the ARTG Search Visualisation Tool with the " +
+                "'Medicines' filter applied and save as CSV — the unfiltered export has only 8 " +
+                "columns and carries no scheduling.");
+        }
+
         return Ok(result);
     }
 
@@ -289,16 +328,6 @@ public class MedicinesController : ControllerBase
         return Ok(result);
     }
 
-    private async Task<bool> HasAccessAsync()
-    {
-        var roles = User.Claims
-            .Where(c => c.Type == ClaimTypes.Role)
-            .Select(c => c.Value)
-            .ToList();
-
-        if (roles.Contains("SuperAdmin")) return true;
-
-        return await _context.RolePermissions
-            .AnyAsync(p => roles.Contains(p.RoleName) && p.PageKey == ImportPageKey);
-    }
+    private Task<bool> HasAccessAsync() =>
+        RolePermissions.HasAccessAsync(_context, User, ImportPageKey);
 }

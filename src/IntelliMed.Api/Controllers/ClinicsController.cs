@@ -1,3 +1,4 @@
+using IntelliMed.Api.Authorization;
 using System.Security.Claims;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Interfaces;
@@ -130,16 +131,6 @@ public class ClinicsController : ControllerBase
         return NoContent();
     }
 
-    private async Task<bool> HasAccessAsync()
-    {
-        var roles = User.Claims
-            .Where(c => c.Type == ClaimTypes.Role)
-            .Select(c => c.Value)
-            .ToList();
-
-        if (roles.Contains("SuperAdmin")) return true;
-
-        return await _context.RolePermissions
-            .AnyAsync(p => roles.Contains(p.RoleName) && p.PageKey == PageKey);
-    }
+    private Task<bool> HasAccessAsync() =>
+        RolePermissions.HasAccessAsync(_context, User, PageKey);
 }

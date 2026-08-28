@@ -2,6 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
+using IntelliMed.Api.Configuration;
+using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
 using IntelliMed.Infrastructure.Data;
@@ -37,6 +39,7 @@ public class DbAdminController : ControllerBase
     private readonly AppDbContext _context;
     private readonly IDatabaseBackupService _backupService;
     private readonly IMemoryCache _cache;
+    private readonly JwtSettings _jwtSettings;
     private readonly ILogger<DbAdminController> _logger;
 
     public DbAdminController(
@@ -44,8 +47,10 @@ public class DbAdminController : ControllerBase
         AppDbContext context,
         IDatabaseBackupService backupService,
         IMemoryCache cache,
+        JwtSettings jwtSettings,
         ILogger<DbAdminController> logger)
     {
+        _jwtSettings = jwtSettings;
         _configuration = configuration;
         _context = context;
         _backupService = backupService;
@@ -229,10 +234,6 @@ public class DbAdminController : ControllerBase
 
     private string GenerateToken()
     {
-        var jwtKey = _configuration["Jwt:Key"] ?? "IntelliMed_SuperSecretKey_AtLeast32Characters!";
-        var jwtIssuer = _configuration["Jwt:Issuer"] ?? "IntelliMed";
-        var jwtAudience = _configuration["Jwt:Audience"] ?? "IntelliMed.Client";
-
         var claims = new List<Claim>
         {
             // The one claim regular staff JWTs never carry — see Program.cs's "DbAdminOnly" policy.
@@ -240,12 +241,12 @@ public class DbAdminController : ControllerBase
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: jwtIssuer,
-            audience: jwtAudience,
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
             claims: claims,
             expires: DateTime.UtcNow.Add(TokenLifetime),
             signingCredentials: credentials

@@ -13,7 +13,7 @@ public class BillingItemRepository : Repository<BillingItem>, IBillingItemReposi
     {
     }
 
-    public async Task<BillingItemDto?> GetByIdAsync(int id)
+    public new async Task<BillingItemDto?> GetByIdAsync(int id)
     {
         var item = await _dbSet.FindAsync(id);
         return item == null ? null : EntityMapper.ToDto(item);

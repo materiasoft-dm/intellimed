@@ -106,11 +106,15 @@ public class ResetPasswordRequest
 /// <summary>
 /// Represents a role with its description and associated permissions.
 /// </summary>
+/// <summary>Name and human description of a role, for the role pickers in User Management and Role
+/// Configuration. Deliberately carries no permission list: the authoritative model is the
+/// RolePermissions page-key catalogue (see RolePermissionsController), and the hardcoded
+/// dot-separated list that used to live here — "users.read", "patients.create" and so on — enforced
+/// nothing, was never rendered, and had drifted out of agreement with the real grants.</summary>
 public class RoleDto
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public IList<string> Permissions { get; set; } = new List<string>();
 }
 
 /// <summary>

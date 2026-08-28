@@ -340,6 +340,227 @@ public static class EntityMapper
         entity.UpdatedAt = DateTime.UtcNow;
     }
 
+    // ClientAllergy mappings
+    public static ClientHealthIssueDto ToDto(ClientHealthIssue entity) => new()
+    {
+        Id = entity.Id,
+        ClientId = entity.ClientId,
+        Condition = entity.Condition,
+        Code = entity.Code,
+        CodingSystem = entity.CodingSystem,
+        Side = entity.Side,
+        OnsetYear = entity.OnsetYear,
+        OnsetMonth = entity.OnsetMonth,
+        IsActive = entity.IsActive,
+        IsSummary = entity.IsSummary,
+        IsConfidential = entity.IsConfidential,
+        Note = entity.Note,
+        IsArchived = entity.IsArchived,
+        CreatedAt = entity.CreatedAt,
+        UpdatedAt = entity.UpdatedAt
+    };
+
+    public static ClientAllergyDto ToDto(ClientAllergy entity) => new()
+    {
+        Id = entity.Id,
+        ClientId = entity.ClientId,
+        ActiveIngredientId = entity.ActiveIngredientId,
+        ActiveIngredientName = entity.ActiveIngredient?.Name,
+        Substance = entity.Substance,
+        Type = entity.Type,
+        Reaction = entity.Reaction,
+        Severity = entity.Severity,
+        OnsetDate = entity.OnsetDate,
+        Note = entity.Note,
+        IsArchived = entity.IsArchived,
+        CreatedAt = entity.CreatedAt,
+        UpdatedAt = entity.UpdatedAt
+    };
+
+    public static ClientAllergy ToEntity(CreateClientAllergyDto dto) => new()
+    {
+        ClientId = dto.ClientId,
+        ActiveIngredientId = dto.ActiveIngredientId,
+        Substance = dto.Substance,
+        Type = dto.Type,
+        Reaction = dto.Reaction,
+        Severity = dto.Severity,
+        OnsetDate = dto.OnsetDate,
+        Note = dto.Note,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    public static void UpdateEntity(ClientAllergy entity, UpdateClientAllergyDto dto)
+    {
+        entity.ActiveIngredientId = dto.ActiveIngredientId;
+        entity.Substance = dto.Substance;
+        entity.Type = dto.Type;
+        entity.Reaction = dto.Reaction;
+        entity.Severity = dto.Severity;
+        entity.OnsetDate = dto.OnsetDate;
+        entity.Note = dto.Note;
+        entity.IsArchived = dto.IsArchived;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
+
+    // DrugInteraction mapping — Create/Update go through DrugInteractionRepository directly (ingredient
+    // find-or-create needs async DB calls that don't fit this synchronous mapper), so only ToDto lives here.
+    public static DrugInteractionDto ToDto(DrugInteraction entity) => new()
+    {
+        Id = entity.Id,
+        IngredientAId = entity.IngredientAId,
+        IngredientAName = entity.IngredientA?.Name ?? string.Empty,
+        IngredientBId = entity.IngredientBId,
+        IngredientBName = entity.IngredientB?.Name ?? string.Empty,
+        Severity = entity.Severity,
+        Description = entity.Description,
+        SourceDataset = entity.SourceDataset,
+        IsActive = entity.IsActive
+    };
+
+    // Prescription mapping — Create/Update go through PrescriptionRepository directly (snapshotting
+    // from Medicine and generating ScriptNumber both need async DB calls), so only ToDto lives here.
+    public static PrescriptionDto ToDto(Prescription entity) => new()
+    {
+        Id = entity.Id,
+        ClientId = entity.ClientId,
+        MedicineId = entity.MedicineId,
+        MedicineName = entity.MedicineName,
+        Dose = entity.Dose,
+        Frequency = entity.Frequency,
+        Instruction = entity.Instruction,
+        Route = entity.Route,
+        Purpose = entity.Purpose,
+        IsLimitedDuration = entity.IsLimitedDuration,
+        Quantity = entity.Quantity,
+        DurationDays = entity.DurationDays,
+        Repeats = entity.Repeats,
+        RepeatIntervalDays = entity.RepeatIntervalDays,
+        ScriptNumber = entity.ScriptNumber,
+        IsPbsListed = entity.IsPbsListed,
+        IsRpbsListed = entity.IsRpbsListed,
+        RestrictionLevel = entity.RestrictionLevel,
+        Schedule = entity.Schedule,
+        AuthorityApprovalNumber = entity.AuthorityApprovalNumber,
+        StateAuthorityCode = entity.StateAuthorityCode,
+        PrescribingNotes = entity.PrescribingNotes,
+        NotesForPharmacy = entity.NotesForPharmacy,
+        Reason = entity.Reason,
+        EpisodeId = entity.EpisodeId,
+        EpisodeTitle = entity.Episode?.Title,
+        AppointmentId = entity.AppointmentId,
+        PrescribedByPractitionerId = entity.PrescribedByPractitionerId,
+        PrescribedByPractitionerName = entity.PrescribedByPractitioner == null
+            ? string.Empty
+            : $"{entity.PrescribedByPractitioner.FirstName} {entity.PrescribedByPractitioner.LastName}".Trim(),
+        Status = entity.Status,
+        SafetyOverrideAcknowledged = entity.SafetyOverrideAcknowledged,
+        SafetyOverrideNote = entity.SafetyOverrideNote,
+        StartDate = entity.StartDate,
+        CeasedDate = entity.CeasedDate,
+        CreatedAt = entity.CreatedAt,
+        UpdatedAt = entity.UpdatedAt,
+        IsIssued = entity.Issues.Count > 0
+    };
+
+    // PrescriptionIssue mapping — Create (IssueAsync) needs an async Practitioner/ApplicationUser
+    // lookup for the prescriber snapshot, so it lives in PrescriptionIssueRepository; only ToDto is
+    // here. Requires entity.Prescription (and its Client) to be loaded by the caller.
+    public static PrescriptionIssueDto ToDto(PrescriptionIssue entity) => new()
+    {
+        Id = entity.Id,
+        PrescriptionId = entity.PrescriptionId,
+        IssuedAt = entity.IssuedAt,
+        IssuedByPractitionerId = entity.IssuedByPractitionerId,
+        RepeatNumber = entity.RepeatNumber,
+        DeliveryMethod = entity.DeliveryMethod,
+        TransmissionStatus = entity.TransmissionStatus,
+        Dose = entity.Dose,
+        Frequency = entity.Frequency,
+        Route = entity.Route,
+        Quantity = entity.Quantity,
+        Repeats = entity.Repeats,
+        PrescribingNotes = entity.PrescribingNotes,
+        NotesForPharmacy = entity.NotesForPharmacy,
+        PrescriberName = entity.PrescriberName,
+        PrescriberProviderNumber = entity.PrescriberProviderNumber,
+        PrescriberAhpraNumber = entity.PrescriberAhpraNumber,
+        PrescriberHpiiNumber = entity.PrescriberHpiiNumber,
+        PrescriberQualifications = entity.PrescriberQualifications,
+        MedicineName = entity.Prescription?.MedicineName ?? string.Empty,
+        ScriptNumber = entity.Prescription?.ScriptNumber ?? string.Empty,
+        IsPbsListed = entity.Prescription?.IsPbsListed ?? false,
+        IsRpbsListed = entity.Prescription?.IsRpbsListed ?? false,
+        RestrictionLevel = entity.Prescription?.RestrictionLevel,
+        Schedule = entity.Prescription?.Schedule,
+        AuthorityApprovalNumber = entity.Prescription?.AuthorityApprovalNumber,
+        StateAuthorityCode = entity.Prescription?.StateAuthorityCode,
+        ClientName = entity.Prescription?.Client == null
+            ? string.Empty
+            : $"{entity.Prescription.Client.FirstName} {entity.Prescription.Client.LastName}".Trim(),
+        ClientDateOfBirth = entity.Prescription?.Client?.DateOfBirth ?? default,
+        ClientMedicareNumber = entity.Prescription?.Client?.MedicareNumber
+    };
+
+    // ProgressNote/ProgressNoteAddendum mapping — Create/Update/Finalize/AddAddendum all need async
+    // Appointment/Practitioner lookups or state-machine checks, so they live in ProgressNoteRepository;
+    // only ToDto is here. Requires entity.Practitioner/Episode/Addenda (each addendum's
+    // CreatedByPractitioner too) to be loaded by the caller.
+    public static ProgressNoteDto ToDto(ProgressNote entity) => new()
+    {
+        Id = entity.Id,
+        ClientId = entity.ClientId,
+        AppointmentId = entity.AppointmentId,
+        PractitionerId = entity.PractitionerId,
+        PractitionerName = entity.Practitioner == null
+            ? string.Empty
+            : $"{entity.Practitioner.FirstName} {entity.Practitioner.LastName}".Trim(),
+        EpisodeId = entity.EpisodeId,
+        EpisodeTitle = entity.Episode?.Title,
+        EncounterDate = entity.EncounterDate,
+        ReasonForVisit = entity.ReasonForVisit,
+        Subjective = entity.Subjective,
+        Objective = entity.Objective,
+        Assessment = entity.Assessment,
+        Plan = entity.Plan,
+        ReviewDate = entity.ReviewDate,
+        Status = entity.Status,
+        FinalizedAt = entity.FinalizedAt,
+        CreatedAt = entity.CreatedAt,
+        UpdatedAt = entity.UpdatedAt,
+        Addenda = entity.Addenda.OrderBy(a => a.CreatedAt).Select(ToDto).ToList()
+    };
+
+    public static ProgressNoteAddendumDto ToDto(ProgressNoteAddendum entity) => new()
+    {
+        Id = entity.Id,
+        ProgressNoteId = entity.ProgressNoteId,
+        Content = entity.Content,
+        Source = entity.Source,
+        SourceReferenceType = entity.SourceReferenceType,
+        SourceReferenceId = entity.SourceReferenceId,
+        CreatedAt = entity.CreatedAt,
+        CreatedByPractitionerId = entity.CreatedByPractitionerId,
+        CreatedByPractitionerName = entity.CreatedByPractitioner == null
+            ? string.Empty
+            : $"{entity.CreatedByPractitioner.FirstName} {entity.CreatedByPractitioner.LastName}".Trim()
+    };
+
+    // Episode mapping — Create/Update/Resolve/Reopen/Archive live in EpisodeRepository; only ToDto here.
+    public static EpisodeDto ToDto(Episode entity) => new()
+    {
+        Id = entity.Id,
+        ClientId = entity.ClientId,
+        Title = entity.Title,
+        Description = entity.Description,
+        Status = entity.Status,
+        OpenedDate = entity.OpenedDate,
+        ClosedDate = entity.ClosedDate,
+        IsArchived = entity.IsArchived,
+        CreatedAt = entity.CreatedAt,
+        UpdatedAt = entity.UpdatedAt
+    };
+
     // ClientAddress mappings
     public static ClientAddressDto ToDto(ClientAddress entity) => new()
     {
@@ -576,8 +797,24 @@ public static class EntityMapper
         AppointmentTypeSettingName = entity.AppointmentTypeSetting?.Name,
         AppointmentTypeSettingColorHex = entity.AppointmentTypeSetting?.ColorHex,
         CreatedAt = entity.CreatedAt,
-        UpdatedAt = entity.UpdatedAt
+        UpdatedAt = entity.UpdatedAt,
+        ClientDeceased = entity.Client?.Deceased ?? false,
+        ClientWarnings = entity.Client?.Warnings,
+        ClientInterpreterRequired = entity.Client?.InterpreterRequired ?? false,
+        ClientInterpreterLanguage = entity.Client?.InterpreterLanguage,
+        ClientAge = entity.Client != null ? CalculateAge(entity.Client.DateOfBirth) : 0
     };
+
+    // Duplicated on purpose — ClientDto.CalculateAge (Core/DTOs/ClientDto.cs) and AddClient.razor's own
+    // copy already exist independently; this is a third, consistent with that existing pattern rather
+    // than introducing a new shared helper unprompted.
+    private static int CalculateAge(DateTime dateOfBirth)
+    {
+        var today = DateTime.Today;
+        var age = today.Year - dateOfBirth.Year;
+        if (dateOfBirth.Date > today.AddYears(-age)) age--;
+        return age;
+    }
 
     public static Appointment ToEntity(CreateAppointmentDto dto) => new()
     {
@@ -907,11 +1144,17 @@ public static class EntityMapper
         ArtgId = entity.ArtgId,
         AmtConceptId = entity.AmtConceptId,
         PbsItemCode = entity.PbsItemCode,
+        MaxRepeats = entity.MaxRepeats,
+        MaxQuantity = entity.MaxQuantity,
+        Route = entity.Route,
+        IsSection100 = entity.IsSection100,
+        TherapeuticGroupId = entity.TherapeuticGroupId,
+        TherapeuticGroupTitle = entity.TherapeuticGroupTitle,
         IsActive = entity.IsActive,
         LastSyncedAt = entity.LastSyncedAt,
         ActiveIngredients = entity.Ingredients
             .Where(i => i.ActiveIngredient != null)
-            .Select(i => new IngredientRefDto { Name = i.ActiveIngredient!.Name, AtcCode = i.ActiveIngredient!.AtcCode })
+            .Select(i => new IngredientRefDto { Id = i.ActiveIngredient!.Id, Name = i.ActiveIngredient!.Name, AtcCode = i.ActiveIngredient!.AtcCode })
             .ToList()
     };
 
@@ -1079,24 +1322,6 @@ public static class EntityMapper
         Type = dto.Type,
         Message = dto.Message,
         LinkUrl = dto.LinkUrl,
-        CreatedAt = DateTime.UtcNow
-    };
-
-    // DatabaseBackup mappings
-    public static DatabaseBackupDto ToDto(DatabaseBackup entity) => new()
-    {
-        Id = entity.Id,
-        FileName = entity.FileName,
-        FileSizeBytes = entity.FileSizeBytes,
-        Trigger = entity.Trigger,
-        CreatedAt = entity.CreatedAt
-    };
-
-    public static DatabaseBackup ToEntity(CreateDatabaseBackupDto dto) => new()
-    {
-        FileName = dto.FileName,
-        FileSizeBytes = dto.FileSizeBytes,
-        Trigger = dto.Trigger,
         CreatedAt = DateTime.UtcNow
     };
 }

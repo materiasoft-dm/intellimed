@@ -232,6 +232,9 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("ShowCommandPalette")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Specialty")
                         .HasMaxLength(150)
                         .HasColumnType("TEXT");
@@ -817,6 +820,58 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.ToTable("ClientAddresses");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.ClientAllergy", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ActiveIngredientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("OnsetDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reaction")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Severity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Substance")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveIngredientId");
+
+                    b.HasIndex("ClientId");
+
+                    b.ToTable("ClientAllergies");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientCompensationClaim", b =>
                 {
                     b.Property<int>("Id")
@@ -911,6 +966,66 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.HasIndex("RelativeClientId");
 
                     b.ToTable("ClientFamilyRelationships");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ClientHealthIssue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CodingSystem")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Condition")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsConfidential")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsSummary")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("OnsetMonth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("OnsetYear")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Side")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.ToTable("ClientHealthIssues");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientOccupation", b =>
@@ -1255,33 +1370,6 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("IntelliMed.Core.Entities.DatabaseBackup", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("FileSizeBytes")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Trigger")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.ToTable("DatabaseBackups");
-                });
-
             modelBuilder.Entity("IntelliMed.Core.Entities.DatabaseBackupSettings", b =>
                 {
                     b.Property<int>("Id")
@@ -1439,6 +1527,42 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.ToTable("DerivedItemRateCalculateds");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.DrugInteraction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("IngredientAId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("IngredientBId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SourceDataset")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IngredientBId");
+
+                    b.HasIndex("IngredientAId", "IngredientBId")
+                        .IsUnique();
+
+                    b.ToTable("DrugInteractions");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.EmailTemplate", b =>
                 {
                     b.Property<int>("Id")
@@ -1480,6 +1604,48 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.HasIndex("ClinicId", "EventKey");
 
                     b.ToTable("EmailTemplates");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.Episode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ClosedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("OpenedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.ToTable("Episodes");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.FeeSchedule", b =>
@@ -1943,12 +2109,21 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<bool>("IsRpbsListed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsSection100")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("LastSyncedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Manufacturer")
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("MaxQuantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaxRepeats")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1965,6 +2140,10 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<int?>("RestrictionLevel")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Route")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("Schedule")
                         .HasColumnType("INTEGER");
 
@@ -1975,12 +2154,22 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("TherapeuticGroupId")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TherapeuticGroupTitle")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AmtConceptId")
                         .IsUnique();
 
                     b.HasIndex("Name");
+
+                    b.HasIndex("TherapeuticGroupId");
 
                     b.ToTable("Medicines");
                 });
@@ -2150,6 +2339,328 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.HasIndex("ProviderNumber");
 
                     b.ToTable("Practitioners");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.Prescription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AppointmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AuthorityApprovalNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CeasedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Dose")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DurationDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("EpisodeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Frequency")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Instruction")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsLimitedDuration")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsPbsListed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsRpbsListed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MedicineId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MedicineName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NotesForPharmacy")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PrescribedByPractitionerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PrescribingNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Purpose")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Quantity")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RepeatIntervalDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Repeats")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("RestrictionLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Route")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SafetyOverrideAcknowledged")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SafetyOverrideNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Schedule")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ScriptNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StateAuthorityCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("EpisodeId");
+
+                    b.HasIndex("MedicineId");
+
+                    b.HasIndex("PrescribedByPractitionerId");
+
+                    b.HasIndex("ScriptNumber")
+                        .IsUnique();
+
+                    b.ToTable("Prescriptions");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.PrescriptionIssue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DeliveryMethod")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Dose")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Frequency")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("IssuedByPractitionerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NotesForPharmacy")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PrescriberAhpraNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PrescriberHpiiNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PrescriberName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PrescriberProviderNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PrescriberQualifications")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PrescribingNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PrescriptionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Quantity")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RepeatNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Repeats")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Route")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TransmissionStatus")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IssuedByPractitionerId");
+
+                    b.HasIndex("PrescriptionId");
+
+                    b.ToTable("PrescriptionIssues");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ProgressNote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AppointmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Assessment")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EncounterDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("EpisodeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("FinalizedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Objective")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Plan")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PractitionerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ReasonForVisit")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ReviewDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Subjective")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("EpisodeId");
+
+                    b.HasIndex("PractitionerId");
+
+                    b.ToTable("ProgressNotes");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ProgressNoteAddendum", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CreatedByPractitionerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ProgressNoteId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("SourceReferenceId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SourceReferenceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByPractitionerId");
+
+                    b.HasIndex("ProgressNoteId");
+
+                    b.ToTable("ProgressNoteAddenda");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ProviderGroup", b =>
@@ -2430,6 +2941,70 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.HasIndex("IsActive");
 
                     b.ToTable("SearchActions");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.SystemSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("BackupRetentionDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DefaultAppointmentSlotMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("LockoutDurationMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("LockoutMaxFailedAttempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("NewUserShowCommandPalette")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PasswordMinLength")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("PasswordRequireDigit")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("PasswordRequireLowercase")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("PasswordRequireNonAlphanumeric")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("PasswordRequireUppercase")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SessionExpirationHours")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BackupRetentionDays = 60,
+                            DefaultAppointmentSlotMinutes = 15,
+                            LockoutDurationMinutes = 15,
+                            LockoutMaxFailedAttempts = 5,
+                            NewUserShowCommandPalette = true,
+                            PasswordMinLength = 8,
+                            PasswordRequireDigit = true,
+                            PasswordRequireLowercase = true,
+                            PasswordRequireNonAlphanumeric = true,
+                            PasswordRequireUppercase = true,
+                            SessionExpirationHours = 8
+                        });
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.UserClinic", b =>
@@ -2732,6 +3307,24 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("Client");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.ClientAllergy", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.ActiveIngredient", "ActiveIngredient")
+                        .WithMany()
+                        .HasForeignKey("ActiveIngredientId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("IntelliMed.Core.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ActiveIngredient");
+
+                    b.Navigation("Client");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientCompensationClaim", b =>
                 {
                     b.HasOne("IntelliMed.Core.Entities.Client", "Client")
@@ -2760,6 +3353,17 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("Client");
 
                     b.Navigation("RelativeClient");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ClientHealthIssue", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientOccupation", b =>
@@ -2849,6 +3453,36 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("FeeScheduleItem");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.DrugInteraction", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.ActiveIngredient", "IngredientA")
+                        .WithMany()
+                        .HasForeignKey("IngredientAId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IntelliMed.Core.Entities.ActiveIngredient", "IngredientB")
+                        .WithMany()
+                        .HasForeignKey("IngredientBId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("IngredientA");
+
+                    b.Navigation("IngredientB");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.Episode", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.FeeSchedule", b =>
@@ -3013,6 +3647,117 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("Invoice");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.Prescription", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("IntelliMed.Core.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IntelliMed.Core.Entities.Episode", "Episode")
+                        .WithMany()
+                        .HasForeignKey("EpisodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("IntelliMed.Core.Entities.Medicine", "Medicine")
+                        .WithMany()
+                        .HasForeignKey("MedicineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("IntelliMed.Core.Entities.Practitioner", "PrescribedByPractitioner")
+                        .WithMany()
+                        .HasForeignKey("PrescribedByPractitionerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Episode");
+
+                    b.Navigation("Medicine");
+
+                    b.Navigation("PrescribedByPractitioner");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.PrescriptionIssue", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Practitioner", "IssuedByPractitioner")
+                        .WithMany()
+                        .HasForeignKey("IssuedByPractitionerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IntelliMed.Core.Entities.Prescription", "Prescription")
+                        .WithMany("Issues")
+                        .HasForeignKey("PrescriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("IssuedByPractitioner");
+
+                    b.Navigation("Prescription");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ProgressNote", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("IntelliMed.Core.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IntelliMed.Core.Entities.Episode", "Episode")
+                        .WithMany("ProgressNotes")
+                        .HasForeignKey("EpisodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("IntelliMed.Core.Entities.Practitioner", "Practitioner")
+                        .WithMany()
+                        .HasForeignKey("PractitionerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Episode");
+
+                    b.Navigation("Practitioner");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ProgressNoteAddendum", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Practitioner", "CreatedByPractitioner")
+                        .WithMany()
+                        .HasForeignKey("CreatedByPractitionerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IntelliMed.Core.Entities.ProgressNote", "ProgressNote")
+                        .WithMany("Addenda")
+                        .HasForeignKey("ProgressNoteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByPractitioner");
+
+                    b.Navigation("ProgressNote");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.ProviderSchedule", b =>
                 {
                     b.HasOne("IntelliMed.Core.Entities.ApplicationUser", "ApplicationUser")
@@ -3157,6 +3902,11 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("UserClinics");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.Episode", b =>
+                {
+                    b.Navigation("ProgressNotes");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.FeeScheduleItem", b =>
                 {
                     b.Navigation("DerivedItemRateCalculateds");
@@ -3179,6 +3929,16 @@ namespace IntelliMed.Infrastructure.Data.Migrations
             modelBuilder.Entity("IntelliMed.Core.Entities.Practitioner", b =>
                 {
                     b.Navigation("Appointments");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.Prescription", b =>
+                {
+                    b.Navigation("Issues");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ProgressNote", b =>
+                {
+                    b.Navigation("Addenda");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.Receipt", b =>

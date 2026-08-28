@@ -2,22 +2,19 @@ using IntelliMed.Core.Entities;
 
 namespace IntelliMed.Core.DTOs;
 
+public enum DatabaseBackupTrigger
+{
+    Manual,
+    Scheduled
+}
+
 public class DatabaseBackupDto
 {
-    public int Id { get; set; }
     public string FileName { get; set; } = string.Empty;
     public long FileSizeBytes { get; set; }
     public DatabaseBackupTrigger Trigger { get; set; }
     public string TriggerName => Trigger.ToString();
     public DateTime CreatedAt { get; set; }
-}
-
-/// <summary>Internal-only — passed between DatabaseBackupService and IDatabaseBackupRepository, never bound from an HTTP request body.</summary>
-public class CreateDatabaseBackupDto
-{
-    public string FileName { get; set; } = string.Empty;
-    public long FileSizeBytes { get; set; }
-    public DatabaseBackupTrigger Trigger { get; set; }
 }
 
 public class DatabaseBackupSettingsDto

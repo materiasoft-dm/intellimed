@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FluentAssertions;
+using IntelliMed.Api.Configuration;
 using IntelliMed.Api.Controllers;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
@@ -20,9 +21,12 @@ public class AuthControllerTests
     private readonly Mock<UserManager<IdentityCore.ApplicationUser>> _userManagerMock;
     private readonly Mock<SignInManager<IdentityCore.ApplicationUser>> _signInManagerMock;
     private readonly Mock<IConfiguration> _configurationMock;
+    private readonly JwtSettings _jwtSettings;
+    private readonly Mock<ISystemSettingsRepository> _systemSettingsRepositoryMock;
     private readonly Mock<ILogger<AuthController>> _loggerMock;
     private readonly Mock<IProviderGroupRepository> _providerGroupRepositoryMock;
     private readonly Mock<IProviderScheduleRepository> _providerScheduleRepositoryMock;
+    private readonly Mock<IPractitionerRepository> _practitionerRepositoryMock;
     private readonly Mock<IEmailTemplateRepository> _emailTemplateRepositoryMock;
     private readonly Mock<IEmailSender> _emailSenderMock;
     private readonly AuthController _controller;
@@ -40,12 +44,23 @@ public class AuthControllerTests
         _signInManagerMock = new Mock<SignInManager<IdentityCore.ApplicationUser>>(
             _userManagerMock.Object, contextAccessorMock.Object, claimsFactoryMock.Object, null!, null!, null!, null!);
 
-        // Setup Configuration mock
+        // Setup Configuration mock. Jwt:Key deliberately NOT set here — signing settings now come
+        // from the injected JwtSettings below, not from IConfiguration (see Api/Configuration/JwtSettings.cs).
         _configurationMock = new Mock<IConfiguration>();
-        _configurationMock.Setup(c => c["Jwt:Key"]).Returns("IntelliMed_SuperSecretKey_AtLeast32Characters!");
-        _configurationMock.Setup(c => c["Jwt:Issuer"]).Returns("IntelliMed");
-        _configurationMock.Setup(c => c["Jwt:Audience"]).Returns("IntelliMed.Client");
         _configurationMock.Setup(c => c["Jwt:ExpirationHours"]).Returns("8");
+
+        // A throwaway signing key for tests only — never the production key, and long enough for HS256.
+        _jwtSettings = new JwtSettings(
+            "unit-test-signing-key-not-used-anywhere-real-0123456789",
+            "IntelliMed",
+            "IntelliMed.Client");
+
+        // Session length comes from SystemSettings now; return the shipped default so token
+        // expiry assertions stay stable.
+        _systemSettingsRepositoryMock = new Mock<ISystemSettingsRepository>();
+        _systemSettingsRepositoryMock
+            .Setup(r => r.GetAsync())
+            .ReturnsAsync(new SystemSettingsDto { SessionExpirationHours = 8 });
 
         // Setup Logger mock
         _loggerMock = new Mock<ILogger<AuthController>>();
@@ -56,6 +71,11 @@ public class AuthControllerTests
         // Setup ProviderScheduleRepository mock
         _providerScheduleRepositoryMock = new Mock<IProviderScheduleRepository>();
 
+        // Setup PractitionerRepository mock — unconfigured GetByApplicationUserIdAsync returns null
+        // via Moq's default, which is the correct "no linked practitioner" behaviour for tests that
+        // don't specifically exercise the Doctor-default-prescriber resolution.
+        _practitionerRepositoryMock = new Mock<IPractitionerRepository>();
+
         // Setup EmailTemplateRepository / EmailSender mocks
         _emailTemplateRepositoryMock = new Mock<IEmailTemplateRepository>();
         _emailSenderMock = new Mock<IEmailSender>();
@@ -65,9 +85,12 @@ public class AuthControllerTests
             _signInManagerMock.Object,
             _providerGroupRepositoryMock.Object,
             _providerScheduleRepositoryMock.Object,
+            _practitionerRepositoryMock.Object,
             _emailTemplateRepositoryMock.Object,
             _emailSenderMock.Object,
             _configurationMock.Object,
+            _jwtSettings,
+            _systemSettingsRepositoryMock.Object,
             _loggerMock.Object);
 
         // Setup ControllerContext for proper ActionResult resolution

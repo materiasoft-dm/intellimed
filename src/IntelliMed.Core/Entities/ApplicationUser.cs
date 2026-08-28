@@ -33,6 +33,9 @@ public class ApplicationUser : IdentityUser
     public bool InternalProvider { get; set; }
     public bool EPrescribingEnabled { get; set; }
 
+    /// <summary>Personal preference: whether the Command Palette (Ctrl+K "Search actions") is shown for this user. Defaults on.</summary>
+    public bool ShowCommandPalette { get; set; } = true;
+
     /// <summary>Overrides the clinic-wide default appointment calendar slot granularity for this user. Null falls back to ClinicSettings.MinimumTimeslotMinutes.</summary>
     public int? DefaultAppointmentTimeslotMinutes { get; set; }
 

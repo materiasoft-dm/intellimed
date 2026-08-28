@@ -4,19 +4,14 @@ using Xunit;
 namespace IntelliMed.Tests.Ui;
 
 [Collection("Playwright UI")]
-public class ClientCreateTests
+public class ClientCreateTests : UiTestBase
 {
-    private readonly PlaywrightServerFixture _fixture;
-
-    public ClientCreateTests(PlaywrightServerFixture fixture)
-    {
-        _fixture = fixture;
-    }
+    public ClientCreateTests(PlaywrightServerFixture fixture) : base(fixture) { }
 
     [Fact]
     public async Task AddClientPage_Loads_WithAllExpectedPanels()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -36,7 +31,7 @@ public class ClientCreateTests
     [Fact]
     public async Task CreateClient_WithMinimalFields_NavigatesToEditPage()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -56,7 +51,7 @@ public class ClientCreateTests
     [InlineData("Other")]
     public async Task CreateClient_WithEachGender_PersistsCorrectly(string genderValue)
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -81,7 +76,7 @@ public class ClientCreateTests
     [InlineData("Unknown")]
     public async Task CreateClient_WithEachMaritalStatus_PersistsCorrectly(string maritalValue)
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -103,7 +98,7 @@ public class ClientCreateTests
     [InlineData("NeitherAboriginalNorTorresStraitIslander")]
     public async Task CreateClient_WithEachAtsiStatus_PersistsCorrectly(string atsiValue)
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -128,7 +123,7 @@ public class ClientCreateTests
     [InlineData("Other")]
     public async Task CreateClient_WithEachAccountType_PersistsCorrectly(string accountTypeValue)
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -149,7 +144,7 @@ public class ClientCreateTests
     [InlineData("Estimated")]
     public async Task CreateClient_WithEachDobAccuracy_PersistsCorrectly(string accuracyValue)
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -166,7 +161,7 @@ public class ClientCreateTests
     [Fact]
     public async Task CreateClient_WithFullDetailsAcrossAllPanels_PersistsEverything()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -221,7 +216,7 @@ public class ClientCreateTests
     [Fact]
     public async Task InterpreterCheckbox_WhenChecked_EnablesLanguageField()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -237,7 +232,7 @@ public class ClientCreateTests
     [Fact]
     public async Task SameAsNextOfKinCheckbox_WhenChecked_DisablesEmergencyFields()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -252,7 +247,7 @@ public class ClientCreateTests
     [Fact]
     public async Task AddressTabs_SwitchBetweenResidentialPostalAndOther()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -272,7 +267,7 @@ public class ClientCreateTests
     [Fact]
     public async Task BottomTabs_BeforeSaving_ShowSaveClientFirstMessage()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
@@ -282,13 +277,20 @@ public class ClientCreateTests
             await Assertions.Expect(page.GetByText($"Save the client first to manage {tab}.")).ToBeVisibleAsync();
         }
 
-        await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = "New Family" })).ToBeDisabledAsync();
+        // Before the client is saved, a non-Details tab renders only the "save first" message — the
+        // tab's own controls aren't rendered at all (AddClient.razor's `else if (!Id.HasValue)`
+        // branch). So there is no add button to be disabled; asserting it's absent is the accurate
+        // check. This previously looked for a "New Family" button, which has since been renamed
+        // "+ New" and moved inside RenderFamilyTab().
+        await page.TabLink("Family").ClickAsync();
+        await Assertions.Expect(page.GetByText("Save the client first to manage Family.")).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = "+ New" })).ToHaveCountAsync(0);
     }
 
     [Fact]
     public async Task CloseButton_NavigatesBackToClientList()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 

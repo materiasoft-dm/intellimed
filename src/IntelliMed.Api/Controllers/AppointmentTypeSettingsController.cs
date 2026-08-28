@@ -1,23 +1,36 @@
+using IntelliMed.Api.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Infrastructure.Data;
 
 namespace IntelliMed.Api.Controllers;
 
 /// <summary>
 /// Admin CRUD for the clinic-configurable appointment-type/duration-preset catalogue.
+///
+/// The mutating actions are gated on the "admin/appointment-types" page key so the toggle at
+/// /admin/roles actually controls them — they previously carried [Authorize(Roles = "SuperAdmin,
+/// Admin")], which ignored the catalogue entirely. The GETs stay open to any authenticated user
+/// because the booking form reads them to populate its type dropdown.
 /// </summary>
 [ApiController]
 [Route("api/appointment-type-settings")]
 public class AppointmentTypeSettingsController : ControllerBase
 {
-    private readonly IAppointmentTypeSettingRepository _repository;
+    private const string PageKey = "admin/appointment-types";
 
-    public AppointmentTypeSettingsController(IAppointmentTypeSettingRepository repository)
+    private readonly IAppointmentTypeSettingRepository _repository;
+    private readonly AppDbContext _context;
+
+    public AppointmentTypeSettingsController(IAppointmentTypeSettingRepository repository, AppDbContext context)
     {
         _repository = repository;
+        _context = context;
     }
+
+    private Task<bool> HasAccessAsync() => RolePermissions.HasAccessAsync(_context, User, PageKey);
 
     /// <summary>List active appointment types for the current clinic (also used to populate the booking form's type dropdown — any logged-in user, not just admins).</summary>
     [HttpGet]
@@ -39,11 +52,13 @@ public class AppointmentTypeSettingsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateAppointmentTypeSettingDto dto)
     {
+        if (!await HasAccessAsync()) return Forbid();
+
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
@@ -53,11 +68,13 @@ public class AppointmentTypeSettingsController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateAppointmentTypeSettingDto dto)
     {
+        if (!await HasAccessAsync()) return Forbid();
+
         var existing = await _repository.GetByIdAsync(id);
         if (existing == null) return NotFound();
 
@@ -66,11 +83,13 @@ public class AppointmentTypeSettingsController : ControllerBase
     }
 
     [HttpPost("{id:int}/archive")]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Archive(int id)
     {
+        if (!await HasAccessAsync()) return Forbid();
+
         var existing = await _repository.GetByIdAsync(id);
         if (existing == null) return NotFound();
 

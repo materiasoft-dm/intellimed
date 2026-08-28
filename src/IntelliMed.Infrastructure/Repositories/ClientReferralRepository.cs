@@ -13,7 +13,7 @@ public class ClientReferralRepository : Repository<ClientReferral>, IClientRefer
     {
     }
 
-    public async Task<ClientReferralDto?> GetByIdAsync(int id)
+    public new async Task<ClientReferralDto?> GetByIdAsync(int id)
     {
         var referral = await _dbSet.FindAsync(id);
         return referral == null ? null : EntityMapper.ToDto(referral);

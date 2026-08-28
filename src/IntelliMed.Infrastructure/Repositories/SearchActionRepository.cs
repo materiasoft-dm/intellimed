@@ -12,7 +12,7 @@ public class SearchActionRepository : Repository<SearchAction>, ISearchActionRep
     {
     }
 
-    public async Task<SearchActionDto?> GetByIdAsync(int id)
+    public new async Task<SearchActionDto?> GetByIdAsync(int id)
     {
         var action = await _dbSet.FirstOrDefaultAsync(a => a.Id == id);
         return action == null ? null : ToDto(action);

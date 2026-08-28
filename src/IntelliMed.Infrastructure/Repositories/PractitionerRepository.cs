@@ -13,7 +13,7 @@ public class PractitionerRepository : Repository<Practitioner>, IPractitionerRep
     {
     }
 
-    public async Task<PractitionerDto?> GetByIdAsync(int id)
+    public new async Task<PractitionerDto?> GetByIdAsync(int id)
     {
         var practitioner = await _dbSet.FindAsync(id);
         return practitioner == null ? null : EntityMapper.ToDto(practitioner);

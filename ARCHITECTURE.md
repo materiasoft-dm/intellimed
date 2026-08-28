@@ -466,51 +466,74 @@ IntelliMed.Api (ASP.NET Core Web API)
 
 ## Implementation Status
 
-### Phase 1: Web Development (Current Focus)
+Last reviewed 2026-08-14. Phase 1 (web) is substantially complete — the sections below were badly
+out of date and have been rewritten against the actual code rather than the original plan.
 
-#### Completed
-- [x] Project structure with Clean Architecture
-- [x] Entity Framework Core setup with SQLite
-- [x] Repository pattern implementation
-- [x] Basic Blazor UI with navigation
-- [x] User dropdown menu with logout
-- [x] API project structure (IntelliMed.Api)
-- [x] `PasswordHash` field added to Practitioner entity
+### Shipped
 
-#### In Progress (Web Auth)
-- [ ] Add ASP.NET Identity NuGet packages
-- [ ] Create `ApplicationUser` class (inherits from `IdentityUser`)
-- [ ] Update `AppDbContext` to `IdentityDbContext<ApplicationUser>`
-- [ ] Add Email index and seed data to AppDbContext
-- [ ] Add role definitions (Admin, Doctor, Nurse, Receptionist)
-- [ ] Create AuthController with login/logout endpoints
-- [ ] Add JWT authentication to API
-- [ ] Update AuthService to call API instead of local storage
-- [ ] Remove hardcoded credentials from Login.razor
+**Platform**
+- [x] Clean Architecture solution (Core / Infrastructure / Api / Web), EF Core + SQLite, repository
+      pattern with DTO mapping via `EntityMapper`
+- [x] ASP.NET Identity with `ApplicationUser`, five seeded roles (SuperAdmin, Admin, Doctor, Nurse,
+      Receptionist), JWT bearer auth
+- [x] Global authorization fallback — every endpoint requires an authenticated user unless it opts
+      out with `[AllowAnonymous]`, so a new controller is protected by default
+- [x] RolePermissions catalogue (page-key based), editable live at `/admin/roles`, enforced through
+      the single shared `RolePermissions.HasAccessAsync` helper (`Api/Authorization/`)
+- [x] Multi-clinic support with per-clinic scoping and a blocking clinic selector
+- [x] Per-provider patient visibility (`ClientProviderAccess`)
 
-#### Phase 1 Complete (Web App)
-- [ ] Patient management pages
-- [ ] Appointment scheduling
-- [ ] Practitioner management
-- [ ] Invoice/billing pages
-- [ ] User management (Admin)
+**Clinical**
+- [x] Patients with addresses, referrals, family, occupations, compensation claims, user-defined fields
+- [x] Appointments — list, calendar (drag to move/resize), waiting room, appointment types
+- [x] Progress notes — SOAP, draft/finalize, append-only addenda, episodes, walk-in auto-appointment
+- [x] Health issues (problem list), ported from Medinet's Past History
+- [x] Allergies, feeding the prescribing safety check
+- [x] Prescribing — seven-step wizard with restriction/schedule gating, issue + print, script history
+- [x] Medicines catalogue (PBS + Wikidata sync, CSV import/export) and drug-interaction reference data
 
-### Phase 2: Native Clients (Future)
-- [ ] MAUI desktop app project
-- [ ] Connect MAUI to existing API
-- [ ] Blazor UI reuse from web
+**Financial**
+- [x] Invoices with lifecycle actions (refund, write-off, cancel, split), printing
+- [x] Receipt / allocation payment model, receipt printing
+- [x] Fee schedules with price history, derived item configs, account-type mapping
 
-### Phase 3: On-Premise Deployment (Future)
-- [ ] IntelliMed.WindowsService project (TopShelf wrapper)
-  - TopShelf NuGet: `TopShelf` package
-  - Simple `RunAsService()` configuration
-  - Console mode for debugging
-  - Commands: `install`, `uninstall`, `start`, `stop`
-- [ ] Installer project with Inno Setup
-  - Single installer with deployment mode selection
-  - Server: Install Windows Service + create database
-  - Client: Install app + prompt for API URL
-  - Auto-start service on boot
+**Operations**
+- [x] Scheduled and manual database backups
+- [x] `/dbadmin` SQL console on a separate credential, isolated from staff auth/RBAC
+- [x] Email templates + SMTP, user invite flow
+- [x] Command palette (Ctrl+K) with an admin-editable action catalogue
+- [x] Version endpoint (`GET /api/version`) surfaced in the UI, to spot a stale deployment at a glance
+
+### Not built
+
+Electronic prescribing (eRx) transmission — the `IPrescriptionTransmissionService` seam exists with a
+not-configured implementation; Medicare/PRODA electronic claiming; My Health Record upload;
+pathology/radiology results and HL7 ingestion; immunisations and AIR; referral-letter authoring; care
+plans; recalls and reminders. Reporting page keys are seeded but no report screens exist yet.
+
+See `USER_GUIDE.md` for what each shipped feature does, and the Medinet gap analysis for what is
+worth porting next.
+
+### Phase 2: Native clients (future)
+- [ ] MAUI desktop project reusing the Blazor UI against the same API
+
+### Phase 3: On-premise deployment (future)
+- [ ] Windows Service host + Inno Setup installer (server/client modes)
+
+## Configuration and secrets
+
+**`Jwt:Key` is required and is deliberately absent from `appsettings.json`.** It signs both staff
+tokens and the `/dbadmin` scope token, so a committed value would hand out full patient-database
+access to anyone with repository or artifact access. Supply it as the `Jwt__Key` environment
+variable, or in an untracked `appsettings.Production.json` beside the deployed binary.
+
+Behaviour, implemented in `Api/Configuration/JwtSettings.cs`:
+- missing key outside Development → **throws at startup** (fails loudly, never silently insecure);
+- missing key in Development → generates an ephemeral per-run key and logs a warning;
+- the previously-committed default key is rejected in **every** environment.
+
+`DbAdmin:Username` / `DbAdmin:PasswordHash` follow the same rule — when absent, `/dbadmin` login is
+disabled entirely rather than falling back to anything.
 
 ## File Locations
 
@@ -527,42 +550,30 @@ IntelliMed.Api (ASP.NET Core Web API)
 
 ## Next Steps
 
-### Phase 1: Complete Auth Wiring (Web)
+The original step-by-step auth wiring instructions that lived here described work completed long ago
+(Identity, JWT, roles, seeding — all shipped; see Implementation Status above) and have been removed
+rather than left to mislead.
 
-#### 1. API Side - Add ASP.NET Identity
-- Add NuGet packages:
-  ```
-  Microsoft.AspNetCore.Identity.EntityFrameworkCore
-  Microsoft.IdentityModel.Tokens
-  System.IdentityModel.Tokens.Jwt
-  ```
-- Create `ApplicationUser` class:
-  ```csharp
-  public class ApplicationUser : IdentityUser
-  {
-      public string FirstName { get; set; }
-      public string LastName { get; set; }
-      // Add clinic-specific fields
-  }
-  ```
-- Update `AppDbContext` to inherit from `IdentityDbContext<ApplicationUser>`
-- Add role definitions (Admin, Doctor, Nurse, Receptionist)
-- Create `AuthController` with `/api/auth/login` endpoint
-- Implement JWT token generation with roles
-- Add seed data for initial admin user
+Current priorities, in order, from the Medinet feature-gap comparison:
 
-#### 2. Client Side - Update AuthService
-- Replace `IClientStorage` calls with `HttpClient` calls
-- Send login request to `/api/auth/login`
-- Store JWT token in secure storage
-- Include token in all subsequent API requests
+1. **Investigations & results** — pathology/radiology inbox with HL7 v2 ingestion, result-to-patient
+   matching, and an acknowledge/action workflow. The single biggest daily workflow still missing, and
+   the largest remaining lift.
+2. **Recalls & reminders** — patient safety plus recurring revenue; much cheaper now that the health
+   issues problem list exists to drive it.
+3. **Referral letters** — outbound letter authoring and printing. Note `ClientReferral` is *inbound*
+   referral tracking for Medicare eligibility and is not the same thing.
+4. **Care plans (GPMP/TCA)** — directly billable MBS items, also keyed off the problem list.
 
-#### 3. UI Side - Remove Hardcoded Credentials
-- Update `Login.razor` to call `AuthService.LoginAsync()`
-- Remove hardcoded username/password checks
-- Add proper error handling for failed login
+Financial track, from the Pracnet parity audit (receipting, printing, lifecycle actions and the
+invoice data model are all done): financial reporting (day sheet, aged debtors, banking, earnings),
+then fee-calculation edge cases, then electronic claiming — deliberately last, since it involves real
+government API certification.
 
-### Phase 2: Native Clients (Future)
+Deferred indefinitely: eRx transmission and My Health Record, both of which require conformance
+programs rather than just implementation effort.
+
+### Phase 2: Native clients (future)
 - Create `IntelliMed.Desktop` MAUI project
 - Connect MAUI to existing API endpoints
 - Reuse Blazor UI components from web

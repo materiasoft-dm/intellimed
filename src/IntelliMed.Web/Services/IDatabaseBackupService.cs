@@ -8,5 +8,6 @@ public interface IDatabaseBackupService
     Task<DatabaseBackupSettingsDto?> GetSettingsAsync();
     Task<bool> UpdateSettingsAsync(UpdateDatabaseBackupSettingsDto dto);
     Task<bool> BackupNowAsync();
-    Task<byte[]?> DownloadAsync(int id);
+    Task<byte[]?> DownloadAsync(string fileName);
+    Task<bool> DeleteAsync(string fileName);
 }

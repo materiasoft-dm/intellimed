@@ -5,7 +5,7 @@ namespace IntelliMed.Core.Interfaces;
 
 public interface IReceiptRepository : IRepository<Receipt>
 {
-    Task<ReceiptDto?> GetByIdAsync(int id);
+    new Task<ReceiptDto?> GetByIdAsync(int id);
     Task<int> CreateAsync(CreateReceiptDto dto);
     Task<List<OutstandingInvoiceDto>> GetOutstandingInvoicesForPayerAsync(int clinicId, int payerClientId, int? excludeInvoiceId = null);
     Task<int> CreateRefundAsync(CreateRefundDto dto);

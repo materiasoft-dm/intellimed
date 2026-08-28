@@ -7,6 +7,10 @@ public interface IMedicineService
 {
     Task<List<MedicineDto>> SearchAsync(string query, MedicineSource? source = null);
     Task<MedicineImportResultDto?> ImportAsync(Stream fileStream, string fileName);
+
+    /// <summary>Backfills poisons schedule, ARTG ID, route and form from a TGA ARTG "Medicines"
+    /// export. Returns null on failure; the caller shows a generic message.</summary>
+    Task<ArtgEnrichmentResultDto?> EnrichFromArtgAsync(Stream fileStream, string fileName);
     Task<byte[]?> ExportCsvAsync();
 
     /// <summary>Starts a Sync job (assemble from every source, import directly, then auto-enrich

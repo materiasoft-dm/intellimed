@@ -4,6 +4,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Bumped by hand before every `dotnet publish` — surfaced in the UI (login page + sidebar) via
+         GET api/version, so a stale deploy is visible at a glance instead of needing nav archaeology. -->
+    <Version>1.0.2</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +20,8 @@
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.16.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <!-- See the matching note in IntelliMed.Infrastructure.csproj — pinned to clear GHSA-2m69-gcr7-jv3q. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
   </ItemGroup>
 
   <ItemGroup>

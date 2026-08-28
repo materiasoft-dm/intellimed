@@ -13,7 +13,7 @@ public class ClientRepository : Repository<Client>, IClientRepository
     {
     }
 
-    public async Task<ClientDto?> GetByIdAsync(int id) => await GetByIdAsync(id, null);
+    public new async Task<ClientDto?> GetByIdAsync(int id) => await GetByIdAsync(id, null);
 
     public async Task<ClientDto?> GetByIdAsync(int id, int? restrictToPractitionerId)
     {

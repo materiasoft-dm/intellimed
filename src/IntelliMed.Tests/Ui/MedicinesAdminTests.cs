@@ -8,32 +8,29 @@ namespace IntelliMed.Tests.Ui;
 // ClientListTests etc. — each test here uses a distinctively-named medicine so it can't collide
 // with data from other test classes or other tests in this file, regardless of execution order.
 [Collection("Playwright UI")]
-public class MedicinesAdminTests
+public class MedicinesAdminTests : UiTestBase
 {
-    private readonly PlaywrightServerFixture _fixture;
-
-    public MedicinesAdminTests(PlaywrightServerFixture fixture)
-    {
-        _fixture = fixture;
-    }
+    public MedicinesAdminTests(PlaywrightServerFixture fixture) : base(fixture) { }
 
     [Fact]
     public async Task MedicinesAdminPage_Loads_WithExpectedSections()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/admin/medicines");
         await page.WaitForSelectorAsync("text=Medicine Catalog");
 
-        await Assertions.Expect(page.Locator(".card-header:has-text('Import')")).ToBeVisibleAsync();
-        await Assertions.Expect(page.Locator(".card-header:has-text('Enrichment')")).ToBeVisibleAsync();
-        await Assertions.Expect(page.Locator(".card-header:has-text('Search')")).ToBeVisibleAsync();
+        // Commit 3ccf5b1 ("Rework medicine catalog sync workflow") folded the old standalone
+        // Enrichment step into "Sync from Sources", so these are the sections that actually exist now.
+        await Assertions.Expect(page.Locator(".card-header:has-text('Sync from Sources')")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator(".card-header:has-text('Import / Export')")).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByText("Search", new() { Exact = true })).ToBeVisibleAsync();
         await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { Name = "Add Medicine" })).ToBeVisibleAsync();
     }
 
     [Fact]
     public async Task AddMedicine_Manually_ShowsManualSourceAndIsEditable()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/admin/medicines");
         await page.WaitForSelectorAsync("text=Medicine Catalog");
 
@@ -71,14 +68,14 @@ public class MedicinesAdminTests
     [Fact]
     public async Task ImportCsv_CreatesSyncedMedicine_ThatIsReadOnly()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/admin/medicines");
         await page.WaitForSelectorAsync("text=Medicine Catalog");
 
         const string csv = "Name,GenericName,Strength,Form,Manufacturer,ActiveIngredients,IsPbsListed,Schedule\n" +
                             "Playwright CsvImport Drug,Playwrightazole,10mg,Tablet,TestCo,Playwrightazole,false,S4\n";
 
-        await page.Locator("input[type=file]").SetInputFilesAsync(new FilePayload
+        await page.Locator("#medicineImportFile").SetInputFilesAsync(new FilePayload
         {
             Name = "playwright-test-import.csv",
             MimeType = "text/csv",
@@ -106,7 +103,7 @@ public class MedicinesAdminTests
     [Fact]
     public async Task SourceFilter_ShowsOnlyMatchingRows()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/admin/medicines");
         await page.WaitForSelectorAsync("text=Medicine Catalog");
 

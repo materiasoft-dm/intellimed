@@ -8,14 +8,9 @@ namespace IntelliMed.Tests.Ui;
 // quote character, and a failed action-list fetch looked identical to "no matching actions" with
 // no way to tell the difference — both fixed in CommandPalette.razor.
 [Collection("Playwright UI")]
-public class CommandPaletteTests
+public class CommandPaletteTests : UiTestBase
 {
-    private readonly PlaywrightServerFixture _fixture;
-
-    public CommandPaletteTests(PlaywrightServerFixture fixture)
-    {
-        _fixture = fixture;
-    }
+    public CommandPaletteTests(PlaywrightServerFixture fixture) : base(fixture) { }
 
     private static async Task OpenPaletteAsync(IPage page)
     {
@@ -26,7 +21,7 @@ public class CommandPaletteTests
     [Fact]
     public async Task TriggerButton_OpensPaletteWithFullActionListAndCorrectPlaceholder()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/");
         await page.WaitForSelectorAsync("text=Dashboard");
 
@@ -45,7 +40,7 @@ public class CommandPaletteTests
     [Fact]
     public async Task CtrlK_TogglesPaletteOpenAndClosed()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/");
         await page.WaitForSelectorAsync("text=Dashboard");
 
@@ -59,7 +54,7 @@ public class CommandPaletteTests
     [Fact]
     public async Task Search_Patient_ReturnsClientActions()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/");
         await page.WaitForSelectorAsync("text=Dashboard");
         await OpenPaletteAsync(page);
@@ -76,7 +71,7 @@ public class CommandPaletteTests
         // Regression case the user reported: typing "client" (a literal substring of the "Find
         // Client"/"Add Client" titles) returned nothing because the action list had failed to load
         // in their environment — not a matcher bug. Covered here against a known-good, seeded DB.
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/");
         await page.WaitForSelectorAsync("text=Dashboard");
         await OpenPaletteAsync(page);
@@ -90,7 +85,7 @@ public class CommandPaletteTests
     [Fact]
     public async Task Search_Create_ReturnsAllCreateActions()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/");
         await page.WaitForSelectorAsync("text=Dashboard");
         await OpenPaletteAsync(page);
@@ -105,7 +100,7 @@ public class CommandPaletteTests
     [Fact]
     public async Task Search_NonsenseQuery_ShowsNoMatchingActions()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/");
         await page.WaitForSelectorAsync("text=Dashboard");
         await OpenPaletteAsync(page);
@@ -118,7 +113,7 @@ public class CommandPaletteTests
     [Fact]
     public async Task ClickingResult_NavigatesAndClosesPalette()
     {
-        var page = await _fixture.NewAuthenticatedPageAsync();
+        var page = await Fixture.NewAuthenticatedPageAsync();
         await page.GotoAsync("/");
         await page.WaitForSelectorAsync("text=Dashboard");
         await OpenPaletteAsync(page);
@@ -140,7 +135,7 @@ public class CommandPaletteTests
         var email = $"nurse-{Guid.NewGuid():N}@example.com";
         const string password = "PlaywrightPass123!";
 
-        var adminPage = await _fixture.NewAuthenticatedPageAsync();
+        var adminPage = await Fixture.NewAuthenticatedPageAsync();
         await adminPage.GotoAsync("/admin/users");
         await adminPage.GetByRole(AriaRole.Heading, new() { Name = "User Management" }).WaitForAsync();
 
@@ -161,7 +156,7 @@ public class CommandPaletteTests
         await adminPage.GetByRole(AriaRole.Button, new() { Name = "Reset Password" }).ClickAsync();
         await adminPage.WaitForSelectorAsync("text=Password reset successfully.");
 
-        var page = await _fixture.NewPageAsync();
+        var page = await Fixture.NewPageAsync();
         await page.GotoAsync("/login");
         await page.Locator("#email").FillAsync(email);
         await page.Locator("#password").FillAsync(password);

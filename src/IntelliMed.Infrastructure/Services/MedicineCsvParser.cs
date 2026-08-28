@@ -21,7 +21,14 @@ public record ParsedMedicineRow(
     // re-synced and matched against the same external record.
     string? PbsItemCode = null,
     string? AmtConceptId = null,
-    string? AtcCode = null);
+    string? AtcCode = null,
+    // PBS prescribing limits and classification — see Medicine.cs for what each one drives.
+    int? MaxRepeats = null,
+    int? MaxQuantity = null,
+    string? Route = null,
+    bool IsSection100 = false,
+    string? TherapeuticGroupId = null,
+    string? TherapeuticGroupTitle = null);
 
 /// <summary>
 /// Minimal CSV parser for the medicine reference-data import format: a header row naming any of

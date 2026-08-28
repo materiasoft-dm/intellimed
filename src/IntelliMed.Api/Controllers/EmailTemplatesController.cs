@@ -1,4 +1,6 @@
+using IntelliMed.Api.Authorization;
 using IntelliMed.Core.DTOs;
+using IntelliMed.Infrastructure.Data;
 using IntelliMed.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,32 +11,47 @@ namespace IntelliMed.Api.Controllers;
 /// Admin CRUD for clinic-authored email templates, and their assignment to fixed system events
 /// (invite email, forgot password) that other controllers resolve when sending those emails.
 /// </summary>
+// Gated on the "admin/email-templates" page key rather than a fixed role list, so the toggle shown
+// at /admin/roles actually controls access. It previously carried [Authorize(Roles = "SuperAdmin,
+// Admin")], which meant granting the page to any other role changed the nav but not the API.
 [ApiController]
 [Route("api/email-templates")]
-[Authorize(Roles = "SuperAdmin,Admin")]
+[Authorize]
 public class EmailTemplatesController : ControllerBase
 {
+    private const string PageKey = "admin/email-templates";
+
     private readonly IEmailTemplateRepository _repository;
+    private readonly AppDbContext _context;
     private readonly ILogger<EmailTemplatesController> _logger;
 
-    public EmailTemplatesController(IEmailTemplateRepository repository, ILogger<EmailTemplatesController> logger)
+    public EmailTemplatesController(IEmailTemplateRepository repository, AppDbContext context, ILogger<EmailTemplatesController> logger)
     {
         _repository = repository;
+        _context = context;
         _logger = logger;
     }
 
+    private Task<bool> HasAccessAsync() => RolePermissions.HasAccessAsync(_context, User, PageKey);
+
     [HttpGet]
     [ProducesResponseType(typeof(List<EmailTemplateDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetAll()
     {
+        if (!await HasAccessAsync()) return Forbid();
+
         return Ok(await _repository.GetAllAsync(GetCurrentClinicId()));
     }
 
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(EmailTemplateDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(int id)
     {
+        if (!await HasAccessAsync()) return Forbid();
+
         var template = await _repository.GetByIdAsync(id);
         if (template == null) return NotFound();
         return Ok(template);
@@ -45,6 +62,8 @@ public class EmailTemplatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] SaveEmailTemplateRequest request)
     {
+        if (!await HasAccessAsync()) return Forbid();
+
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var id = await _repository.CreateAsync(GetCurrentClinicId(), request);
@@ -59,6 +78,8 @@ public class EmailTemplatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(int id, [FromBody] SaveEmailTemplateRequest request)
     {
+        if (!await HasAccessAsync()) return Forbid();
+
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var existing = await _repository.GetByIdAsync(id);
@@ -75,6 +96,8 @@ public class EmailTemplatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Archive(int id)
     {
+        if (!await HasAccessAsync()) return Forbid();
+
         var existing = await _repository.GetByIdAsync(id);
         if (existing == null) return NotFound();
 
@@ -90,6 +113,8 @@ public class EmailTemplatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UploadImage()
     {
+        if (!await HasAccessAsync()) return Forbid();
+
         var file = Request.Form.Files.FirstOrDefault();
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "No file uploaded." });

@@ -23,6 +23,25 @@ public class MedicineService : IMedicineService
         return results ?? new List<MedicineDto>();
     }
 
+    public async Task<ArtgEnrichmentResultDto?> EnrichFromArtgAsync(Stream fileStream, string fileName)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var streamContent = new StreamContent(fileStream);
+            content.Add(streamContent, "file", fileName);
+
+            var response = await _httpClient.PostAsync("api/medicines/enrich-artg", content);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<ArtgEnrichmentResultDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"ARTG enrichment error: {ex.Message}");
+            return null;
+        }
+    }
+
     public async Task<MedicineImportResultDto?> ImportAsync(Stream fileStream, string fileName)
     {
         try

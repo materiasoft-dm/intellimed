@@ -31,6 +31,15 @@ public class AppointmentDto
     public string? AppointmentTypeSettingColorHex { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+
+    // Safety-banner fields — denormalized from Client at mapping time (entity.Client is already
+    // loaded everywhere this DTO is produced, so this costs no extra query). Advisory display only;
+    // ClientDeceased is also enforced server-side on Create, see AppointmentRepository.CreateAsync.
+    public bool ClientDeceased { get; set; }
+    public string? ClientWarnings { get; set; }
+    public bool ClientInterpreterRequired { get; set; }
+    public string? ClientInterpreterLanguage { get; set; }
+    public int ClientAge { get; set; }
 }
 
 public class CreateAppointmentDto

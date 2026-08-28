@@ -13,7 +13,7 @@ public class UserDefinedFieldTypeRepository : Repository<UserDefinedFieldType>, 
     {
     }
 
-    public async Task<UserDefinedFieldTypeDto?> GetByIdAsync(int id)
+    public new async Task<UserDefinedFieldTypeDto?> GetByIdAsync(int id)
     {
         var fieldType = await _dbSet.FindAsync(id);
         return fieldType == null ? null : EntityMapper.ToDto(fieldType);

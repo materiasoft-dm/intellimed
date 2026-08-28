@@ -35,10 +35,16 @@ public class DatabaseBackupService : IDatabaseBackupService
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<byte[]?> DownloadAsync(int id)
+    public async Task<byte[]?> DownloadAsync(string fileName)
     {
-        var response = await _httpClient.GetAsync($"api/database-backups/{id}/download");
+        var response = await _httpClient.GetAsync($"api/database-backups/{Uri.EscapeDataString(fileName)}/download");
         if (!response.IsSuccessStatusCode) return null;
         return await response.Content.ReadAsByteArrayAsync();
+    }
+
+    public async Task<bool> DeleteAsync(string fileName)
+    {
+        var response = await _httpClient.DeleteAsync($"api/database-backups/{Uri.EscapeDataString(fileName)}");
+        return response.IsSuccessStatusCode;
     }
 }

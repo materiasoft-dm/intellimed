@@ -6,10 +6,16 @@ native later). Clean Architecture: `Core` (entities/DTOs/interfaces, no EF) → 
 (EF Core/SQLite, repositories, business-logic services) → `Api` (controllers) / `Web` (Blazor
 WASM UI).
 
+**Start here if you're picking up work:** `OPEN_THREADS.md` — known defects, decisions waiting on
+the user, and what's agreed but unbuilt. It is the current-state file; the rest below is reference.
+
 Read these before making non-trivial changes — don't duplicate their content here, they're kept
 up to date independently:
 
-- `ARCHITECTURE.md` — system architecture, roles/permissions, deployment.
+- `OPEN_THREADS.md` — **live state**: known defects, blocked decisions, repo/deployment status.
+- `USER_GUIDE.md` — every shipped feature and how it's used. The fastest way to learn what exists.
+- `ARCHITECTURE.md` — system architecture, roles/permissions, deployment, **required config
+  (`Jwt__Key` — the app won't start without it outside Development)**.
 - `STRUCTURE.md` — project/folder layout and code patterns (repository pattern, DTO mapping).
 - `REBUILD_PLAN.md` — modernization plan, MAUI setup gotchas, deployment environments.
 - `HANDOFF.md` — deep-dive reference on the **legacy** Pracnet system (billing engine, Medicare
@@ -17,6 +23,13 @@ up to date independently:
   search it rather than reading top to bottom.
 - `BILLING_AND_CLAIMING.md` — primer on Australian medical billing/claiming (MBS, bulk billing,
   DVA, gap, WorkCover/TAC) and how it maps onto this codebase's `BillingCalculator` and friends.
+- `PATIENT_VISIT_WORKFLOW.md` — the single-visit walkthrough (book → consult → prescribe → bill),
+  written for clinic staff.
+- `PRESCRIBING_PARITY.md` — what the prescribing wizard does and doesn't match vs legacy Medinet,
+  section by section against that system's own business-rules spec.
+- `MEDICINE_DATA_ENRICHMENT.md` — **contains a confirmed high-severity defect** (`Medicine.Schedule`
+  is null for the entire synced catalogue, disabling the Schedule 8 gate), plus a costed roadmap for
+  closing the MIMS data gap using PBS fields already available on the current subscription.
 
 ## Build / run
 
@@ -49,8 +62,13 @@ modifying how an existing one is consumed.
   alongside the data. Full wording is in `README.md` under "Medicine data sources & licensing".
 - **Wikidata** — CC0. Safe for commercial reuse. Used for ingredient enrichment and as a fallback
   medicine source.
-- **TGA ARTG** — not currently ingested. PBS does not carry ARTG IDs; if/when added, this will be
-  a separate provider with its own licence review.
+- **TGA ARTG** — ingested, but **not** as an `IMedicineSourceProvider`. It is a manual admin upload
+  (Admin > Medicines > *Poisons Scheduling*), not part of Sync, because the data arrives as a CSV
+  export the operator downloads from <https://compliance.health.gov.au/artg/> rather than an API.
+  It backfills `Schedule`, `ArtgId`, `Route` and `Form` and never overwrites an existing value —
+  it adds no new medicines. Commonwealth of Australia copyright, same terms as PBS. **The export
+  must have the `Medicines` filter applied**; the unfiltered one has 8 columns and no scheduling.
+  See `ArtgEnrichmentService` and `MEDICINE_DATA_ENRICHMENT.md` §1.
 
 When adding a new source: register it in `ServiceExtensions.AddInfrastructure` as another
 `IMedicineSourceProvider` HttpClient registration. `MedicineCsvAssemblyService` resolves all of

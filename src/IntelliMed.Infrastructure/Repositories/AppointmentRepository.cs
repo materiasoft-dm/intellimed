@@ -13,7 +13,7 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
     {
     }
 
-    public async Task<AppointmentDto?> GetByIdAsync(int id)
+    public new async Task<AppointmentDto?> GetByIdAsync(int id)
     {
         var appointment = await _dbSet
             .Include(a => a.Client)
@@ -97,6 +97,10 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
 
     public async Task<int> CreateAsync(CreateAppointmentDto dto)
     {
+        var client = await _context.Clients.FindAsync(dto.ClientId);
+        if (client != null && client.Deceased)
+            throw new InvalidOperationException($"Client {dto.ClientId} is recorded as deceased — a new appointment cannot be created for them.");
+
         var appointment = EntityMapper.ToEntity(dto);
         await _dbSet.AddAsync(appointment);
         await _context.SaveChangesAsync();
@@ -106,6 +110,10 @@ public class AppointmentRepository : Repository<Appointment>, IAppointmentReposi
     /// <summary>Materializes one Appointment row per occurrence up front, all sharing a new RecurrenceSeriesId, rather than expanding a recurrence rule at read time.</summary>
     public async Task<IEnumerable<int>> CreateSeriesAsync(CreateAppointmentSeriesDto dto)
     {
+        var client = await _context.Clients.FindAsync(dto.ClientId);
+        if (client != null && client.Deceased)
+            throw new InvalidOperationException($"Client {dto.ClientId} is recorded as deceased — a new appointment series cannot be created for them.");
+
         const int maxOccurrences = 104; // safety cap (~2 years weekly)
         var seriesId = Guid.NewGuid();
         var dates = new List<DateTime>();

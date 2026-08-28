@@ -4,6 +4,7 @@
 @using IntelliMed.Core.Entities
 @using IntelliMed.Web.Services
 @inject IAppointmentService AppointmentService
+@inject NavigationManager Nav
 @implements IDisposable
 
 <PageTitle>Waiting Room - IntelliMed</PageTitle>
@@ -46,7 +47,13 @@ else
                 @foreach (var a in _appointments)
                 {
                     <tr>
-                        <td>@a.ClientName</td>
+                        <td>
+                        @a.ClientName
+                        @if (a.ClientDeceased || !string.IsNullOrWhiteSpace(a.ClientWarnings) || a.ClientInterpreterRequired || a.ClientAge < 18)
+                        {
+                            <i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="@ClientFlagsSummary(a)"></i>
+                        }
+                    </td>
                         <td>@a.PractitionerName</td>
                         <td>@a.TimeRangeFormatted</td>
                         <td><span class="badge @StatusBadgeClass(a.Status)">@a.StatusName</span></td>
@@ -60,6 +67,7 @@ else
                             {
                                 <button class="btn btn-sm btn-outline-success" @onclick="() => AdvanceAsync(a, AppointmentStatus.Completed)">Complete</button>
                             }
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => GoToProgressNoteAsync(a)">Progress Note</button>
                             <button class="btn btn-sm btn-link" @onclick="@(() => _selectedAppointmentId = a.Id)">Details</button>
                         </td>
                     </tr>
@@ -98,12 +106,33 @@ else
         await LoadAsync();
     }
 
+    private async Task GoToProgressNoteAsync(AppointmentDto appointment)
+    {
+        // Reuses the same status transition "Start" performs — opening the note is itself "starting"
+        // the consult if it hasn't been marked that way yet.
+        if (appointment.Status == AppointmentStatus.Arrived)
+        {
+            await AppointmentService.UpdateStatusAsync(appointment.Id, AppointmentStatus.InProgress);
+        }
+        Nav.NavigateTo($"/clients/{appointment.ClientId}/progress-notes/new?appointmentId={appointment.Id}");
+    }
+
     private static string WaitTime(AppointmentDto a)
     {
         if (!a.ArrivedAt.HasValue) return "-";
         var end = a.SeenAt ?? DateTime.UtcNow;
         var span = end - a.ArrivedAt.Value;
         return span.TotalHours >= 1 ? $"{(int)span.TotalHours}h {span.Minutes}m" : $"{span.Minutes}m";
+    }
+
+    private static string ClientFlagsSummary(AppointmentDto a)
+    {
+        var flags = new List<string>();
+        if (a.ClientDeceased) flags.Add("Recorded as deceased");
+        if (!string.IsNullOrWhiteSpace(a.ClientWarnings)) flags.Add(a.ClientWarnings);
+        if (a.ClientInterpreterRequired) flags.Add($"Interpreter required{(string.IsNullOrWhiteSpace(a.ClientInterpreterLanguage) ? "" : $" ({a.ClientInterpreterLanguage})")}");
+        if (a.ClientAge < 18) flags.Add($"Minor (age {a.ClientAge})");
+        return string.Join(" · ", flags);
     }
 
     private static string StatusBadgeClass(AppointmentStatus status) => status switch

@@ -35,12 +35,21 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<HealthFund> HealthFunds => Set<HealthFund>();
     public DbSet<ProviderGroup> ProviderGroups => Set<ProviderGroup>();
     public DbSet<ClinicSettings> ClinicSettings => Set<ClinicSettings>();
+    public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
     public DbSet<Clinic> Clinics => Set<Clinic>();
     public DbSet<UserClinic> UserClinics => Set<UserClinic>();
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
     public DbSet<Medicine> Medicines => Set<Medicine>();
     public DbSet<ActiveIngredient> ActiveIngredients => Set<ActiveIngredient>();
     public DbSet<MedicineIngredient> MedicineIngredients => Set<MedicineIngredient>();
+    public DbSet<ClientAllergy> ClientAllergies => Set<ClientAllergy>();
+    public DbSet<ClientHealthIssue> ClientHealthIssues => Set<ClientHealthIssue>();
+    public DbSet<DrugInteraction> DrugInteractions => Set<DrugInteraction>();
+    public DbSet<Prescription> Prescriptions => Set<Prescription>();
+    public DbSet<PrescriptionIssue> PrescriptionIssues => Set<PrescriptionIssue>();
+    public DbSet<Episode> Episodes => Set<Episode>();
+    public DbSet<ProgressNote> ProgressNotes => Set<ProgressNote>();
+    public DbSet<ProgressNoteAddendum> ProgressNoteAddenda => Set<ProgressNoteAddendum>();
     public DbSet<FeeSchedule> FeeSchedules => Set<FeeSchedule>();
     public DbSet<FeeScheduleItem> FeeScheduleItems => Set<FeeScheduleItem>();
     public DbSet<FeeScheduleItemPriceHistory> FeeScheduleItemPriceHistories => Set<FeeScheduleItemPriceHistory>();
@@ -52,7 +61,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<SearchAction> SearchActions => Set<SearchAction>();
     public DbSet<Notification> Notifications => Set<Notification>();
-    public DbSet<DatabaseBackup> DatabaseBackups => Set<DatabaseBackup>();
     public DbSet<DatabaseBackupSettings> DatabaseBackupSettings => Set<DatabaseBackupSettings>();
     public DbSet<DbAdminAuditLog> DbAdminAuditLogs => Set<DbAdminAuditLog>();
 
@@ -210,6 +218,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         });
 
         // ClinicSettings configuration (single-row settings table)
+        // SystemSettings — application-wide, single row. Seeded so the row always exists; every
+        // default matches the value that used to be hardcoded, so seeding is behaviour-neutral.
+        modelBuilder.Entity<SystemSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasData(new SystemSettings { Id = 1 });
+        });
+
         modelBuilder.Entity<ClinicSettings>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -554,6 +570,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.ArtgId).HasMaxLength(50);
             entity.Property(e => e.AmtConceptId).HasMaxLength(50);
             entity.Property(e => e.PbsItemCode).HasMaxLength(20);
+            entity.Property(e => e.Route).HasMaxLength(100);
+            entity.Property(e => e.TherapeuticGroupId).HasMaxLength(20);
+            entity.Property(e => e.TherapeuticGroupTitle).HasMaxLength(255);
+            // Duplicate-therapy checking looks medicines up by group, so this is a real query path.
+            entity.HasIndex(e => e.TherapeuticGroupId);
             entity.Property(e => e.AtcCode).HasMaxLength(20);
             entity.HasIndex(e => e.Name);
             entity.HasIndex(e => e.AmtConceptId).IsUnique();
@@ -584,6 +605,199 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(e => e.ActiveIngredientId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ClientHealthIssue configuration — Restrict on Client, matching every other clinical
+        // client-child record: an orphaned problem-list row is worse than a blocked delete.
+        modelBuilder.Entity<ClientHealthIssue>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Condition).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Code).HasMaxLength(50);
+            entity.Property(e => e.CodingSystem).HasMaxLength(50);
+            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.ClientId);
+        });
+
+        // ClientAllergy configuration
+        modelBuilder.Entity<ClientAllergy>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Substance).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Reaction).HasMaxLength(255);
+            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ActiveIngredient)
+                .WithMany()
+                .HasForeignKey(e => e.ActiveIngredientId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => e.ClientId);
+        });
+
+        // DrugInteraction configuration — ships empty, admin CSV import populates it (see
+        // DrugInteractionImportService). Canonical A<B ingredient ordering is enforced by whoever
+        // writes a row (DrugInteractionRepository/DrugInteractionImportService), not by the DB itself.
+        modelBuilder.Entity<DrugInteraction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.SourceDataset).HasMaxLength(100);
+            entity.HasIndex(e => new { e.IngredientAId, e.IngredientBId }).IsUnique();
+            entity.HasOne(e => e.IngredientA)
+                .WithMany()
+                .HasForeignKey(e => e.IngredientAId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.IngredientB)
+                .WithMany()
+                .HasForeignKey(e => e.IngredientBId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Prescription configuration — no client-scoped delete route exists (see
+        // PrescriptionRepository), only Cease/Cancel status transitions, so ClientId/MedicineId/
+        // PrescribedByPractitionerId are all Restrict rather than Cascade: a legal prescription record
+        // should never silently vanish because something it references was removed. AppointmentId is
+        // SetNull (matches Invoice.AppointmentId exactly) since losing the visit link is acceptable,
+        // losing the script itself is not.
+        modelBuilder.Entity<Prescription>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.MedicineName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.ScriptNumber).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Dose).HasMaxLength(100);
+            entity.Property(e => e.Frequency).HasMaxLength(100);
+            entity.Property(e => e.Instruction).HasMaxLength(255);
+            entity.Property(e => e.Route).HasMaxLength(50);
+            entity.Property(e => e.Quantity).HasMaxLength(100);
+            entity.Property(e => e.AuthorityApprovalNumber).HasMaxLength(50);
+            entity.Property(e => e.StateAuthorityCode).HasMaxLength(50);
+            entity.Property(e => e.PrescribingNotes).HasMaxLength(500);
+            entity.Property(e => e.NotesForPharmacy).HasMaxLength(500);
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.Property(e => e.SafetyOverrideNote).HasMaxLength(500);
+            entity.HasIndex(e => e.ClientId);
+            entity.HasIndex(e => e.ScriptNumber).IsUnique();
+
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Medicine)
+                .WithMany()
+                .HasForeignKey(e => e.MedicineId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Appointment)
+                .WithMany()
+                .HasForeignKey(e => e.AppointmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.PrescribedByPractitioner)
+                .WithMany()
+                .HasForeignKey(e => e.PrescribedByPractitionerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Episode)
+                .WithMany()
+                .HasForeignKey(e => e.EpisodeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PrescriptionIssue configuration — an immutable audit record (see PrescriptionIssue.cs), so
+        // its own FK back to Prescription is Restrict too, belt-and-suspenders alongside there being
+        // no delete route for either entity at all.
+        modelBuilder.Entity<PrescriptionIssue>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Dose).HasMaxLength(100);
+            entity.Property(e => e.Frequency).HasMaxLength(100);
+            entity.Property(e => e.Route).HasMaxLength(50);
+            entity.Property(e => e.Quantity).HasMaxLength(100);
+            entity.Property(e => e.PrescribingNotes).HasMaxLength(500);
+            entity.Property(e => e.NotesForPharmacy).HasMaxLength(500);
+            entity.Property(e => e.PrescriberName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.PrescriberProviderNumber).HasMaxLength(20);
+            entity.Property(e => e.PrescriberAhpraNumber).HasMaxLength(20);
+            entity.Property(e => e.PrescriberHpiiNumber).HasMaxLength(20);
+            entity.Property(e => e.PrescriberQualifications).HasMaxLength(255);
+            entity.HasIndex(e => e.PrescriptionId);
+
+            entity.HasOne(e => e.Prescription)
+                .WithMany(p => p.Issues)
+                .HasForeignKey(e => e.PrescriptionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.IssuedByPractitioner)
+                .WithMany()
+                .HasForeignKey(e => e.IssuedByPractitionerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Episode configuration — an organizational label grouping ProgressNotes, not itself a legal
+        // document (see Episode.cs), so Restrict here is just belt-and-suspenders: there's no delete
+        // route at all, only Archive.
+        modelBuilder.Entity<Episode>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(255);
+            entity.HasIndex(e => e.ClientId);
+
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ProgressNote configuration — Restrict on Client/Practitioner/Episode (an orphaned reference on
+        // a clinical record is worse than a SetNull would allow, same reasoning as Prescription's own
+        // Client/PrescribedByPractitioner FKs); SetNull on Appointment matches
+        // Invoice.AppointmentId/Prescription.AppointmentId exactly — this "encounter" link is optional.
+        modelBuilder.Entity<ProgressNote>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ReasonForVisit).HasMaxLength(255);
+            entity.HasIndex(e => e.ClientId);
+            entity.HasIndex(e => e.AppointmentId);
+
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Appointment)
+                .WithMany()
+                .HasForeignKey(e => e.AppointmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Practitioner)
+                .WithMany()
+                .HasForeignKey(e => e.PractitionerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Episode)
+                .WithMany(ep => ep.ProgressNotes)
+                .HasForeignKey(e => e.EpisodeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ProgressNoteAddendum configuration — an immutable audit record (see ProgressNoteAddendum.cs),
+        // so its own FK back to ProgressNote is Restrict too, belt-and-suspenders alongside there being
+        // no delete route for either entity once Finalized.
+        modelBuilder.Entity<ProgressNoteAddendum>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Content).IsRequired();
+            entity.Property(e => e.SourceReferenceType).HasMaxLength(50);
+            entity.HasIndex(e => e.ProgressNoteId);
+
+            entity.HasOne(e => e.ProgressNote)
+                .WithMany(n => n.Addenda)
+                .HasForeignKey(e => e.ProgressNoteId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedByPractitioner)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByPractitionerId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // FeeSchedule configuration
@@ -766,14 +980,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.RecipientUserId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => new { e.RecipientUserId, e.IsRead, e.CreatedAt });
-        });
-
-        // DatabaseBackup configuration
-        modelBuilder.Entity<DatabaseBackup>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.FileName).IsRequired().HasMaxLength(255);
-            entity.HasIndex(e => e.CreatedAt);
         });
 
         // DbAdminAuditLog configuration (the /dbadmin tool's only audit trail)

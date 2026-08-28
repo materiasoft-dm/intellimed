@@ -13,7 +13,7 @@ public class AppointmentTypeSettingRepository : Repository<AppointmentTypeSettin
     {
     }
 
-    public async Task<AppointmentTypeSettingDto?> GetByIdAsync(int id)
+    public new async Task<AppointmentTypeSettingDto?> GetByIdAsync(int id)
     {
         var setting = await _dbSet.FirstOrDefaultAsync(s => s.Id == id);
         return setting == null ? null : EntityMapper.ToDto(setting);

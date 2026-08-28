@@ -335,6 +335,9 @@
 
     private void OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<SchedulerAppointmentVm> args)
     {
+        // Radzen types Data as nullable on this event — ignore a select that carries no appointment
+        // rather than throwing out of an event handler, where the exception has nowhere useful to go.
+        if (args.Data?.Appointment is null) return;
         _selectedAppointmentId = args.Data.Appointment.Id;
     }
 
@@ -350,7 +353,7 @@
 
     private async Task OnAppointmentMoveAsync(SchedulerAppointmentMoveEventArgs args)
     {
-        if (args.Appointment.Data is not SchedulerAppointmentVm vm) return;
+        if (args.Appointment?.Data is not SchedulerAppointmentVm vm) return;
 
         // Snap to the dropped slot and preserve the original duration, rather than trying to
         // interpret AppointmentMove's sub-slot TimeSpan offset (undocumented sign/direction).
@@ -379,6 +382,8 @@
 
     private void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<SchedulerAppointmentVm> args)
     {
+        if (args.Data?.Appointment is null) return;
+
         // (background, text) pairs chosen for contrast — status color-coding doubles as an at-a-glance legend.
         var (bg, text) = args.Data.Appointment.Status switch
         {

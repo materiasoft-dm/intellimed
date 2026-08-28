@@ -78,6 +78,16 @@ public class MedicineImportService : IMedicineImportService
             if (!string.IsNullOrWhiteSpace(row.PbsItemCode)) medicine.PbsItemCode = row.PbsItemCode;
             if (!string.IsNullOrWhiteSpace(row.AmtConceptId)) medicine.AmtConceptId = row.AmtConceptId;
             if (!string.IsNullOrWhiteSpace(row.AtcCode)) medicine.AtcCode = row.AtcCode;
+
+            // Prescribing limits and classification — same "only overwrite when supplied" rule as
+            // the provenance IDs above, so a CSV import without these columns can't wipe values a
+            // PBS sync established.
+            if (row.MaxRepeats.HasValue) medicine.MaxRepeats = row.MaxRepeats;
+            if (row.MaxQuantity.HasValue) medicine.MaxQuantity = row.MaxQuantity;
+            if (!string.IsNullOrWhiteSpace(row.Route)) medicine.Route = row.Route;
+            if (row.IsSection100) medicine.IsSection100 = true;
+            if (!string.IsNullOrWhiteSpace(row.TherapeuticGroupId)) medicine.TherapeuticGroupId = row.TherapeuticGroupId;
+            if (!string.IsNullOrWhiteSpace(row.TherapeuticGroupTitle)) medicine.TherapeuticGroupTitle = row.TherapeuticGroupTitle;
             medicine.IsActive = true;
             medicine.LastSyncedAt = now;
 

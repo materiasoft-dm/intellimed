@@ -8,6 +8,11 @@
 @inject IClientService ClientService
 @inject IClientAddressService AddressService
 @inject IClientReferralService ReferralService
+@inject IClientAllergyService AllergyService
+@inject IClientHealthIssueService HealthIssueService
+@inject IPrescriptionService PrescriptionService
+@inject IEpisodeService EpisodeService
+@inject IProgressNoteService ProgressNoteService
 @inject IClientCompensationClaimService CompensationClaimService
 @inject IClientOccupationService OccupationService
 @inject IClientFamilyService FamilyService
@@ -15,6 +20,7 @@
 @inject IUdfDefinitionService UdfDefinitionService
 @inject IHealthFundService HealthFundService
 @inject IPractitionerService PractitionerService
+@inject IAppointmentService AppointmentService
 @inject NavigationManager NavManager
 
 <PageTitle>@(Id.HasValue ? "Edit Client" : "Add Client") - IntelliMed</PageTitle>
@@ -39,7 +45,30 @@ else
         }
     </div>
 
-    <EditForm Model="_model" OnValidSubmit="HandleSaveAsync">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="flex-grow-1 me-2">
+            <ClientSafetyBanner Deceased="_model.Deceased" Warnings="@_model.Warnings"
+                InterpreterRequired="_model.InterpreterRequired" InterpreterLanguage="@_model.InterpreterLanguage"
+                Age="CalculateAge(_model.DateOfBirth)" NextOfKinName="@_model.NextOfKinName" NextOfKinPhone="@_model.NextOfKinPhone" />
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0" @onclick="GoToList">Close</button>
+    </div>
+
+    <div class="card mb-1">
+        <div class="card-header py-1" style="overflow-x: auto;">
+            <ul class="nav nav-tabs card-header-tabs flex-nowrap">
+                @foreach (var tab in _topTabs)
+                {
+                    <li class="nav-item">
+                        <a class="nav-link text-nowrap @(_activeTab == tab ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _activeTab = tab)">@tab</a>
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="card-body py-2">
+        @if (_activeTab == "Details")
+        {
+        <EditForm Model="_model" OnValidSubmit="HandleSaveAsync">
         <DataAnnotationsValidator />
 
         <div class="row g-1 mb-1">
@@ -559,67 +588,72 @@ else
             </div>
         </div>
 
-        @* ===================== BOTTOM TAB STRIP ===================== *@
-        <div class="card mb-1">
-            <div class="card-header py-1">
-                <ul class="nav nav-tabs card-header-tabs">
-                    @foreach (var tab in _bottomTabs)
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(_activeBottomTab == tab ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _activeBottomTab = tab)">@tab</a>
-                        </li>
-                    }
-                </ul>
-            </div>
-            <div class="card-body py-1" style="min-height: 150px;">
-                @if (!Id.HasValue)
-                {
-                    <div class="text-muted small">Save the client first to manage @_activeBottomTab.</div>
-                }
-                else if (_activeBottomTab == "Referrals")
-                {
-                    @RenderReferralsTab()
-                }
-                else if (_activeBottomTab == "WC/TAC")
-                {
-                    @RenderCompensationClaimsTab()
-                }
-                else if (_activeBottomTab == "Family")
-                {
-                    @RenderFamilyTab()
-                }
-                else if (_activeBottomTab == "Occupations")
-                {
-                    @RenderOccupationsTab()
-                }
-                else if (_activeBottomTab == "eHealth")
-                {
-                    @RenderEHealthTab()
-                }
-                else if (_activeBottomTab == "Lifecard")
-                {
-                    @RenderLifecardTab()
-                }
-                else if (_activeBottomTab == "UDF")
-                {
-                    @RenderUdfTab()
-                }
-            </div>
-        </div>
-
-        @* ===================== BOTTOM ACTION BAR ===================== *@
+        @* ===================== ACTION BAR (Details tab only) ===================== *@
         <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex gap-1">
                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ShowPatientVerification">Patient Verification</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ShowPrintLabel">Print Label</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="StartNewFamily" disabled="@(!Id.HasValue)">New Family</button>
             </div>
             <div class="d-flex gap-1">
                 <button type="submit" class="btn btn-sm btn-primary" disabled="@_isSaving">💾 Save</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="GoToList">Close</button>
             </div>
         </div>
-    </EditForm>
+        </EditForm>
+        }
+        else if (!Id.HasValue)
+        {
+            <div class="text-muted small">Save the client first to manage @_activeTab.</div>
+        }
+        else if (_activeTab == "Referrals")
+        {
+            @RenderReferralsTab()
+        }
+        else if (_activeTab == "Health Issues")
+        {
+            @RenderHealthIssuesTab()
+        }
+        else if (_activeTab == "Allergies")
+        {
+            @RenderAllergiesTab()
+        }
+        else if (_activeTab == "Prescriptions")
+        {
+            @RenderPrescriptionsTab()
+        }
+        else if (_activeTab == "Progress Notes")
+        {
+            @RenderProgressNotesTab()
+        }
+        else if (_activeTab == "WC/TAC")
+        {
+            @RenderCompensationClaimsTab()
+        }
+        else if (_activeTab == "Family")
+        {
+            @RenderFamilyTab()
+        }
+        else if (_activeTab == "Occupations")
+        {
+            @RenderOccupationsTab()
+        }
+        else if (_activeTab == "eHealth")
+        {
+            @RenderEHealthTab()
+        }
+        else if (_activeTab == "Lifecard")
+        {
+            @RenderLifecardTab()
+        }
+        else if (_activeTab == "UDF")
+        {
+            @RenderUdfTab()
+        }
+        else if (_activeTab == "Patient History")
+        {
+            @RenderPatientHistoryTab()
+        }
+        </div>
+    </div>
 
     @if (_underConstructionMessage != null)
     {
@@ -811,8 +845,8 @@ else
     private string _addressTab = "Residential";
     private Dictionary<ClientAddressType, ClientAddressDto> _addressCache = new();
 
-    private static readonly string[] _bottomTabs = { "Referrals", "WC/TAC", "Family", "Occupations", "eHealth", "Lifecard", "UDF" };
-    private string _activeBottomTab = "Referrals";
+    private static readonly string[] _topTabs = { "Details", "Referrals", "Allergies", "Health Issues", "Prescriptions", "Progress Notes", "WC/TAC", "Family", "Occupations", "eHealth", "Lifecard", "UDF", "Patient History" };
+    private string _activeTab = "Details";
 
     // Referrals
     private List<ClientReferralDto> _referrals = new();
@@ -820,6 +854,33 @@ else
     private bool _showReferralModal;
     private CreateClientReferralDto _referralForm = new();
     private int? _editingReferralId;
+
+    private List<ClientAllergyDto> _allergies = new();
+    private bool _includeArchivedAllergies;
+    private List<ClientHealthIssueDto> _healthIssues = new();
+    // Medinet's four-way filter, reproduced as-is: All / Active / Inactive / Summary.
+    private string _healthIssueFilter = "Active";
+    private bool _showHealthIssueModal;
+    private int? _editingHealthIssueId;
+    private CreateClientHealthIssueDto _healthIssueForm = new();
+    private string? _healthIssueError;
+
+    private bool _showAllergyModal;
+    private CreateClientAllergyDto _allergyForm = new();
+    private int? _editingAllergyId;
+
+    private List<PrescriptionDto> _prescriptions = new();
+    private bool _includeInactivePrescriptions;
+    private string? _prescriptionActionError;
+
+    private List<ProgressNoteDto> _progressNotes = new();
+    private List<EpisodeDto> _episodes = new();
+    private bool _showEpisodeManager;
+    private bool _showNewEpisodeInTab;
+    private string _newEpisodeTitleInTab = string.Empty;
+
+    // Patient History (unified timeline — no own storage, just Progress Notes + Episodes above plus this)
+    private List<AppointmentDto> _appointments = new();
 
     // Compensation claims (WC/TAC)
     private List<ClientCompensationClaimDto> _claims = new();
@@ -914,6 +975,19 @@ else
     {
         if (!Id.HasValue) return;
         _referrals = (await ReferralService.GetByClientIdAsync(Id.Value)).ToList();
+        _allergies = (await AllergyService.GetByClientIdAsync(Id.Value)).ToList();
+        // Archived pulled too — the tab filters client-side, same as allergies.
+        _healthIssues = await HealthIssueService.GetByClientIdAsync(Id.Value, includeArchived: true);
+        _prescriptions = await PrescriptionService.GetByClientIdAsync(Id.Value, _includeInactivePrescriptions);
+        _progressNotes = (await ProgressNoteService.GetByClientIdAsync(Id.Value)).ToList();
+        _episodes = (await EpisodeService.GetByClientIdAsync(Id.Value, includeArchived: true)).ToList();
+        var completedAppointments = await AppointmentService.SearchAppointmentsAsync(new AppointmentSearchDto
+        {
+            ClientId = Id.Value,
+            Status = AppointmentStatus.Completed,
+            PageSize = 100
+        });
+        _appointments = completedAppointments.Items.ToList();
         _claims = (await CompensationClaimService.GetByClientIdAsync(Id.Value)).ToList();
         _occupations = (await OccupationService.GetByClientIdAsync(Id.Value)).ToList();
         _familyRelationships = (await FamilyService.GetByClientIdAsync(Id.Value)).ToList();
@@ -1371,6 +1445,127 @@ else
         _referrals = (await ReferralService.GetByClientIdAsync(Id.Value)).ToList();
     }
 
+    private void OpenNewAllergyModal()
+    {
+        _allergyForm = new CreateClientAllergyDto { ClientId = Id ?? 0, Type = AllergyType.Medication };
+        _editingAllergyId = null;
+        _showAllergyModal = true;
+    }
+
+    private void OpenEditAllergyModal(ClientAllergyDto a)
+    {
+        _allergyForm = new CreateClientAllergyDto
+        {
+            ClientId = a.ClientId,
+            ActiveIngredientId = a.ActiveIngredientId,
+            Substance = a.Substance,
+            Type = a.Type,
+            Reaction = a.Reaction,
+            Severity = a.Severity,
+            OnsetDate = a.OnsetDate,
+            Note = a.Note
+        };
+        _editingAllergyId = a.Id;
+        _showAllergyModal = true;
+    }
+
+    private async Task SaveAllergyAsync()
+    {
+        if (!Id.HasValue) return;
+        bool ok;
+        if (_editingAllergyId.HasValue)
+        {
+            var update = new UpdateClientAllergyDto
+            {
+                ActiveIngredientId = _allergyForm.ActiveIngredientId,
+                Substance = _allergyForm.Substance,
+                Type = _allergyForm.Type,
+                Reaction = _allergyForm.Reaction,
+                Severity = _allergyForm.Severity,
+                OnsetDate = _allergyForm.OnsetDate,
+                Note = _allergyForm.Note,
+                IsArchived = false
+            };
+            ok = await AllergyService.UpdateAsync(Id.Value, _editingAllergyId.Value, update);
+        }
+        else
+        {
+            ok = await AllergyService.CreateAsync(_allergyForm);
+        }
+        if (ok)
+        {
+            _showAllergyModal = false;
+            _allergies = (await AllergyService.GetByClientIdAsync(Id.Value)).ToList();
+        }
+    }
+
+    private async Task ArchiveAllergyAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        await AllergyService.ArchiveAsync(Id.Value, id);
+        _allergies = (await AllergyService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    private async Task DeleteAllergyAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        await AllergyService.DeleteAsync(Id.Value, id);
+        _allergies = (await AllergyService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    private async Task ToggleIncludeInactivePrescriptionsAsync()
+    {
+        if (!Id.HasValue) return;
+        _includeInactivePrescriptions = !_includeInactivePrescriptions;
+        _prescriptions = await PrescriptionService.GetByClientIdAsync(Id.Value, _includeInactivePrescriptions);
+    }
+
+    private async Task CeasePrescriptionAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        _prescriptionActionError = null;
+        var ok = await PrescriptionService.CeaseAsync(Id.Value, id);
+        if (!ok)
+        {
+            _prescriptionActionError = "Cease failed — check your permissions.";
+            return;
+        }
+        _prescriptions = await PrescriptionService.GetByClientIdAsync(Id.Value, _includeInactivePrescriptions);
+    }
+
+    /// <summary>Issues a not-yet-issued Prescription for the first time — uses the same practitioner
+    /// it was written under, matching PrescribeNew.razor's own "don't re-ask for the same info twice
+    /// in one flow" simplification.</summary>
+    private async Task IssueAndPrintPrescriptionAsync(PrescriptionDto prescription)
+    {
+        if (!Id.HasValue) return;
+        _prescriptionActionError = null;
+        var issueId = await PrescriptionService.IssueAsync(Id.Value, prescription.Id, new IssuePrescriptionDto
+        {
+            IssuedByPractitionerId = prescription.PrescribedByPractitionerId
+        });
+        if (issueId == null)
+        {
+            _prescriptionActionError = "Issue failed — check your permissions.";
+            return;
+        }
+        NavManager.NavigateTo($"/prescriptions/print/{issueId}");
+    }
+
+    private async Task ReprintPrescriptionAsync(int prescriptionId)
+    {
+        if (!Id.HasValue) return;
+        _prescriptionActionError = null;
+        var issues = await PrescriptionService.GetIssuesAsync(Id.Value, prescriptionId);
+        var latest = issues.OrderByDescending(i => i.IssuedAt).FirstOrDefault();
+        if (latest == null)
+        {
+            _prescriptionActionError = "No issue history found for this prescription.";
+            return;
+        }
+        NavManager.NavigateTo($"/prescriptions/print/{latest.Id}");
+    }
+
     private async Task DeleteReferralAsync(int id)
     {
         if (!Id.HasValue) return;
@@ -1469,6 +1664,527 @@ else
                     </div>
                 </div>
             </div>
+        }
+    </div>;
+
+    private IEnumerable<ClientHealthIssueDto> FilteredHealthIssues => _healthIssueFilter switch
+    {
+        "Active" => _healthIssues.Where(h => h.IsActive && !h.IsArchived),
+        "Inactive" => _healthIssues.Where(h => !h.IsActive && !h.IsArchived),
+        "Summary" => _healthIssues.Where(h => h.IsSummary && !h.IsArchived),
+        _ => _healthIssues
+    };
+
+    private RenderFragment RenderHealthIssuesTab() => @<div>
+        <div class="d-flex justify-content-between mb-2">
+            <div class="btn-group btn-group-sm" role="group">
+                @foreach (var f in new[] { "All", "Active", "Inactive", "Summary" })
+                {
+                    <button type="button"
+                            class="btn @(_healthIssueFilter == f ? "btn-primary" : "btn-outline-secondary")"
+                            @onclick="@(() => _healthIssueFilter = f)">@f</button>
+                }
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewHealthIssueModal">+ New</button>
+        </div>
+        @if (!FilteredHealthIssues.Any())
+        {
+            <p class="text-muted small mb-0">No health issues recorded.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-hover">
+                <thead><tr><th>Condition</th><th>Onset</th><th>Side</th><th>Status</th><th>Note</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var h in FilteredHealthIssues)
+                    {
+                        <tr class="@(h.IsArchived ? "text-muted" : "")">
+                            <td>
+                                <a href="javascript:void(0)" class="link-primary" @onclick="@(() => OpenEditHealthIssueModal(h))">@h.Condition</a>
+                                @if (h.IsSummary)
+                                {
+                                    <span class="badge bg-info text-dark ms-1" title="Shown on the patient summary">summary</span>
+                                }
+                                @if (h.IsConfidential)
+                                {
+                                    <span class="badge bg-secondary ms-1">confidential</span>
+                                }
+                            </td>
+                            <td>@h.OnsetDisplay</td>
+                            <td>@(h.Side?.ToString())</td>
+                            <td>
+                                <span class="badge @(h.IsActive ? "bg-success" : "bg-secondary")">@(h.IsActive ? "Active" : "Inactive")</span>
+                            </td>
+                            <td>@h.Note</td>
+                            <td class="text-end text-nowrap">
+                                @if (!h.IsArchived)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-warning" @onclick="@(() => ArchiveHealthIssueAsync(h.Id))">Archive</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        @if (_showHealthIssueModal)
+        {
+            <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header py-2">
+                            <h6 class="modal-title">@(_editingHealthIssueId.HasValue ? "Edit Health Issue" : "New Health Issue")</h6>
+                            <button type="button" class="btn-close" @onclick="@(() => _showHealthIssueModal = false)"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Condition</label>
+                                    <input class="form-control form-control-sm" @bind="_healthIssueForm.Condition" placeholder="e.g. Type 2 diabetes" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-0">Onset year</label>
+                                    <input type="number" class="form-control form-control-sm" @bind="_healthIssueForm.OnsetYear" placeholder="e.g. 2015" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-0">Onset month</label>
+                                    <select class="form-select form-select-sm" @bind="_healthIssueForm.OnsetMonth">
+                                        <option value="">—</option>
+                                        @for (var m = 1; m <= 12; m++)
+                                        {
+                                            var month = m;
+                                            <option value="@month">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(month)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-0">Side</label>
+                                    <select class="form-select form-select-sm" @bind="_healthIssueForm.Side">
+                                        <option value="">N/A</option>
+                                        @foreach (var s in Enum.GetValues<BodySide>())
+                                        {
+                                            <option value="@s">@s</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Note</label>
+                                    <textarea class="form-control form-control-sm" rows="2" @bind="_healthIssueForm.Note"></textarea>
+                                </div>
+                                <div class="col-12 d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="chkHiActive" @bind="_healthIssueForm.IsActive" />
+                                        <label class="form-check-label small" for="chkHiActive">Active</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="chkHiSummary" @bind="_healthIssueForm.IsSummary" />
+                                        <label class="form-check-label small" for="chkHiSummary">Show on summary</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="chkHiConfidential" @bind="_healthIssueForm.IsConfidential" />
+                                        <label class="form-check-label small" for="chkHiConfidential">Confidential</label>
+                                    </div>
+                                </div>
+                            </div>
+                            @if (_healthIssueError != null)
+                            {
+                                <div class="small text-danger mt-2">@_healthIssueError</div>
+                            }
+                        </div>
+                        <div class="modal-footer py-2">
+                            <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showHealthIssueModal = false)">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="SaveHealthIssueAsync">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>;
+
+    private void OpenNewHealthIssueModal()
+    {
+        _healthIssueForm = new CreateClientHealthIssueDto { ClientId = Id ?? 0, IsActive = true };
+        _editingHealthIssueId = null;
+        _healthIssueError = null;
+        _showHealthIssueModal = true;
+    }
+
+    private void OpenEditHealthIssueModal(ClientHealthIssueDto h)
+    {
+        _healthIssueForm = new CreateClientHealthIssueDto
+        {
+            ClientId = h.ClientId,
+            Condition = h.Condition,
+            Code = h.Code,
+            CodingSystem = h.CodingSystem,
+            Side = h.Side,
+            OnsetYear = h.OnsetYear,
+            OnsetMonth = h.OnsetMonth,
+            IsActive = h.IsActive,
+            IsSummary = h.IsSummary,
+            IsConfidential = h.IsConfidential,
+            Note = h.Note
+        };
+        _editingHealthIssueId = h.Id;
+        _healthIssueError = null;
+        _showHealthIssueModal = true;
+    }
+
+    private async Task SaveHealthIssueAsync()
+    {
+        if (!Id.HasValue) return;
+        if (string.IsNullOrWhiteSpace(_healthIssueForm.Condition))
+        {
+            _healthIssueError = "Condition is required.";
+            return;
+        }
+
+        bool ok;
+        if (_editingHealthIssueId.HasValue)
+        {
+            ok = await HealthIssueService.UpdateAsync(Id.Value, _editingHealthIssueId.Value, new UpdateClientHealthIssueDto
+            {
+                Condition = _healthIssueForm.Condition,
+                Code = _healthIssueForm.Code,
+                CodingSystem = _healthIssueForm.CodingSystem,
+                Side = _healthIssueForm.Side,
+                OnsetYear = _healthIssueForm.OnsetYear,
+                OnsetMonth = _healthIssueForm.OnsetMonth,
+                IsActive = _healthIssueForm.IsActive,
+                IsSummary = _healthIssueForm.IsSummary,
+                IsConfidential = _healthIssueForm.IsConfidential,
+                Note = _healthIssueForm.Note,
+                IsArchived = false
+            });
+        }
+        else
+        {
+            _healthIssueForm.ClientId = Id.Value;
+            ok = await HealthIssueService.CreateAsync(_healthIssueForm);
+        }
+
+        if (ok)
+        {
+            _showHealthIssueModal = false;
+            _healthIssues = await HealthIssueService.GetByClientIdAsync(Id.Value, includeArchived: true);
+        }
+        else
+        {
+            _healthIssueError = "Save failed — check your permissions.";
+        }
+    }
+
+    private async Task ArchiveHealthIssueAsync(int id)
+    {
+        if (!Id.HasValue) return;
+        await HealthIssueService.ArchiveAsync(Id.Value, id);
+        _healthIssues = await HealthIssueService.GetByClientIdAsync(Id.Value, includeArchived: true);
+    }
+
+    private RenderFragment RenderAllergiesTab() => @<div>
+        <div class="d-flex justify-content-between mb-1">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="chkInclArchivedAllergy" @bind="_includeArchivedAllergies" />
+                <label class="form-check-label small" for="chkInclArchivedAllergy">Include archived</label>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewAllergyModal">+ New</button>
+        </div>
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Substance</th><th>Type</th><th>Reaction</th><th>Severity</th><th>Onset</th><th>Note</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var a in _allergies.Where(x => _includeArchivedAllergies || !x.IsArchived))
+                {
+                    <tr class="@(a.IsArchived ? "text-muted" : "")">
+                        <td>
+                            <a href="javascript:void(0)" class="link-primary" @onclick="@(() => OpenEditAllergyModal(a))">@a.Substance</a>
+                            @if (a.ActiveIngredientId.HasValue)
+                            {
+                                <span class="badge bg-light text-dark border ms-1" title="Matched to catalog ingredient">confirmed</span>
+                            }
+                        </td>
+                        <td>@a.Type</td>
+                        <td>@a.Reaction</td>
+                        <td>
+                            @if (a.Severity.HasValue)
+                            {
+                                <span class="badge @(a.Severity == AllergySeverity.Severe ? "bg-danger" : a.Severity == AllergySeverity.Moderate ? "bg-warning text-dark" : "bg-secondary")">@a.Severity</span>
+                            }
+                        </td>
+                        <td>@(a.OnsetDate?.ToString("d/M/yy"))</td>
+                        <td>@a.Note</td>
+                        <td class="text-end text-nowrap">
+                            @if (!a.IsArchived)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-warning" @onclick="@(() => ArchiveAllergyAsync(a.Id))">Archive</button>
+                            }
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => DeleteAllergyAsync(a.Id))">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (_showAllergyModal)
+        {
+            <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header py-2">
+                            <h6 class="modal-title">@(_editingAllergyId.HasValue ? "Edit Allergy" : "New Allergy")</h6>
+                            <button type="button" class="btn-close" @onclick="@(() => _showAllergyModal = false)"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Substance</label>
+                                    <input class="form-control form-control-sm" @bind="_allergyForm.Substance" placeholder="e.g. Penicillin" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Type</label>
+                                    <select class="form-select form-select-sm" @bind="_allergyForm.Type">
+                                        @foreach (var t in Enum.GetValues<AllergyType>())
+                                        {
+                                            <option value="@t">@t</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Reaction</label>
+                                    <input class="form-control form-control-sm" @bind="_allergyForm.Reaction" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Severity</label>
+                                    <select class="form-select form-select-sm" @bind="_allergyForm.Severity">
+                                        <option value="">Unknown</option>
+                                        @foreach (var s in Enum.GetValues<AllergySeverity>())
+                                        {
+                                            <option value="@s">@s</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Onset Date</label>
+                                    <input type="date" class="form-control form-control-sm" @bind="_allergyForm.OnsetDate" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-0">Note</label>
+                                    <textarea class="form-control form-control-sm" rows="2" @bind="_allergyForm.Note"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-2">
+                            <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showAllergyModal = false)">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="SaveAllergyAsync">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>;
+
+    private RenderFragment RenderPrescriptionsTab() => @<div>
+        <div class="d-flex justify-content-between mb-1">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="chkInclInactiveRx" checked="@_includeInactivePrescriptions" @onchange="ToggleIncludeInactivePrescriptionsAsync" />
+                <label class="form-check-label small" for="chkInclInactiveRx">Include ceased/cancelled</label>
+            </div>
+            <a href="@($"/clients/{Id}/prescriptions/new")" class="btn btn-sm btn-outline-primary">+ New</a>
+        </div>
+        @if (_prescriptionActionError != null)
+        {
+            <div class="small text-danger mb-1">@_prescriptionActionError</div>
+        }
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Medicine</th><th>Dose</th><th>Repeats</th><th>Script No</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var p in _prescriptions)
+                {
+                    <tr class="@(p.Status != PrescriptionStatus.Active ? "text-muted" : "")">
+                        <td>@p.MedicineName</td>
+                        <td>@p.Dose @p.Frequency</td>
+                        <td>@p.Repeats</td>
+                        <td>@p.ScriptNumber</td>
+                        <td>@p.Status</td>
+                        <td class="text-end text-nowrap">
+                            @if (p.IsIssued)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => ReprintPrescriptionAsync(p.Id))">Reprint</button>
+                            }
+                            else if (p.Status == PrescriptionStatus.Active)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="@(() => IssueAndPrintPrescriptionAsync(p))">Issue &amp; Print</button>
+                            }
+                            @if (p.Status == PrescriptionStatus.Active)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-warning" @onclick="@(() => CeasePrescriptionAsync(p.Id))">Cease</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>;
+
+    // ===================== Progress Notes =====================
+    private RenderFragment RenderProgressNotesTab() => @<div>
+        <div class="d-flex justify-content-between mb-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => _showEpisodeManager = !_showEpisodeManager)">
+                @(_showEpisodeManager ? "Hide" : "Manage") Episodes
+            </button>
+            <a href="@($"/clients/{Id}/progress-notes/new")" class="btn btn-sm btn-outline-primary">+ New</a>
+        </div>
+        @if (_showEpisodeManager)
+        {
+            <div class="border rounded p-2 mb-2 bg-light">
+                @if (_episodes.Count == 0)
+                {
+                    <p class="text-muted small mb-0">No episodes yet.</p>
+                }
+                else
+                {
+                    @foreach (var ep in _episodes)
+                    {
+                        <div class="d-flex justify-content-between align-items-center small mb-1">
+                            <span>@ep.Title <span class="badge @(ep.Status == EpisodeStatus.Active ? "bg-success" : "bg-secondary") ms-1">@ep.Status</span></span>
+                            @if (ep.Status == EpisodeStatus.Active)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-warning" @onclick="@(() => ResolveEpisodeAsync(ep.Id))">Resolve</button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => ReopenEpisodeAsync(ep.Id))">Reopen</button>
+                            }
+                        </div>
+                    }
+                }
+                @if (_showNewEpisodeInTab)
+                {
+                    <div class="input-group input-group-sm mt-2">
+                        <input class="form-control" placeholder="New episode title" @bind="_newEpisodeTitleInTab" />
+                        <button type="button" class="btn btn-outline-primary" @onclick="CreateEpisodeInTabAsync">Add</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => _showNewEpisodeInTab = false)">Cancel</button>
+                    </div>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-sm btn-link px-0 mt-1" @onclick="@(() => _showNewEpisodeInTab = true)">+ New Episode</button>
+                }
+            </div>
+        }
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Date</th><th>Reason</th><th>Practitioner</th><th>Episode</th><th>Status</th></tr></thead>
+            <tbody>
+                @foreach (var n in _progressNotes)
+                {
+                    <tr style="cursor:pointer" @onclick="@(() => NavManager.NavigateTo($"/clients/{Id}/progress-notes/{n.Id}"))">
+                        <td>@n.EncounterDate.ToString("d MMM yyyy")</td>
+                        <td>@n.ReasonForVisit</td>
+                        <td>@n.PractitionerName</td>
+                        <td>@n.EpisodeTitle</td>
+                        <td><span class="badge @(n.Status == ProgressNoteStatus.Finalized ? "bg-success" : "bg-secondary")">@n.Status</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>;
+
+    private async Task CreateEpisodeInTabAsync()
+    {
+        if (!Id.HasValue || string.IsNullOrWhiteSpace(_newEpisodeTitleInTab)) return;
+        await EpisodeService.CreateAsync(new CreateEpisodeDto { ClientId = Id.Value, Title = _newEpisodeTitleInTab });
+        _episodes = (await EpisodeService.GetByClientIdAsync(Id.Value)).ToList();
+        _newEpisodeTitleInTab = string.Empty;
+        _showNewEpisodeInTab = false;
+    }
+
+    private async Task ResolveEpisodeAsync(int episodeId)
+    {
+        if (!Id.HasValue) return;
+        await EpisodeService.ResolveAsync(Id.Value, episodeId);
+        _episodes = (await EpisodeService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    private async Task ReopenEpisodeAsync(int episodeId)
+    {
+        if (!Id.HasValue) return;
+        await EpisodeService.ReopenAsync(Id.Value, episodeId);
+        _episodes = (await EpisodeService.GetByClientIdAsync(Id.Value)).ToList();
+    }
+
+    // ===================== Patient History (unified timeline) =====================
+    // No own storage — merges the already-loaded _progressNotes (+ their Addenda), _episodes, and
+    // _appointments client-side. All three are already fetched by LoadTabDataAsync() for their own
+    // tabs, so this needs no new API endpoint.
+    private record HistoryEntry(DateTime Date, string Kind, string Title, string? Detail, string BorderClass, string? LinkUrl);
+
+    private List<HistoryEntry> BuildHistoryEntries()
+    {
+        var entries = new List<HistoryEntry>();
+
+        foreach (var note in _progressNotes)
+        {
+            var noteUrl = $"/clients/{Id}/progress-notes/{note.Id}";
+            entries.Add(new HistoryEntry(
+                note.EncounterDate,
+                "Progress Note",
+                note.ReasonForVisit ?? "(no reason recorded)",
+                note.EpisodeTitle != null ? $"{note.PractitionerName} — {note.EpisodeTitle}" : note.PractitionerName,
+                note.Status == ProgressNoteStatus.Finalized ? "border-success" : "border-secondary",
+                noteUrl));
+
+            foreach (var addendum in note.Addenda)
+            {
+                entries.Add(new HistoryEntry(
+                    addendum.CreatedAt,
+                    addendum.Source == ProgressNoteAddendumSource.System ? "Auto-logged" : "Addendum",
+                    addendum.Content,
+                    addendum.CreatedByPractitionerName,
+                    addendum.Source == ProgressNoteAddendumSource.System ? "border-secondary" : "border-primary",
+                    noteUrl));
+            }
+        }
+
+        foreach (var episode in _episodes)
+        {
+            entries.Add(new HistoryEntry(episode.OpenedDate, "Episode Opened", episode.Title, episode.Description, "border-info", null));
+            if (episode.ClosedDate.HasValue)
+            {
+                entries.Add(new HistoryEntry(episode.ClosedDate.Value, "Episode Resolved", episode.Title, null, "border-success", null));
+            }
+        }
+
+        foreach (var appt in _appointments)
+        {
+            entries.Add(new HistoryEntry(appt.AppointmentDate, "Appointment Completed", appt.TypeName, appt.PractitionerName, "border-success", null));
+        }
+
+        return entries.OrderByDescending(e => e.Date).ToList();
+    }
+
+    private RenderFragment RenderPatientHistoryTab() => @<div>
+        @if (BuildHistoryEntries().Count == 0)
+        {
+            <p class="text-muted small mb-0">No recorded history yet.</p>
+        }
+        else
+        {
+            @foreach (var entry in BuildHistoryEntries())
+            {
+                <div class="border-start border-3 @entry.BorderClass ps-2 mb-2">
+                    <div class="small text-muted">
+                        @entry.Date.ToString("d MMM yyyy") — <strong>@entry.Kind</strong>@(entry.Detail != null ? $" · {entry.Detail}" : "")
+                    </div>
+                    <div>
+                        @if (entry.LinkUrl != null)
+                        {
+                            <a href="@entry.LinkUrl">@entry.Title</a>
+                        }
+                        else
+                        {
+                            @entry.Title
+                        }
+                    </div>
+                </div>
+            }
         }
     </div>;
 
@@ -1632,6 +2348,9 @@ else
     }
 
     private RenderFragment RenderFamilyTab() => @<div>
+        <div class="d-flex justify-content-end mb-1">
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="StartNewFamily">+ New</button>
+        </div>
         <table class="table table-sm table-hover">
             <thead><tr><th>Name</th><th>Address</th><th>Relationship</th><th></th></tr></thead>
             <tbody>
@@ -1651,7 +2370,7 @@ else
         </table>
         @if (!_familyRelationships.Any())
         {
-            <div class="text-muted small">No family members linked. Use "New Family" below to add one.</div>
+            <div class="text-muted small">No family members linked. Use "+ New" above to add one.</div>
         }
     </div>;
 

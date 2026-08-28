@@ -13,7 +13,7 @@ public class ClientOccupationRepository : Repository<ClientOccupation>, IClientO
     {
     }
 
-    public async Task<ClientOccupationDto?> GetByIdAsync(int id)
+    public new async Task<ClientOccupationDto?> GetByIdAsync(int id)
     {
         var occupation = await _dbSet.FindAsync(id);
         return occupation == null ? null : EntityMapper.ToDto(occupation);

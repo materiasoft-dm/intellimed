@@ -6,7 +6,7 @@ namespace IntelliMed.Core.Interfaces;
 public interface IEmailTemplateRepository : IRepository<EmailTemplate>
 {
     Task<List<EmailTemplateDto>> GetAllAsync(int clinicId);
-    Task<EmailTemplateDto?> GetByIdAsync(int id);
+    new Task<EmailTemplateDto?> GetByIdAsync(int id);
 
     /// <summary>The single non-archived template currently assigned to the given event, if any — used by the invite/forgot-password senders.</summary>
     Task<EmailTemplate?> GetActiveByEventKeyAsync(int clinicId, string eventKey);

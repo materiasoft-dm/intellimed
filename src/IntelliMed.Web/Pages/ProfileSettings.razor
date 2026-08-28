@@ -159,6 +159,18 @@ else
                         </div>
 
                         <hr class="my-4" />
+                        <h6 class="mb-3">Preferences</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="_model.ShowCommandPalette" class="form-check-input" id="chkCommandPalette" />
+                                    <label class="form-check-label" for="chkCommandPalette">Show Command Palette (Ctrl+K)</label>
+                                </div>
+                                <div class="form-text">Turns off the search button and the Ctrl+K shortcut across the app.</div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
                         <h6 class="mb-3">Residential Address</h6>
                         <div class="row g-3 mb-2">
                             <div class="col-md-12">
@@ -334,6 +346,7 @@ else
                 InternalProvider = _profile.InternalProvider,
                 EPrescribingEnabled = _profile.EPrescribingEnabled,
                 DefaultAppointmentTimeslotMinutes = _profile.DefaultAppointmentTimeslotMinutes,
+                ShowCommandPalette = _profile.ShowCommandPalette,
                 GroupId = _profile.GroupId,
                 ResidentialAddress = _profile.ResidentialAddress,
                 ResidentialSuburb = _profile.ResidentialSuburb,
@@ -373,6 +386,7 @@ else
                 InternalProvider = _model.InternalProvider,
                 EPrescribingEnabled = _model.EPrescribingEnabled,
                 DefaultAppointmentTimeslotMinutes = _model.DefaultAppointmentTimeslotMinutes,
+                ShowCommandPalette = _model.ShowCommandPalette,
                 GroupId = _model.GroupId,
                 ResidentialAddress = _model.ResidentialAddress,
                 ResidentialSuburb = _model.ResidentialSuburb,
@@ -452,6 +466,7 @@ else
         public bool EPrescribingEnabled { get; set; }
         [Range(1, 240)]
         public int? DefaultAppointmentTimeslotMinutes { get; set; }
+        public bool ShowCommandPalette { get; set; } = true;
         public int? GroupId { get; set; }
 
         public string? ResidentialAddress { get; set; }

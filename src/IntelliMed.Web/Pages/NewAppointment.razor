@@ -24,6 +24,12 @@
                         <input class="form-control" value="@_clientDisplayName" readonly placeholder="Search for a client..." />
                         <button type="button" class="btn btn-outline-secondary" @onclick="OpenClientPicker">Find</button>
                     </div>
+                    @if (_selectedClient != null)
+                    {
+                        <ClientSafetyBanner Deceased="_selectedClient.Deceased" Warnings="@_selectedClient.Warnings"
+                            InterpreterRequired="_selectedClient.InterpreterRequired" InterpreterLanguage="@_selectedClient.InterpreterLanguage"
+                            Age="_selectedClient.Age" NextOfKinName="@_selectedClient.NextOfKinName" NextOfKinPhone="@_selectedClient.NextOfKinPhone" />
+                    }
                 </div>
 
                 <div class="row">
@@ -130,7 +136,7 @@
 
         <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/appointments"))">Cancel</button>
-            <button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@(_isSaving || _model.ClientId == 0 || _model.PractitionerId == 0)">
+            <button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@(_isSaving || _model.ClientId == 0 || _model.PractitionerId == 0 || (_selectedClient?.Deceased ?? false))">
                 @if (_isSaving)
                 {
                     <span class="spinner-border spinner-border-sm me-1"></span>
@@ -194,6 +200,7 @@
     };
 
     private string? _clientDisplayName;
+    private ClientDto? _selectedClient;
     private bool _showClientPickerModal;
     private string _clientSearchTerm = string.Empty;
     private List<ClientDto> _clientSearchResults = new();
@@ -223,7 +230,12 @@
         _practitioners = await PractitionerService.GetAllActiveAsync();
         _typeSettings = await AppointmentTypeSettingService.GetAllActiveAsync();
 
-        if (ClientId.HasValue) _model.ClientId = ClientId.Value;
+        if (ClientId.HasValue)
+        {
+            _model.ClientId = ClientId.Value;
+            _selectedClient = await ClientService.GetClientByIdAsync(ClientId.Value);
+            _clientDisplayName = _selectedClient?.FullName;
+        }
         if (PractitionerId.HasValue) _model.PractitionerId = PractitionerId.Value;
         if (!string.IsNullOrEmpty(Date) && DateTime.TryParse(Date, out var parsed)) _model.AppointmentDate = parsed;
         if (!string.IsNullOrEmpty(Time) && TimeSpan.TryParse(Time, out var startTime))
@@ -257,6 +269,7 @@
     {
         _model.ClientId = candidate.Id;
         _clientDisplayName = candidate.FullName;
+        _selectedClient = candidate;
         _showClientPickerModal = false;
     }
 

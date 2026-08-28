@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using IntelliMed.Api.Configuration;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
@@ -24,9 +25,12 @@ public class AuthController : ControllerBase
     private readonly SignInManager<IdentityCore.ApplicationUser> _signInManager;
     private readonly IProviderGroupRepository _providerGroupRepository;
     private readonly IProviderScheduleRepository _providerScheduleRepository;
+    private readonly IPractitionerRepository _practitionerRepository;
     private readonly IEmailTemplateRepository _emailTemplateRepository;
     private readonly IEmailSender _emailSender;
     private readonly IConfiguration _configuration;
+    private readonly JwtSettings _jwtSettings;
+    private readonly ISystemSettingsRepository _systemSettingsRepository;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
@@ -34,15 +38,21 @@ public class AuthController : ControllerBase
         SignInManager<IdentityCore.ApplicationUser> signInManager,
         IProviderGroupRepository providerGroupRepository,
         IProviderScheduleRepository providerScheduleRepository,
+        IPractitionerRepository practitionerRepository,
         IEmailTemplateRepository emailTemplateRepository,
         IEmailSender emailSender,
         IConfiguration configuration,
+        JwtSettings jwtSettings,
+        ISystemSettingsRepository systemSettingsRepository,
         ILogger<AuthController> logger)
     {
+        _jwtSettings = jwtSettings;
+        _systemSettingsRepository = systemSettingsRepository;
         _userManager = userManager;
         _signInManager = signInManager;
         _providerGroupRepository = providerGroupRepository;
         _providerScheduleRepository = providerScheduleRepository;
+        _practitionerRepository = practitionerRepository;
         _emailTemplateRepository = emailTemplateRepository;
         _emailSender = emailSender;
         _configuration = configuration;
@@ -113,7 +123,7 @@ public class AuthController : ControllerBase
             var roles = await _userManager.GetRolesAsync(user);
 
             // Generate JWT token
-            var token = await GenerateJwtTokenAsync(user, roles);
+            var (token, expiresAt) = await GenerateJwtTokenAsync(user, roles);
 
             _logger.LogInformation("User {Email} logged in successfully", request.Email);
 
@@ -124,7 +134,7 @@ public class AuthController : ControllerBase
                 Email = user.Email,
                 FullName = user.FullName,
                 Roles = roles.ToList(),
-                ExpiresAt = DateTime.UtcNow.AddHours(8)
+                ExpiresAt = expiresAt
             });
         }
         catch (Exception ex)
@@ -186,13 +196,16 @@ public class AuthController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(user);
+        var practitioner = await _practitionerRepository.GetByApplicationUserIdAsync(user.Id);
 
         return Ok(new CurrentUserResponse
         {
             IsAuthenticated = true,
             Email = user.Email,
             FullName = user.FullName,
-            Roles = roles.ToList()
+            Roles = roles.ToList(),
+            PractitionerId = practitioner?.Id,
+            ShowCommandPalette = user.ShowCommandPalette
         });
     }
 
@@ -231,6 +244,7 @@ public class AuthController : ControllerBase
             InternalProvider = user.InternalProvider,
             EPrescribingEnabled = user.EPrescribingEnabled,
             DefaultAppointmentTimeslotMinutes = user.DefaultAppointmentTimeslotMinutes,
+            ShowCommandPalette = user.ShowCommandPalette,
             GroupId = user.GroupId,
             GroupName = group?.Name,
             ResidentialAddress = user.ResidentialAddress,
@@ -276,6 +290,7 @@ public class AuthController : ControllerBase
         user.InternalProvider = request.InternalProvider;
         user.EPrescribingEnabled = request.EPrescribingEnabled;
         user.DefaultAppointmentTimeslotMinutes = request.DefaultAppointmentTimeslotMinutes;
+        user.ShowCommandPalette = request.ShowCommandPalette;
         user.GroupId = request.GroupId;
         user.ResidentialAddress = request.ResidentialAddress;
         user.ResidentialSuburb = request.ResidentialSuburb;
@@ -399,12 +414,17 @@ public class AuthController : ControllerBase
         return Ok(new UserManagementResponse { Success = true, Message = "Password set successfully. You can now log in." });
     }
 
-    private async Task<string> GenerateJwtTokenAsync(IdentityCore.ApplicationUser user, IList<string> roles)
+    /// <summary>Returns the token together with its expiry, so the ExpiresAt reported to the client
+    /// can never drift from the lifetime actually baked into the token — Login previously hardcoded
+    /// its own AddHours(8) alongside this method's configurable value.</summary>
+    private async Task<(string Token, DateTime ExpiresAt)> GenerateJwtTokenAsync(IdentityCore.ApplicationUser user, IList<string> roles)
     {
-        var jwtKey = _configuration["Jwt:Key"] ?? "IntelliMed_SuperSecretKey_AtLeast32Characters!";
-        var jwtIssuer = _configuration["Jwt:Issuer"] ?? "IntelliMed";
-        var jwtAudience = _configuration["Jwt:Audience"] ?? "IntelliMed.Client";
-        var expirationHours = int.Parse(_configuration["Jwt:ExpirationHours"] ?? "8");
+        // Read per token issue, so a change on the System Settings screen applies to the next
+        // sign-in without a restart. Falls back to the old Jwt:ExpirationHours config value.
+        var settings = await _systemSettingsRepository.GetAsync();
+        var expirationHours = settings.SessionExpirationHours > 0
+            ? settings.SessionExpirationHours
+            : int.Parse(_configuration["Jwt:ExpirationHours"] ?? "8");
 
         var claims = new List<Claim>
         {
@@ -422,18 +442,18 @@ public class AuthController : ControllerBase
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expires = DateTime.UtcNow.AddHours(expirationHours);
 
         var token = new JwtSecurityToken(
-            issuer: jwtIssuer,
-            audience: jwtAudience,
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
             claims: claims,
             expires: expires,
             signingCredentials: credentials
         );
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return (new JwtSecurityTokenHandler().WriteToken(token), expires);
     }
 }

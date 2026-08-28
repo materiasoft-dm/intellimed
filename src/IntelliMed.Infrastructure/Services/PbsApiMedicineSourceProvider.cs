@@ -109,20 +109,9 @@ public class PbsApiMedicineSourceProvider : IMedicineSourceProvider
             atcRels.Count, atcByPbsCode.Count);
         progress?.Report($"PBS: fetched {atcRels.Count} ATC relationship(s)");
 
-        // Step 4: fetch schedules (for schedule name -> MedicineSchedule mapping).
-        _logger.LogInformation("PBS: fetching schedules...");
-        progress?.Report("PBS: fetching schedules...");
-        var schedules = await FetchAllForScheduleCodeAsync("schedules", scheduleCodes, "schedules", progress, cancellationToken);
-        var scheduleMap = new Dictionary<int, string>();
-        foreach (var s in schedules)
-        {
-            var code = GetField(s, "schedule_code");
-            var name = GetString(s, "schedule_name");
-            if (code > 0 && !string.IsNullOrWhiteSpace(name))
-                scheduleMap[code] = name;
-        }
-        _logger.LogInformation("PBS: fetched {Count} schedule(s)", schedules.Count);
-        progress?.Report($"PBS: fetched {schedules.Count} schedule(s)");
+        // Step 4 (removed): there used to be a /schedules fetch here to resolve a poisons schedule.
+        // It never worked — see MapSchedule — and the round trip is pure cost on an already slow
+        // sync, so it's gone rather than left in as decoration.
 
         // Step 5: fetch organisations (for organisation_id -> name). Note: manufacturer_code (e.g.
         // "NE") is a separate short alpha code, not the numeric organisation_id — it can't be used
@@ -165,8 +154,13 @@ public class PbsApiMedicineSourceProvider : IMedicineSourceProvider
 
             atcByPbsCode.TryGetValue(pbsCode ?? string.Empty, out var atcCode);
             var manufacturer = organisationId > 0 && orgMap.TryGetValue(organisationId, out var m) ? m : null;
-            var schedule = MapSchedule(scheduleCode > 0 && scheduleMap.TryGetValue(scheduleCode, out var schedName) ? schedName : null);
             var (form, strength) = SplitFormAndStrength(liForm);
+
+            // Prescribing limits and classification. maximum_quantity_units / number_of_repeats are
+            // plain integers; the *_indicator fields are "Y"/"N" strings.
+            var maxRepeats = GetField(item, "number_of_repeats");
+            var maxQuantity = GetField(item, "maximum_quantity_units");
+            var therapeuticGroupId = GetField(item, "therapeutic_group_id");
 
             var ingredients = !string.IsNullOrWhiteSpace(genericName) && genericName.Contains('/')
                 ? genericName.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -183,11 +177,17 @@ public class PbsApiMedicineSourceProvider : IMedicineSourceProvider
                 IsPbsListed: true,
                 IsRpbsListed: isRpbs,
                 RestrictionLevel: MapRestrictionLevel(benefitTypeCode),
-                Schedule: schedule,
+                Schedule: MapSchedule(),
                 ActiveIngredients: ingredients,
                 PbsItemCode: pbsCode,
                 AmtConceptId: null,
-                AtcCode: atcCode));
+                AtcCode: atcCode,
+                MaxRepeats: maxRepeats > 0 ? maxRepeats : null,
+                MaxQuantity: maxQuantity > 0 ? maxQuantity : null,
+                Route: GetString(item, "moa_preferred_term"),
+                IsSection100: IsYes(GetString(item, "section100_only_indicator")),
+                TherapeuticGroupId: therapeuticGroupId > 0 ? therapeuticGroupId.ToString() : null,
+                TherapeuticGroupTitle: GetString(item, "therapeutic_group_title")));
         }
 
         _logger.LogInformation("PBS: assembled {Count} medicine row(s)", rows.Count);
@@ -345,6 +345,10 @@ public class PbsApiMedicineSourceProvider : IMedicineSourceProvider
         return null;
     }
 
+    /// <summary>PBS boolean-ish indicator fields are "Y"/"N" strings, not JSON booleans.</summary>
+    private static bool IsYes(string? indicator) =>
+        string.Equals(indicator?.Trim(), "Y", StringComparison.OrdinalIgnoreCase);
+
     private static int GetField(JsonElement el, string property)
     {
         if (el.TryGetProperty(property, out var val))
@@ -357,19 +361,23 @@ public class PbsApiMedicineSourceProvider : IMedicineSourceProvider
         return 0;
     }
 
-    private static MedicineSchedule? MapSchedule(string? scheduleName)
-    {
-        if (string.IsNullOrWhiteSpace(scheduleName)) return null;
-        var normalized = scheduleName.Replace("Schedule", "").Trim();
-        return normalized switch
-        {
-            "2" => MedicineSchedule.S2,
-            "3" => MedicineSchedule.S3,
-            "4" => MedicineSchedule.S4,
-            "8" => MedicineSchedule.S8,
-            _ => null
-        };
-    }
+    /// <summary>
+    /// PBS carries no poisons scheduling, so every PBS-sourced row has a null Schedule.
+    ///
+    /// This used to try to map PBS's `schedule_code`/`schedule_name` onto S2/S3/S4/S8. Those fields
+    /// mean the **publication edition** of the PBS — the monthly release, e.g. schedule_code 4708 =
+    /// effective 2026-08-01 — and are unrelated to the poisons schedule despite sharing the word.
+    /// The /schedules endpoint has no `schedule_name` field at all, so the old mapping silently
+    /// produced null for every row while looking like it worked. That in turn meant the prescribing
+    /// wizard's mandatory Schedule 8 gate never fired for any synced medicine.
+    ///
+    /// S2/S3/S4/S8 comes from the Poisons Standard (SUSMP, published by the TGA) and needs its own
+    /// source. Until then this returns null explicitly, and MedicineDto.SchedulingUnknown makes the
+    /// gap visible in the UI rather than letting absence read as "not S8".
+    ///
+    /// See MEDICINE_DATA_ENRICHMENT.md §1.
+    /// </summary>
+    private static MedicineSchedule? MapSchedule() => null;
 
     /// <summary>Maps benefit_type_code per the official PBS API Data Dictionary's "Four levels of
     /// restriction categorisation": U=Unrestricted, R=Restricted, A=Authority Required,

@@ -1,4 +1,5 @@
 using System.Text;
+using IntelliMed.Api.Configuration;
 using IntelliMed.Core.Entities;
 using IntelliMed.Infrastructure;
 using IntelliMed.Infrastructure.Data;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.Swagger;
@@ -23,21 +25,34 @@ builder.Services.AddInfrastructure(connectionString, builder.Configuration);
 // ============================================================================
 // ASP.NET IDENTITY CONFIGURATION
 // ============================================================================
+// The password/lockout policy is stored in SystemSettings and read here, straight from its own
+// short-lived DbContext rather than through DI.
+//
+// Deliberately NOT an IConfigureOptions<IdentityOptions>: that resolves lazily while the host is
+// being built, and reading the database from inside it (sync-over-async) deadlocked — `dotnet ef`
+// hung indefinitely on any command that builds the host. Reading here, before AddIdentity, keeps it
+// a plain sequential call with nothing to deadlock against.
+//
+// Consequence: a policy change takes effect on the next restart, which the System Settings screen
+// states plainly. On a brand-new database the table doesn't exist yet, so failures fall back to the
+// same defaults that used to be hardcoded — the policy is never silently weakened.
+var identityPolicy = SystemSettingsBootstrap.Read(connectionString,
+    LoggerFactory.Create(c => c.AddConsole()).CreateLogger("SystemSettingsBootstrap"));
+
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    // Password requirements
-    options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireNonAlphanumeric = true;
-    options.Password.RequiredLength = 8;
+    options.Password.RequireDigit = identityPolicy.PasswordRequireDigit;
+    options.Password.RequireLowercase = identityPolicy.PasswordRequireLowercase;
+    options.Password.RequireUppercase = identityPolicy.PasswordRequireUppercase;
+    options.Password.RequireNonAlphanumeric = identityPolicy.PasswordRequireNonAlphanumeric;
+    options.Password.RequiredLength = identityPolicy.PasswordMinLength;
 
     // User requirements
     options.User.RequireUniqueEmail = true;
 
     // Lockout settings
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(identityPolicy.LockoutDurationMinutes);
+    options.Lockout.MaxFailedAccessAttempts = identityPolicy.LockoutMaxFailedAttempts;
     options.Lockout.AllowedForNewUsers = true;
 })
 .AddEntityFrameworkStores<AppDbContext>()
@@ -46,9 +61,12 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 // ============================================================================
 // JWT AUTHENTICATION CONFIGURATION
 // ============================================================================
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "IntelliMed_SuperSecretKey_AtLeast32Characters!";
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "IntelliMed";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "IntelliMed.Client";
+// Resolved once and shared — see JwtSettings for why there is no hardcoded fallback key.
+var jwtSettings = JwtSettings.Resolve(
+    builder.Configuration,
+    builder.Environment,
+    LoggerFactory.Create(c => c.AddConsole()).CreateLogger<JwtSettings>());
+builder.Services.AddSingleton(jwtSettings);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -64,9 +82,9 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ValidIssuer = jwtSettings.Issuer,
+        ValidAudience = jwtSettings.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
         ClockSkew = TimeSpan.Zero
     };
     options.Events = new JwtBearerEvents
@@ -299,9 +317,15 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "SuperAdmin", PageKey = "appointments/edit", Category = "Clinical" },
         new() { RoleName = "SuperAdmin", PageKey = "appointments/delete", Category = "Clinical" },
         new() { RoleName = "SuperAdmin", PageKey = "appointments/waiting-room", Category = "Clinical" },
-        new() { RoleName = "SuperAdmin", PageKey = "practitioners", Category = "Clinical" },
-        new() { RoleName = "SuperAdmin", PageKey = "practitioners/create", Category = "Clinical" },
-        new() { RoleName = "SuperAdmin", PageKey = "practitioners/edit", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "prescriptions", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "prescriptions/create", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "prescriptions/edit", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "progress-notes", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "progress-notes/create", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "progress-notes/edit", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "health-issues", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "health-issues/create", Category = "Clinical" },
+        new() { RoleName = "SuperAdmin", PageKey = "health-issues/edit", Category = "Clinical" },
         // Financial
         new() { RoleName = "SuperAdmin", PageKey = "invoices", Category = "Financial" },
         new() { RoleName = "SuperAdmin", PageKey = "invoices/create", Category = "Financial" },
@@ -317,13 +341,13 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         // Admin
         new() { RoleName = "SuperAdmin", PageKey = "admin/users", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/roles", Category = "Admin" },
-        new() { RoleName = "SuperAdmin", PageKey = "admin/audit", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/settings", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/appointment-types", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/email-templates", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/search-actions", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/database-backups", Category = "Admin" },
         new() { RoleName = "SuperAdmin", PageKey = "admin/medicines", Category = "Admin" },
+        new() { RoleName = "SuperAdmin", PageKey = "admin/drug-interactions", Category = "Admin" },
         // Reports
         new() { RoleName = "SuperAdmin", PageKey = "reports", Category = "Reports" },
         new() { RoleName = "SuperAdmin", PageKey = "reports/financial", Category = "Reports" },
@@ -341,9 +365,13 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "Admin", PageKey = "appointments/edit", Category = "Clinical" },
         new() { RoleName = "Admin", PageKey = "appointments/delete", Category = "Clinical" },
         new() { RoleName = "Admin", PageKey = "appointments/waiting-room", Category = "Clinical" },
-        new() { RoleName = "Admin", PageKey = "practitioners", Category = "Clinical" },
-        new() { RoleName = "Admin", PageKey = "practitioners/create", Category = "Clinical" },
-        new() { RoleName = "Admin", PageKey = "practitioners/edit", Category = "Clinical" },
+        // View-only for prescriptions — Admin reads as a practice-manager/IT role here, and letting a
+        // non-clinician issue prescriptions is a different risk than letting them configure fee
+        // schedules. Adjust at /admin/roles if this default doesn't fit.
+        new() { RoleName = "Admin", PageKey = "prescriptions", Category = "Clinical" },
+        // Same reasoning — view-only, not a clinical author.
+        new() { RoleName = "Admin", PageKey = "progress-notes", Category = "Clinical" },
+        new() { RoleName = "Admin", PageKey = "health-issues", Category = "Clinical" },
         new() { RoleName = "Admin", PageKey = "invoices", Category = "Financial" },
         new() { RoleName = "Admin", PageKey = "invoices/create", Category = "Financial" },
         new() { RoleName = "Admin", PageKey = "invoices/edit", Category = "Financial" },
@@ -357,13 +385,13 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "Admin", PageKey = "derived-item-configs", Category = "Financial" },
         new() { RoleName = "Admin", PageKey = "admin/users", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/roles", Category = "Admin" },
-        new() { RoleName = "Admin", PageKey = "admin/audit", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/settings", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/appointment-types", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/email-templates", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/search-actions", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/database-backups", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "admin/medicines", Category = "Admin" },
+        new() { RoleName = "Admin", PageKey = "admin/drug-interactions", Category = "Admin" },
         new() { RoleName = "Admin", PageKey = "reports", Category = "Reports" },
         new() { RoleName = "Admin", PageKey = "reports/financial", Category = "Reports" },
         new() { RoleName = "Admin", PageKey = "reports/clinical", Category = "Reports" },
@@ -378,7 +406,15 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "Doctor", PageKey = "appointments/create", Category = "Clinical" },
         new() { RoleName = "Doctor", PageKey = "appointments/edit", Category = "Clinical" },
         new() { RoleName = "Doctor", PageKey = "appointments/waiting-room", Category = "Clinical" },
-        new() { RoleName = "Doctor", PageKey = "practitioners", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "prescriptions", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "prescriptions/create", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "prescriptions/edit", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "progress-notes", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "progress-notes/create", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "progress-notes/edit", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "health-issues", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "health-issues/create", Category = "Clinical" },
+        new() { RoleName = "Doctor", PageKey = "health-issues/edit", Category = "Clinical" },
         new() { RoleName = "Doctor", PageKey = "invoices", Category = "Financial" },
         new() { RoleName = "Doctor", PageKey = "reports", Category = "Reports" },
         new() { RoleName = "Doctor", PageKey = "reports/clinical", Category = "Reports" },
@@ -393,7 +429,17 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "Nurse", PageKey = "appointments/create", Category = "Clinical" },
         new() { RoleName = "Nurse", PageKey = "appointments/edit", Category = "Clinical" },
         new() { RoleName = "Nurse", PageKey = "appointments/waiting-room", Category = "Clinical" },
-        new() { RoleName = "Nurse", PageKey = "practitioners", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "prescriptions", Category = "Clinical" },
+        // Full access, unlike prescriptions above (view-only) — nurses legitimately author clinical
+        // documentation (vitals, triage, wound care notes) in a way they don't prescribe. A deliberate
+        // departure from the prescriptions default, not an inconsistency. Adjust at /admin/roles if this
+        // default doesn't fit.
+        new() { RoleName = "Nurse", PageKey = "progress-notes", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "progress-notes/create", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "progress-notes/edit", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "health-issues", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "health-issues/create", Category = "Clinical" },
+        new() { RoleName = "Nurse", PageKey = "health-issues/edit", Category = "Clinical" },
 
         // =====================================================================
         // Receptionist — clients, appointments, invoices

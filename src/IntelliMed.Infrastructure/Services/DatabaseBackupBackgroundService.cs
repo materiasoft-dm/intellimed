@@ -1,3 +1,4 @@
+using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,10 @@ namespace IntelliMed.Infrastructure.Services;
 public class DatabaseBackupBackgroundService : BackgroundService
 {
     private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(1);
+
+    // Fallback only — the live value comes from SystemSettings.BackupRetentionDays, which is
+    // editable on the System Settings screen and defaults to this same 60 days.
+    private const int DefaultRetentionDays = 60;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<DatabaseBackupBackgroundService> _logger;
@@ -38,6 +43,15 @@ public class DatabaseBackupBackgroundService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Scheduled database backup check failed.");
+            }
+
+            try
+            {
+                await DeleteExpiredAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Database backup retention cleanup failed.");
             }
 
             try
@@ -64,6 +78,22 @@ public class DatabaseBackupBackgroundService : BackgroundService
         var backupService = scope.ServiceProvider.GetRequiredService<IDatabaseBackupService>();
         await backupService.PerformBackupAsync(DatabaseBackupTrigger.Scheduled);
         await settingsRepository.MarkRanAsync(DateTime.UtcNow);
+    }
+
+    private async Task DeleteExpiredAsync()
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var backupService = scope.ServiceProvider.GetRequiredService<IDatabaseBackupService>();
+        var settingsRepository = scope.ServiceProvider.GetRequiredService<ISystemSettingsRepository>();
+
+        var settings = await settingsRepository.GetAsync();
+        var retentionDays = settings.BackupRetentionDays > 0 ? settings.BackupRetentionDays : DefaultRetentionDays;
+
+        var deleted = await backupService.DeleteExpiredAsync(DateTime.UtcNow.AddDays(-retentionDays));
+        if (deleted > 0)
+        {
+            _logger.LogInformation("Database backup retention cleanup: deleted {Count} backup(s) older than {Days} days.", deleted, retentionDays);
+        }
     }
 
     private static TimeSpan ToTimeSpan(int value, BackupIntervalUnit unit) => unit switch

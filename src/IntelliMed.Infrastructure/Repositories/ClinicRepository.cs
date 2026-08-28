@@ -12,7 +12,7 @@ public class ClinicRepository : Repository<Clinic>, IClinicRepository
     {
     }
 
-    public async Task<IEnumerable<ClinicDto>> GetAllAsync()
+    public new async Task<IEnumerable<ClinicDto>> GetAllAsync()
     {
         var clinics = await _dbSet
             .OrderBy(c => c.Name)

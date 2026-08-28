@@ -159,7 +159,7 @@ catalog in the same format, independent of the external sources.
 |---|---|---|---|
 | **PBS API Public v3** (`data-api.health.gov.au/pbs/api/v3/`) | Brand name, generic name, strength, form, manufacturer, AMT concept ID, ATC code, RPBS flag, restriction level, schedule, PBS item code | Commonwealth of Australia copyright — **permission granted to use and redistribute**, provided copyright statements are retained and content is not modified | Public subscription key is acceptable for low-volume use; full data is ~190k items. PBS data is stored verbatim — names/strengths are not normalised. The copyright notice is surfaced in the Medicines admin UI. |
 | **Wikidata** (`query.wikidata.org/sparql`) | Identification-layer cross-references: ATC code, Q-id | CC0 | Safe for commercial reuse. Used both for ingredient enrichment and as a fallback medicine source. |
-| **TGA ARTG** | Australian Register of Therapeutic Goods ID per product | TBA — not currently ingested | PBS does not carry ARTG IDs; if/when added, this will be a separate provider. |
+| **TGA ARTG** (`compliance.health.gov.au/artg/`) | Poisons schedule (S2–S8), ARTG ID, dosage form, route of administration | Commonwealth of Australia copyright — same terms as PBS | Manual CSV upload by an admin, not part of Sync — the ARTG tool publishes an export, not an API. Backfills empty fields on existing medicines only; never overwrites, never adds rows. The export needs the **Medicines** filter applied. |
 | **Self-compiled starter list** (`medicines_starter.csv`) | A small hand-curated set for first-run / offline use | Project-owned | Used until at least one external source has populated the catalog. |
 
 ### PBS copyright — exact wording

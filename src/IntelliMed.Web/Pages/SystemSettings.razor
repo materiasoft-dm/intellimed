@@ -1,0 +1,194 @@
+@page "/admin/settings"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject ISystemSettingsService SystemSettingsService
+
+<PageTitle>System Settings - IntelliMed</PageTitle>
+
+<h4 class="mb-1">System Settings</h4>
+<p class="text-muted small mb-4">
+    Application-wide settings. Practice details, the billing catalogue and email setup live on
+    <a href="/clinic-settings">Clinic Settings</a>.
+</p>
+
+@if (_loading)
+{
+    <div class="text-muted small">Loading...</div>
+}
+else if (_form == null)
+{
+    <div class="alert alert-secondary small py-2">
+        Couldn't load system settings — you may not have permission to view this page.
+    </div>
+}
+else
+{
+    <div class="card mb-3">
+        <div class="card-header"><strong>Password policy</strong></div>
+        <div class="card-body">
+            <div class="alert alert-secondary small py-2 mb-3">
+                <i class="bi bi-info-circle me-1"></i>
+                Password and lockout changes apply the <strong>next time the application restarts</strong>.
+                Existing passwords are never invalidated — the policy applies to new and changed
+                passwords from that point on.
+            </div>
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Minimum length</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_form.PasswordMinLength" />
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-3 mt-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="pwDigit" @bind="_form.PasswordRequireDigit" />
+                    <label class="form-check-label small" for="pwDigit">Require a digit</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="pwLower" @bind="_form.PasswordRequireLowercase" />
+                    <label class="form-check-label small" for="pwLower">Require lower case</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="pwUpper" @bind="_form.PasswordRequireUppercase" />
+                    <label class="form-check-label small" for="pwUpper">Require upper case</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="pwSymbol" @bind="_form.PasswordRequireNonAlphanumeric" />
+                    <label class="form-check-label small" for="pwSymbol">Require a symbol</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><strong>Sign-in and sessions</strong></div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Failed attempts before lockout</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_form.LockoutMaxFailedAttempts" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Lockout duration (minutes)</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_form.LockoutDurationMinutes" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Session length (hours)</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_form.SessionExpirationHours" />
+                    <div class="form-text small">Applies at next sign-in.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><strong>Defaults for new users</strong></div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Appointment slot (minutes)</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_form.DefaultAppointmentSlotMinutes" />
+                    <div class="form-text small">Used when a user hasn't set their own.</div>
+                </div>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="cmdPalette" @bind="_form.NewUserShowCommandPalette" />
+                <label class="form-check-label small" for="cmdPalette">
+                    Command palette (Ctrl+K) enabled for new users
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><strong>Backups</strong></div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Keep backups for (days)</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_form.BackupRetentionDays" />
+                    <div class="form-text small">Older backups are pruned automatically.</div>
+                </div>
+            </div>
+            <div class="small text-muted mt-2">
+                Schedule and manual backups are on <a href="/admin/database-backups">Database Backups</a>.
+            </div>
+        </div>
+    </div>
+
+    @if (_error != null)
+    {
+        <div class="small text-danger mb-2">@_error</div>
+    }
+    @if (_saved)
+    {
+        <div class="small text-success mb-2"><i class="bi bi-check-circle me-1"></i>Settings saved.</div>
+    }
+
+    <button type="button" class="btn btn-primary" disabled="@_saving" @onclick="SaveAsync">
+        @if (_saving)
+        {
+            <span class="spinner-border spinner-border-sm me-1"></span>
+        }
+        Save Settings
+    </button>
+    @if (_lastUpdated != null)
+    {
+        <span class="text-muted small ms-2">Last changed @_lastUpdated.Value.ToLocalTime().ToString("d MMM yyyy, h:mm tt")</span>
+    }
+}
+
+@code {
+    private UpdateSystemSettingsDto? _form;
+    private DateTime? _lastUpdated;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _saved;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var settings = await SystemSettingsService.GetAsync();
+        if (settings != null)
+        {
+            _lastUpdated = settings.UpdatedAt;
+            _form = new UpdateSystemSettingsDto
+            {
+                PasswordMinLength = settings.PasswordMinLength,
+                PasswordRequireDigit = settings.PasswordRequireDigit,
+                PasswordRequireLowercase = settings.PasswordRequireLowercase,
+                PasswordRequireUppercase = settings.PasswordRequireUppercase,
+                PasswordRequireNonAlphanumeric = settings.PasswordRequireNonAlphanumeric,
+                LockoutMaxFailedAttempts = settings.LockoutMaxFailedAttempts,
+                LockoutDurationMinutes = settings.LockoutDurationMinutes,
+                SessionExpirationHours = settings.SessionExpirationHours,
+                DefaultAppointmentSlotMinutes = settings.DefaultAppointmentSlotMinutes,
+                NewUserShowCommandPalette = settings.NewUserShowCommandPalette,
+                BackupRetentionDays = settings.BackupRetentionDays
+            };
+        }
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_form == null) return;
+
+        _saving = true;
+        _error = null;
+        _saved = false;
+        try
+        {
+            _error = await SystemSettingsService.UpdateAsync(_form);
+            if (_error == null)
+            {
+                _saved = true;
+                _lastUpdated = DateTime.UtcNow;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

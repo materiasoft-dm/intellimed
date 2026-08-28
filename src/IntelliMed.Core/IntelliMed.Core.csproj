@@ -7,7 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
+    <!-- The one deliberate exception to "Core has no EF" (see CLAUDE.md / ARCHITECTURE.md): only
+         ApplicationUser needs it, to derive from IdentityUser. No DbContext, repository, or query
+         code lives in Core. Version must stay in lockstep with the other projects. -->
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.6" />
   </ItemGroup>
 
 </Project>

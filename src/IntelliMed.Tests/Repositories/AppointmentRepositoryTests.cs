@@ -70,6 +70,28 @@ public class AppointmentRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateAsync_WithDeceasedClient_ThrowsException()
+    {
+        var client = new Client { FirstName = "Deceased", LastName = "Client", Deceased = true, IsActive = true };
+        var practitioner = new Practitioner { FirstName = "Dr", LastName = "Smith", IsActive = true };
+        _context.Clients.Add(client);
+        _context.Practitioners.Add(practitioner);
+        await _context.SaveChangesAsync();
+
+        var dto = new CreateAppointmentDto
+        {
+            ClientId = client.Id,
+            PractitionerId = practitioner.Id,
+            AppointmentDate = DateTime.Today.AddDays(1),
+            StartTime = TimeSpan.FromHours(9),
+            EndTime = TimeSpan.FromHours(10),
+            Type = AppointmentType.Standard
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _repository.CreateAsync(dto));
+    }
+
+    [Fact]
     public async Task GetByIdAsync_WithExistingAppointment_ReturnsAppointmentDto()
     {
         // Arrange

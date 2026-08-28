@@ -162,7 +162,7 @@ public class RolePermissionsController : ControllerBase
         return pageKey switch
         {
             "clinic-settings" or "clinic-manager" => "Practice",
-            string p when p.StartsWith("clients") || p.StartsWith("appointments") || p.StartsWith("practitioners") => "Clinical",
+            string p when p.StartsWith("clients") || p.StartsWith("appointments") || p.StartsWith("prescriptions") || p.StartsWith("progress-notes") || p.StartsWith("health-issues") => "Clinical",
             string p when p.StartsWith("invoices") || p.StartsWith("payments") || p == "fee-schedules" || p == "derived-item-configs" => "Financial",
             string p when p.StartsWith("admin") => "Admin",
             string p when p.StartsWith("reports") => "Reports",
@@ -188,9 +188,15 @@ public class RolePermissionsController : ControllerBase
             new() { PageKey = "appointments/edit", PageName = "Edit Appointment", Category = "Clinical", Description = "Modify existing appointments" },
             new() { PageKey = "appointments/delete", PageName = "Delete Appointment", Category = "Clinical", Description = "Cancel appointments" },
             new() { PageKey = "appointments/waiting-room", PageName = "Waiting Room", Category = "Clinical", Description = "View and manage the waiting room" },
-            new() { PageKey = "practitioners", PageName = "Practitioners", Category = "Clinical", Description = "View practitioner directory" },
-            new() { PageKey = "practitioners/create", PageName = "Add Practitioner", Category = "Clinical", Description = "Register new practitioners" },
-            new() { PageKey = "practitioners/edit", PageName = "Edit Practitioner", Category = "Clinical", Description = "Update practitioner details" },
+            new() { PageKey = "prescriptions", PageName = "Prescriptions", Category = "Clinical", Description = "View a client's prescriptions" },
+            new() { PageKey = "prescriptions/create", PageName = "Write Prescription", Category = "Clinical", Description = "Write new prescriptions and run the safety check" },
+            new() { PageKey = "prescriptions/edit", PageName = "Edit Prescription", Category = "Clinical", Description = "Update, cease, cancel, and issue/reprint existing prescriptions" },
+            new() { PageKey = "progress-notes", PageName = "Progress Notes", Category = "Clinical", Description = "View a client's progress notes and episodes" },
+            new() { PageKey = "progress-notes/create", PageName = "Write Progress Note", Category = "Clinical", Description = "Create new progress notes and episodes" },
+            new() { PageKey = "progress-notes/edit", PageName = "Edit Progress Note", Category = "Clinical", Description = "Update drafts, finalize, add addenda, delete drafts, and manage episodes" },
+            new() { PageKey = "health-issues", PageName = "Health Issues", Category = "Clinical", Description = "View a patient's problem list" },
+            new() { PageKey = "health-issues/create", PageName = "Add Health Issue", Category = "Clinical", Description = "Record a new condition on the problem list" },
+            new() { PageKey = "health-issues/edit", PageName = "Edit Health Issue", Category = "Clinical", Description = "Update or archive an existing health issue" },
 
             // Financial
             new() { PageKey = "invoices", PageName = "Invoices", Category = "Financial", Description = "View invoices" },
@@ -208,13 +214,13 @@ public class RolePermissionsController : ControllerBase
             // Admin
             new() { PageKey = "admin/users", PageName = "User Management", Category = "Admin", Description = "Manage system users" },
             new() { PageKey = "admin/roles", PageName = "Role Configuration", Category = "Admin", Description = "Configure role permissions" },
-            new() { PageKey = "admin/audit", PageName = "Audit Log", Category = "Admin", Description = "View system audit trail" },
             new() { PageKey = "admin/settings", PageName = "System Settings", Category = "Admin", Description = "Configure system parameters" },
             new() { PageKey = "admin/appointment-types", PageName = "Appointment Types", Category = "Admin", Description = "Configure the appointment-type/duration-preset catalogue" },
             new() { PageKey = "admin/email-templates", PageName = "Email Templates", Category = "Admin", Description = "Author and assign email templates to system events (invite, forgot password)" },
             new() { PageKey = "admin/search-actions", PageName = "Command Palette Actions", Category = "Admin", Description = "Manage the entries searchable from the global command palette" },
             new() { PageKey = "admin/database-backups", PageName = "Database Backups", Category = "Admin", Description = "Configure and manage scheduled SQLite database backups" },
             new() { PageKey = "admin/medicines", PageName = "Medicine Catalog", Category = "Admin", Description = "Manage the medicines reference-data catalog and its CSV import" },
+            new() { PageKey = "admin/drug-interactions", PageName = "Drug Interactions", Category = "Admin", Description = "Manage the drug-interaction reference table used by the prescribing safety check" },
 
             // Practice
             new() { PageKey = "clinic-settings", PageName = "Clinic Settings", Category = "Practice", Description = "Configure practice-wide identity and contact information" },

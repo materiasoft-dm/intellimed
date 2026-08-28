@@ -91,24 +91,38 @@
                 <hr class="my-2" />
 
                 @* Clients Section *@
-                <small class="text-muted px-4 text-uppercase">Clients</small>
-                <a href="/clients/search" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-search me-2"></i> <span class="mdi-nav-label">Find Client</span>
-                </a>
+                @if (_accessiblePages.Contains("clients"))
+                {
+                    <small class="text-muted px-4 text-uppercase">Clients</small>
+                    <a href="/clients/search" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-search me-2"></i> <span class="mdi-nav-label">Find Client</span>
+                    </a>
+                }
 
                 <hr class="my-2" />
 
-                @* Appointments Section *@
-                <small class="text-muted px-4 text-uppercase">Appointments</small>
-                <a href="/appointments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-calendar-week me-2"></i> <span class="mdi-nav-label">Appointment List</span>
-                </a>
-                <a href="/appointments/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-plus-lg me-2"></i> <span class="mdi-nav-label">New Appointment</span>
-                </a>
-                <a href="/appointments/calendar" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-calendar3 me-2"></i> <span class="mdi-nav-label">Calendar View</span>
-                </a>
+                @* Appointments Section — every link gated on its own page key, same as Administration.
+                   Previously these were always rendered, so a role without the permission still saw
+                   the link and hit a failing page. *@
+                @if (_accessiblePages.Contains("appointments"))
+                {
+                    <small class="text-muted px-4 text-uppercase">Appointments</small>
+                    <a href="/appointments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-calendar-week me-2"></i> <span class="mdi-nav-label">Appointment List</span>
+                    </a>
+                }
+                @if (_accessiblePages.Contains("appointments/create"))
+                {
+                    <a href="/appointments/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-plus-lg me-2"></i> <span class="mdi-nav-label">New Appointment</span>
+                    </a>
+                }
+                @if (_accessiblePages.Contains("appointments"))
+                {
+                    <a href="/appointments/calendar" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-calendar3 me-2"></i> <span class="mdi-nav-label">Calendar View</span>
+                    </a>
+                }
                 @if (_accessiblePages.Contains("appointments/waiting-room"))
                 {
                     <a href="/appointments/waiting-room" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
@@ -118,17 +132,27 @@
 
                 <hr class="my-2" />
 
-                @* Invoices Section *@
-                <small class="text-muted px-4 text-uppercase">Invoices</small>
-                <a href="/invoices" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-receipt me-2"></i> <span class="mdi-nav-label">Invoice List</span>
-                </a>
-                <a href="/invoices/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-plus-lg me-2"></i> <span class="mdi-nav-label">New Invoice</span>
-                </a>
-                <a href="/invoices/payments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-credit-card me-2"></i> <span class="mdi-nav-label">Payments</span>
-                </a>
+                @* Invoices Section — Nurse has no invoice permissions at all, and before this gating
+                   still saw all three links. *@
+                @if (_accessiblePages.Contains("invoices"))
+                {
+                    <small class="text-muted px-4 text-uppercase">Invoices</small>
+                    <a href="/invoices" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-receipt me-2"></i> <span class="mdi-nav-label">Invoice List</span>
+                    </a>
+                }
+                @if (_accessiblePages.Contains("invoices/create"))
+                {
+                    <a href="/invoices/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-plus-lg me-2"></i> <span class="mdi-nav-label">New Invoice</span>
+                    </a>
+                }
+                @if (_accessiblePages.Contains("payments"))
+                {
+                    <a href="/invoices/payments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                        <i class="bi bi-credit-card me-2"></i> <span class="mdi-nav-label">Payments</span>
+                    </a>
+                }
                 @if (_accessiblePages.Contains("fee-schedules"))
                 {
                     <a href="/fee-schedules" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
@@ -177,12 +201,9 @@
                             <i class="bi bi-command me-2"></i> <span class="mdi-nav-label">Command Palette Actions</span>
                         </a>
                     }
-                    @if (_accessiblePages.Contains("admin/audit"))
-                    {
-                        <a href="/admin/audit" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                            <i class="bi bi-graph-up me-2"></i> <span class="mdi-nav-label">Audit Log</span>
-                        </a>
-                    }
+                    @* No Audit Log entry: there is no application audit trail to view. The only
+                       audit table is DbAdminAuditLog, which covers the deliberately-isolated
+                       /dbadmin console alone. Re-add this link when a real audit trail exists. *@
                     @if (_accessiblePages.Contains("admin/settings"))
                     {
                         <a href="/admin/settings" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
@@ -201,6 +222,12 @@
                             <i class="bi bi-capsule me-2"></i> <span class="mdi-nav-label">Medicine Catalog</span>
                         </a>
                     }
+                    @if (_accessiblePages.Contains("admin/drug-interactions"))
+                    {
+                        <a href="/admin/drug-interactions" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
+                            <i class="bi bi-shield-exclamation me-2"></i> <span class="mdi-nav-label">Drug Interactions</span>
+                        </a>
+                    }
                 }
 
                 <hr class="my-2" />
@@ -213,6 +240,11 @@
                 <a href="/help" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
                     <i class="bi bi-question-circle me-2"></i> <span class="mdi-nav-label">User Guide</span>
                 </a>
+
+                <hr class="my-2" />
+                <div class="px-4 py-1 mdi-nav-label">
+                    <AppVersion />
+                </div>
             </div>
         </nav>
 
@@ -227,7 +259,10 @@
 
 <RadzenComponents />
 
-<CommandPalette AccessiblePages="_accessiblePages" />
+@if (_showCommandPalette)
+{
+    <CommandPalette AccessiblePages="_accessiblePages" />
+}
 
 @* =========================================================================
    MANDATORY CLINIC SELECTION MODAL — shown after login when the user belongs
@@ -298,6 +333,7 @@
     private string _currentUserEmail = "";
     private IList<string> _currentUserRoles = new List<string>();
     private HashSet<string> _accessiblePages = new(StringComparer.OrdinalIgnoreCase);
+    private bool _showCommandPalette = true;
     private List<MyClinicDto> _myClinics = new();
     private int? _currentClinicId;
     private string? _currentClinicName;
@@ -394,6 +430,7 @@
             {
                 _currentUserName = user.FullName ?? user.Email ?? "User";
                 _currentUserEmail = user.Email ?? "";
+                _showCommandPalette = user.ShowCommandPalette;
             }
         }
         catch
@@ -441,7 +478,7 @@
             {
                 _accessiblePages = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    "admin/users", "admin/roles", "admin/audit", "admin/settings"
+                    "admin/users", "admin/roles", "admin/settings"
                 };
             }
         }

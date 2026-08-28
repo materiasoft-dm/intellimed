@@ -12,7 +12,7 @@ public class HealthFundRepository : Repository<HealthFund>, IHealthFundRepositor
     {
     }
 
-    public async Task<HealthFundDto?> GetByIdAsync(int id)
+    public new async Task<HealthFundDto?> GetByIdAsync(int id)
     {
         var fund = await _dbSet.FindAsync(id);
         return fund == null ? null : ToDto(fund);

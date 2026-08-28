@@ -63,6 +63,18 @@ public static class ServiceExtensions
             client.DefaultRequestHeaders.UserAgent.ParseAdd("IntelliMed-MedicineCatalog/1.0");
         });
         services.AddScoped<IMedicineCsvAssemblyService, MedicineCsvAssemblyService>();
+        services.AddScoped<IClientAllergyRepository, ClientAllergyRepository>();
+        services.AddScoped<IClientHealthIssueRepository, ClientHealthIssueRepository>();
+        services.AddScoped<ISystemSettingsRepository, SystemSettingsRepository>();
+        services.AddScoped<IArtgEnrichmentService, ArtgEnrichmentService>();
+        services.AddScoped<IDrugInteractionRepository, DrugInteractionRepository>();
+        services.AddScoped<IDrugInteractionImportService, DrugInteractionImportService>();
+        services.AddScoped<IMedicationInteractionChecker, MedicationInteractionChecker>();
+        services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
+        services.AddScoped<IPrescriptionIssueRepository, PrescriptionIssueRepository>();
+        services.AddScoped<IEpisodeRepository, EpisodeRepository>();
+        services.AddScoped<IProgressNoteRepository, ProgressNoteRepository>();
+        services.AddScoped<IPrescriptionTransmissionService, NotConfiguredPrescriptionTransmissionService>();
         services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
         services.AddScoped<IAccountTypeFeeScheduleMappingRepository, AccountTypeFeeScheduleMappingRepository>();
         services.AddScoped<IBillingCalculator, BillingCalculator>();
@@ -77,7 +89,6 @@ public static class ServiceExtensions
         services.AddScoped<ISearchActionRepository, SearchActionRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IAppointmentReminderService, AppointmentReminderService>();
-        services.AddScoped<IDatabaseBackupRepository, DatabaseBackupRepository>();
         services.AddScoped<IDatabaseBackupSettingsRepository, DatabaseBackupSettingsRepository>();
         services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
         // A default-less HttpClient (no User-Agent/Accept) gets served an empty body by some CDNs

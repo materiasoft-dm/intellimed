@@ -71,3 +71,18 @@ publish-freeasp/
 
 # Automatic/manual SQLite backups (runtime artifacts, not source)
 src/IntelliMed.Api/backups/
+backups/
+
+# Repo-root runtime artifacts. NOTE: src/IntelliMed.Api/intellimed.db stays deliberately TRACKED —
+# it's the shared test database. This entry only covers a stray copy written at the repo root by a
+# smoke test or a run launched from the wrong working directory.
+/intellimed.db
+
+# Local-only scratch, never source
+_build_junk/
+.git.broken/
+
+# Never commit an environment-specific settings file — these are where the JWT signing key and the
+# /dbadmin credential live (see Api/Configuration/JwtSettings.cs for why they're not in appsettings.json).
+appsettings.Production.json
+appsettings.Local.json

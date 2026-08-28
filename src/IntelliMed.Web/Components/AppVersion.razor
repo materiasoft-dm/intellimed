@@ -1,0 +1,18 @@
+@* Small, muted version tag — fetched from GET api/version (read from IntelliMed.Api.csproj's
+   <Version>, bumped by hand before every publish) so a stale deploy is visible at a glance instead of
+   needing to hunt through the nav for a missing feature. Used on both Login.razor (pre-auth) and
+   MainLayout.razor's sidebar (post-auth), so it fetches independently rather than assuming a parent
+   already has it. *@
+
+<span class="text-muted small">v@(_version)</span>
+
+@code {
+    [Inject] private IVersionService VersionService { get; set; } = default!;
+
+    private string _version = "…";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _version = await VersionService.GetVersionAsync();
+    }
+}

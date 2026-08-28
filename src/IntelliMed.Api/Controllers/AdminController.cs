@@ -25,6 +25,7 @@ public class AdminController : ControllerBase
     private readonly IEmailTemplateRepository _emailTemplateRepository;
     private readonly IEmailSender _emailSender;
     private readonly INotificationRepository _notificationRepository;
+    private readonly ISystemSettingsRepository _systemSettingsRepository;
     private readonly ILogger<AdminController> _logger;
 
     public AdminController(
@@ -35,6 +36,7 @@ public class AdminController : ControllerBase
         IEmailTemplateRepository emailTemplateRepository,
         IEmailSender emailSender,
         INotificationRepository notificationRepository,
+        ISystemSettingsRepository systemSettingsRepository,
         ILogger<AdminController> logger)
     {
         _userManager = userManager;
@@ -44,6 +46,7 @@ public class AdminController : ControllerBase
         _emailTemplateRepository = emailTemplateRepository;
         _emailSender = emailSender;
         _notificationRepository = notificationRepository;
+        _systemSettingsRepository = systemSettingsRepository;
         _logger = logger;
     }
 
@@ -130,6 +133,8 @@ public class AdminController : ControllerBase
             }
         }
 
+        var systemSettings = await _systemSettingsRepository.GetAsync();
+
         var user = new IdentityCore.ApplicationUser
         {
             UserName = request.Email,
@@ -138,6 +143,9 @@ public class AdminController : ControllerBase
             LastName = request.LastName,
             EmailConfirmed = true,
             IsActive = true,
+            // System-wide default for new logins, set on the System Settings screen. The user can
+            // change it afterwards in their own Profile Settings.
+            ShowCommandPalette = systemSettings.NewUserShowCommandPalette,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -435,64 +443,26 @@ public class AdminController : ControllerBase
             {
                 Name = "SuperAdmin",
                 Description = "Full system access. Can manage users, roles, and all system settings.",
-                Permissions = new List<string>
-                {
-                    "users.read", "users.create", "users.edit", "users.delete",
-                    "roles.read", "roles.assign",
-                    "patients.read", "patients.create", "patients.edit", "patients.delete",
-                    "appointments.read", "appointments.create", "appointments.edit", "appointments.delete",
-                    "invoices.read", "invoices.create", "invoices.edit", "invoices.delete",
-                    "practitioners.read", "practitioners.create", "practitioners.edit", "practitioners.delete",
-                    "reports.read", "settings.read", "settings.edit"
-                }
             },
             new()
             {
                 Name = "Admin",
                 Description = "Administrative access. Can manage users and access all clinical/billing features.",
-                Permissions = new List<string>
-                {
-                    "users.read", "users.create", "users.edit",
-                    "roles.read", "roles.assign",
-                    "patients.read", "patients.create", "patients.edit", "patients.delete",
-                    "appointments.read", "appointments.create", "appointments.edit", "appointments.delete",
-                    "invoices.read", "invoices.create", "invoices.edit", "invoices.delete",
-                    "practitioners.read", "practitioners.create", "practitioners.edit",
-                    "reports.read"
-                }
             },
             new()
             {
                 Name = "Doctor",
                 Description = "Clinical access. Can manage patients, appointments, and view invoices.",
-                Permissions = new List<string>
-                {
-                    "patients.read", "patients.create", "patients.edit",
-                    "appointments.read", "appointments.create", "appointments.edit",
-                    "invoices.read",
-                    "practitioners.read"
-                }
             },
             new()
             {
                 Name = "Nurse",
                 Description = "Clinical support access. Can view and update patients and appointments.",
-                Permissions = new List<string>
-                {
-                    "patients.read", "patients.edit",
-                    "appointments.read", "appointments.edit"
-                }
             },
             new()
             {
                 Name = "Receptionist",
                 Description = "Front-desk access. Can manage patients, appointments, and invoices.",
-                Permissions = new List<string>
-                {
-                    "patients.read", "patients.create", "patients.edit",
-                    "appointments.read", "appointments.create", "appointments.edit",
-                    "invoices.read", "invoices.create", "invoices.edit"
-                }
             }
         };
 

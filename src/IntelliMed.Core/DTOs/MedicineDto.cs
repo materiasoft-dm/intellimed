@@ -22,10 +22,25 @@ public class MedicineDto
     public bool IsActive { get; set; }
     public DateTime? LastSyncedAt { get; set; }
     public List<IngredientRefDto> ActiveIngredients { get; set; } = new();
+
+    // PBS prescribing limits and classification — see Medicine.cs.
+    public int? MaxRepeats { get; set; }
+    public int? MaxQuantity { get; set; }
+    public string? Route { get; set; }
+    public bool IsSection100 { get; set; }
+    public string? TherapeuticGroupId { get; set; }
+    public string? TherapeuticGroupTitle { get; set; }
+
+    /// <summary>True when this row carries no poisons schedule. Distinct from "unscheduled" — it
+    /// means unknown, because the PBS feed doesn't publish scheduling at all (see
+    /// MEDICINE_DATA_ENRICHMENT.md §1). The UI must say so rather than render nothing, so absence
+    /// isn't misread as "not S8".</summary>
+    public bool SchedulingUnknown => Schedule == null;
 }
 
 public class IngredientRefDto
 {
+    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? AtcCode { get; set; }
 }

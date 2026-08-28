@@ -12,7 +12,7 @@ public class ClientUserDefinedFieldValueRepository : Repository<ClientUserDefine
     {
     }
 
-    public async Task<ClientUserDefinedFieldValueDto?> GetByIdAsync(int id)
+    public new async Task<ClientUserDefinedFieldValueDto?> GetByIdAsync(int id)
     {
         var value = await _dbSet.Include(v => v.UserDefinedFieldType).FirstOrDefaultAsync(v => v.Id == id);
         return value == null ? null : ToDto(value);

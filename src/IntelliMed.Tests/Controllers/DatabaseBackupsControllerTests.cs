@@ -11,21 +11,20 @@ namespace IntelliMed.Tests.Controllers;
 
 public class DatabaseBackupsControllerTests
 {
-    private readonly Mock<IDatabaseBackupRepository> _repositoryMock = new();
     private readonly Mock<IDatabaseBackupSettingsRepository> _settingsRepositoryMock = new();
     private readonly Mock<IDatabaseBackupService> _backupServiceMock = new();
     private readonly DatabaseBackupsController _controller;
 
     public DatabaseBackupsControllerTests()
     {
-        _controller = new DatabaseBackupsController(_repositoryMock.Object, _settingsRepositoryMock.Object, _backupServiceMock.Object);
+        _controller = new DatabaseBackupsController(_settingsRepositoryMock.Object, _backupServiceMock.Object);
     }
 
     [Fact]
-    public async Task GetAll_ReturnsBackupsFromRepository()
+    public async Task GetAll_ReturnsBackupsFromService()
     {
-        var backups = new List<DatabaseBackupDto> { new() { Id = 1, FileName = "a.db" } };
-        _repositoryMock.Setup(r => r.GetAllAsync()).ReturnsAsync(backups);
+        var backups = new List<DatabaseBackupDto> { new() { FileName = "a.db" } };
+        _backupServiceMock.Setup(s => s.GetAllAsync()).ReturnsAsync(backups);
 
         var result = await _controller.GetAll();
 
@@ -56,7 +55,7 @@ public class DatabaseBackupsControllerTests
     [Fact]
     public async Task BackupNow_TriggersManualBackup()
     {
-        var dto = new DatabaseBackupDto { Id = 5, FileName = "manual.db", Trigger = DatabaseBackupTrigger.Manual };
+        var dto = new DatabaseBackupDto { FileName = "manual.db", Trigger = DatabaseBackupTrigger.Manual };
         _backupServiceMock.Setup(s => s.PerformBackupAsync(DatabaseBackupTrigger.Manual)).ReturnsAsync(dto);
 
         var result = await _controller.BackupNow();
@@ -66,25 +65,34 @@ public class DatabaseBackupsControllerTests
     }
 
     [Fact]
-    public async Task Download_UnknownId_ReturnsNotFound()
+    public async Task Download_UnknownFileName_ReturnsNotFound()
     {
-        _backupServiceMock.Setup(s => s.GetBackupFileAsync(999)).ReturnsAsync(((byte[] Content, string FileName)?)null);
+        _backupServiceMock.Setup(s => s.GetBackupFileAsync("missing.db")).ReturnsAsync(((byte[] Content, string FileName)?)null);
 
-        var result = await _controller.Download(999);
+        var result = await _controller.Download("missing.db");
 
         result.Should().BeOfType<NotFoundResult>();
     }
 
     [Fact]
-    public async Task Download_KnownId_ReturnsFileWithCorrectName()
+    public async Task Download_KnownFileName_ReturnsFileWithCorrectName()
     {
         var content = new byte[] { 1, 2, 3 };
-        _backupServiceMock.Setup(s => s.GetBackupFileAsync(5)).ReturnsAsync((content, "backup-5.db"));
+        _backupServiceMock.Setup(s => s.GetBackupFileAsync("backup-5.db")).ReturnsAsync((content, "backup-5.db"));
 
-        var result = await _controller.Download(5);
+        var result = await _controller.Download("backup-5.db");
 
         var fileResult = result.Should().BeOfType<FileContentResult>().Subject;
         fileResult.FileContents.Should().BeSameAs(content);
         fileResult.FileDownloadName.Should().Be("backup-5.db");
+    }
+
+    [Fact]
+    public async Task Delete_CallsServiceAndReturnsNoContent()
+    {
+        var result = await _controller.Delete("backup-5.db");
+
+        result.Should().BeOfType<NoContentResult>();
+        _backupServiceMock.Verify(s => s.DeleteAsync("backup-5.db"), Times.Once);
     }
 }

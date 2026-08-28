@@ -37,6 +37,14 @@ public class CurrentUserResponse
     public string? Email { get; set; }
     public string? FullName { get; set; }
     public IList<string>? Roles { get; set; }
+
+    /// <summary>The Practitioner row linked via Practitioner.ApplicationUserId, if any — null when
+    /// this login has no linked practitioner (e.g. an admin-only account). Lets a UI default a
+    /// "prescriber"-style field to "me" for a user who's actually a clinician.</summary>
+    public int? PractitionerId { get; set; }
+
+    /// <summary>Personal preference: whether the Command Palette (Ctrl+K) should render for this user.</summary>
+    public bool ShowCommandPalette { get; set; } = true;
 }
 
 /// <summary>
@@ -64,6 +72,7 @@ public class UserProfileDto
     public bool InternalProvider { get; set; }
     public bool EPrescribingEnabled { get; set; }
     public int? DefaultAppointmentTimeslotMinutes { get; set; }
+    public bool ShowCommandPalette { get; set; } = true;
 
     public int? GroupId { get; set; }
     public string? GroupName { get; set; }
@@ -109,6 +118,8 @@ public class UpdateProfileRequest
     /// <summary>Overrides the clinic-wide default appointment calendar slot granularity. Null (blank) falls back to the clinic setting.</summary>
     [Range(1, 240)]
     public int? DefaultAppointmentTimeslotMinutes { get; set; }
+
+    public bool ShowCommandPalette { get; set; } = true;
 
     public int? GroupId { get; set; }
 

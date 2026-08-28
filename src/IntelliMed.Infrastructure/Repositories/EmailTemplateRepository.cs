@@ -22,7 +22,7 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
         return templates.Select(ToDto).ToList();
     }
 
-    public async Task<EmailTemplateDto?> GetByIdAsync(int id)
+    public new async Task<EmailTemplateDto?> GetByIdAsync(int id)
     {
         var template = await _dbSet.FirstOrDefaultAsync(t => t.Id == id);
         return template == null ? null : ToDto(template);
