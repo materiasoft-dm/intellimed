@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Bumped by hand before every `dotnet publish` — surfaced in the UI (login page + sidebar) via
          GET api/version, so a stale deploy is visible at a glance instead of needing nav archaeology. -->
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
