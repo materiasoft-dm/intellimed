@@ -108,6 +108,20 @@ public class FeeScheduleService : IFeeScheduleService
         return results ?? new List<FeeScheduleItemDto>();
     }
 
+    public async Task<FeeScheduleItemsPageDto> GetItemsPagedAsync(int feeScheduleId, int skip, int take)
+    {
+        var result = await _httpClient.GetFromJsonAsync<FeeScheduleItemsPageDto>(
+            $"api/fee-schedules/{feeScheduleId}/items/paged?skip={skip}&take={take}");
+        return result ?? new FeeScheduleItemsPageDto();
+    }
+
+    public async Task<FeeScheduleItemDto?> GetItemByIdAsync(int itemId)
+    {
+        var response = await _httpClient.GetAsync($"api/fee-schedules/items/{itemId}");
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<FeeScheduleItemDto>();
+    }
+
     public async Task<bool> AddItemAsync(int feeScheduleId, CreateFeeScheduleItemDto dto)
     {
         try

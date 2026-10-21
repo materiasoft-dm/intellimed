@@ -1,5 +1,6 @@
 @page "/fee-schedules"
 @layout MainLayout
+@implements IAsyncDisposable
 @using System.ComponentModel.DataAnnotations
 @using IntelliMed.Core.DTOs
 @using IntelliMed.Core.Entities
@@ -143,7 +144,7 @@
 {
     <div class="modal-backdrop fade show" style="display:block;"></div>
     <div class="modal fade show d-block" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
             <div class="modal-content">
                 <div class="modal-header py-2">
                     <h5 class="modal-title">@(_isEditing ? "Edit Fee Schedule" : "New Fee Schedule")</h5>
@@ -355,31 +356,46 @@
                             }
                             else
                             {
-                                <table class="table table-sm table-hover">
-                                    <thead><tr><th>Item#</th><th>Description</th><th style="width:120px">Fee</th><th style="width:110px">Last Updated</th><th></th></tr></thead>
-                                    <tbody>
-                                        @foreach (var item in _items)
-                                        {
-                                            <tr>
-                                                <td>@item.ItemNumber</td>
-                                                <td>@item.Description</td>
-                                                <td>
-                                                    <input type="number" step="0.01" class="form-control form-control-sm" value="@item.Fee"
-                                                           @onchange="@(e => UpdateItemFeeAsync(item, e.Value))" />
-                                                </td>
-                                                <td class="text-end">
-                                                    <button type="button" class="btn btn-link btn-sm p-0 small" @onclick="@(() => OpenHistoryAsync(item))">
-                                                        @((item.UpdatedAt ?? item.CreatedAt).ToLocalTime().ToString("d MMM yyyy"))
-                                                    </button>
-                                                </td>
-                                                <td class="text-end">
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" @onclick="@(() => OpenOverridesAsync(item))">Derived</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveItemAsync(item))">Delete</button>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
+                                <div class="small text-muted mb-1">Showing @_items.Count of @_itemsTotalCount item@(_itemsTotalCount == 1 ? "" : "s").</div>
+                                <div id="@ItemsScrollContainerId" style="max-height: 50vh; overflow-y: auto;">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead><tr><th>Item#</th><th>Description</th><th style="width:120px">Fee</th><th style="width:110px">Last Updated</th><th style="width:165px"></th></tr></thead>
+                                        <tbody>
+                                            @foreach (var item in _items)
+                                            {
+                                                <tr>
+                                                    <td>@item.ItemNumber</td>
+                                                    <td>@item.Description</td>
+                                                    <td>
+                                                        <input type="number" step="0.01" class="form-control form-control-sm" value="@item.Fee"
+                                                               @onchange="@(e => UpdateItemFeeAsync(item, e.Value))" />
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <button type="button" class="btn btn-link btn-sm p-0 small" @onclick="@(() => OpenHistoryAsync(item))">
+                                                            @((item.UpdatedAt ?? item.CreatedAt).ToLocalTime().ToString("d MMM yyyy"))
+                                                        </button>
+                                                    </td>
+                                                    <td class="text-end text-nowrap">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary me-1" @onclick="@(() => OpenOverridesAsync(item))">Derived</button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveItemAsync(item))">Delete</button>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+
+                                    @* Sentinel the infinite-scroll observer watches; IntelliMedInfiniteScroll.observe is (re)attached in OnAfterRenderAsync. *@
+                                    <div id="@ItemsSentinelId"></div>
+
+                                    @if (_loadingMoreItems)
+                                    {
+                                        <div class="text-center text-muted small py-2"><span class="spinner-border spinner-border-sm me-1"></span>Loading more...</div>
+                                    }
+                                    else if (!_hasMoreItems)
+                                    {
+                                        <div class="text-center text-muted small py-2">All @_itemsTotalCount items loaded.</div>
+                                    }
+                                </div>
                             }
                         }
 
@@ -571,8 +587,16 @@
     private FeeScheduleDialogModel _dialogModel = new();
     private string _activeDialogTab = "General";
 
+    private const int ItemsPageSize = 50;
+    private const string ItemsScrollContainerId = "feeScheduleItemsScroll";
+    private const string ItemsSentinelId = "feeScheduleItemsSentinel";
+
     private List<FeeScheduleItemDto> _items = new();
     private bool _itemsLoading;
+    private int _itemsTotalCount;
+    private bool _hasMoreItems;
+    private bool _loadingMoreItems;
+    private DotNetObjectReference<FeeSchedules>? _itemsScrollRef;
     private bool _copyingFromMbs;
     private bool _importing;
     private int? _importSourceId;
@@ -616,6 +640,34 @@
         {
             await _grid.Reload();
         }
+
+        // (Re)attach the infinite-scroll observer whenever the Items tab is showing a loaded page
+        // with more rows to fetch; detach it once everything is loaded or the tab/modal isn't showing.
+        if (_dialogVisible && _activeDialogTab == "Items" && !_itemsLoading && _items.Count > 0)
+        {
+            if (_hasMoreItems)
+            {
+                _itemsScrollRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("IntelliMedInfiniteScroll.observe", ItemsSentinelId, ItemsScrollContainerId, _itemsScrollRef, nameof(LoadMoreItemsAsync));
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("IntelliMedInfiniteScroll.unobserve", ItemsSentinelId);
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("IntelliMedInfiniteScroll.unobserve", ItemsSentinelId);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit already gone (e.g. page navigation/reload) — nothing to clean up on the JS side.
+        }
+        _itemsScrollRef?.Dispose();
     }
 
     private async Task LoadDataAsync(LoadDataArgs args)
@@ -718,21 +770,49 @@
         await LoadItemsAsync();
     }
 
-    private void CloseDialog()
+    private async Task CloseDialog()
     {
         _dialogVisible = false;
+        await JS.InvokeVoidAsync("IntelliMedInfiniteScroll.unobserve", ItemsSentinelId);
     }
 
     private async Task LoadItemsAsync()
     {
         _itemsLoading = true;
+        _hasMoreItems = false;
         try
         {
-            _items = await FeeScheduleService.GetItemsAsync(_editingId);
+            var page = await FeeScheduleService.GetItemsPagedAsync(_editingId, 0, ItemsPageSize);
+            _items = page.Items;
+            _itemsTotalCount = page.TotalCount;
+            _hasMoreItems = _items.Count < _itemsTotalCount;
         }
         finally
         {
             _itemsLoading = false;
+        }
+    }
+
+    /// <summary>Fetches the next page of items and appends it — invoked from JS when the sentinel
+    /// at the bottom of the (currently loaded) items scrolls into view.</summary>
+    [JSInvokable]
+    public async Task LoadMoreItemsAsync()
+    {
+        if (_loadingMoreItems || !_hasMoreItems) return;
+
+        _loadingMoreItems = true;
+        StateHasChanged();
+        try
+        {
+            var page = await FeeScheduleService.GetItemsPagedAsync(_editingId, _items.Count, ItemsPageSize);
+            _items.AddRange(page.Items);
+            _itemsTotalCount = page.TotalCount;
+            _hasMoreItems = _items.Count < _itemsTotalCount;
+        }
+        finally
+        {
+            _loadingMoreItems = false;
+            StateHasChanged();
         }
     }
 
@@ -773,7 +853,15 @@
         {
             var success = await FeeScheduleService.UpdateItemOverridesAsync(_overridesItem.Id, _overridesModel);
             ShowToast(success ? "Overrides saved." : "Failed to save overrides.", !success);
-            if (success) await LoadItemsAsync();
+            if (success)
+            {
+                // _overridesItem is the same object reference held in _items (see OpenOverridesAsync),
+                // so updating it in place keeps both in sync without re-fetching the (possibly
+                // partially-loaded, paged) items list.
+                _overridesItem.MedicalGapPercent = _overridesModel.MedicalGapPercent;
+                _overridesItem.PercentageFromAssociatedItemFee = _overridesModel.PercentageFromAssociatedItemFee;
+                _overridesItem.OverLimitQuantityPlus = _overridesModel.OverLimitQuantityPlus;
+            }
         }
         finally
         {
@@ -791,8 +879,9 @@
         });
         if (success)
         {
-            await LoadItemsAsync();
-            _overridesItem = _items.FirstOrDefault(i => i.Id == _overridesItem.Id) ?? _overridesItem;
+            // Re-fetch just this one item (not the whole, possibly paged, items list) to pick up
+            // the new rate's server-generated id — needed so "Delete" on it works immediately.
+            _overridesItem = await FeeScheduleService.GetItemByIdAsync(_overridesItem.Id) ?? _overridesItem;
             _newRateOrderNum = 0;
             _newRateFee = 0;
         }
@@ -802,10 +891,9 @@
     private async Task RemovePrecalculatedRateAsync(DerivedItemRateCalculatedDto rate)
     {
         var success = await FeeScheduleService.RemovePrecalculatedRateAsync(rate.Id);
-        if (success)
+        if (success && _overridesItem != null)
         {
-            await LoadItemsAsync();
-            _overridesItem = _items.FirstOrDefault(i => i.Id == _overridesItem?.Id) ?? _overridesItem;
+            _overridesItem = await FeeScheduleService.GetItemByIdAsync(_overridesItem.Id) ?? _overridesItem;
         }
         ShowToast(success ? "Rate removed." : "Failed to remove rate.", !success);
     }
@@ -864,6 +952,8 @@
         if (success)
         {
             _items.Remove(item);
+            _itemsTotalCount = Math.Max(0, _itemsTotalCount - 1);
+            _hasMoreItems = _items.Count < _itemsTotalCount;
         }
         else
         {

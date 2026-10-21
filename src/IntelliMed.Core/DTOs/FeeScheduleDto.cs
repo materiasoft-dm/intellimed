@@ -88,6 +88,14 @@ public class FeeScheduleItemDto
     public DateTime? UpdatedAt { get; set; }
 }
 
+/// <summary>One page of a fee schedule's items, ordered by item number — backs the Items tab's
+/// infinite scroll so a schedule with thousands of items doesn't load them all at once.</summary>
+public class FeeScheduleItemsPageDto
+{
+    public List<FeeScheduleItemDto> Items { get; set; } = new();
+    public int TotalCount { get; set; }
+}
+
 /// <summary>One past fee value for a FeeScheduleItem, in the order it took effect.</summary>
 public class FeeScheduleItemHistoryDto
 {

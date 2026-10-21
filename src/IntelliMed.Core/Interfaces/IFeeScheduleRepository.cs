@@ -13,6 +13,14 @@ public interface IFeeScheduleRepository : IRepository<FeeSchedule>
     Task ArchiveAsync(int id);
 
     Task<IEnumerable<FeeScheduleItemDto>> GetItemsAsync(int feeScheduleId);
+
+    /// <summary>Page through a schedule's items ordered by item number, for infinite scroll.</summary>
+    Task<(IEnumerable<FeeScheduleItemDto> Items, int TotalCount)> GetItemsPagedAsync(int feeScheduleId, int skip, int take);
+
+    /// <summary>Re-fetch a single item (with its derived-item rates) after a mutation that only affects it,
+    /// instead of reloading the whole (possibly large, paged) items list.</summary>
+    Task<FeeScheduleItemDto?> GetItemByIdAsync(int itemId);
+
     Task<int> AddItemAsync(int feeScheduleId, CreateFeeScheduleItemDto dto);
     Task UpdateItemFeeAsync(int itemId, decimal fee);
     Task RemoveItemAsync(int itemId);

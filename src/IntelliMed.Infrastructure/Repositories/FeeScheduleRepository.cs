@@ -90,6 +90,33 @@ public class FeeScheduleRepository : Repository<FeeSchedule>, IFeeScheduleReposi
         return items.Select(EntityMapper.ToDto);
     }
 
+    public async Task<(IEnumerable<FeeScheduleItemDto> Items, int TotalCount)> GetItemsPagedAsync(int feeScheduleId, int skip, int take)
+    {
+        var query = _context.FeeScheduleItems
+            .Where(i => i.FeeScheduleId == feeScheduleId);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Include(i => i.BillingItem)
+            .Include(i => i.DerivedItemRateCalculateds)
+            .OrderBy(i => i.BillingItem!.ItemNumber)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+
+        return (items.Select(EntityMapper.ToDto), totalCount);
+    }
+
+    public async Task<FeeScheduleItemDto?> GetItemByIdAsync(int itemId)
+    {
+        var item = await _context.FeeScheduleItems
+            .Include(i => i.BillingItem)
+            .Include(i => i.DerivedItemRateCalculateds)
+            .FirstOrDefaultAsync(i => i.Id == itemId);
+        return item == null ? null : EntityMapper.ToDto(item);
+    }
+
     /// <summary>Upsert: adding an item already on the schedule updates its fee instead of throwing on the unique (FeeScheduleId, BillingItemId) index, so retrying/double-clicking is safe.</summary>
     public async Task<int> AddItemAsync(int feeScheduleId, CreateFeeScheduleItemDto dto)
     {

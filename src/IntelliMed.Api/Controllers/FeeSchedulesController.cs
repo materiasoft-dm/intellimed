@@ -134,6 +134,35 @@ public class FeeSchedulesController : ControllerBase
     }
 
     /// <summary>
+    /// Page through the item-fee mappings for a fee schedule, ordered by item number — backs the
+    /// Items tab's infinite scroll so a schedule with thousands of items doesn't load them all at once.
+    /// </summary>
+    [HttpGet("{id:int}/items/paged")]
+    [ProducesResponseType(typeof(FeeScheduleItemsPageDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetItemsPaged(int id, [FromQuery] int skip = 0, [FromQuery] int take = 50)
+    {
+        skip = Math.Max(skip, 0);
+        take = Math.Clamp(take, 1, 200);
+
+        var (items, totalCount) = await _repository.GetItemsPagedAsync(id, skip, take);
+        return Ok(new FeeScheduleItemsPageDto { Items = items.ToList(), TotalCount = totalCount });
+    }
+
+    /// <summary>
+    /// Re-fetch a single item (with its derived-item rates) by its own id — used to refresh the
+    /// Derived-Item Overrides modal after a change, without reloading the whole items list.
+    /// </summary>
+    [HttpGet("items/{itemId:int}")]
+    [ProducesResponseType(typeof(FeeScheduleItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetItemById(int itemId)
+    {
+        var item = await _repository.GetItemByIdAsync(itemId);
+        if (item == null) return NotFound();
+        return Ok(item);
+    }
+
+    /// <summary>
     /// Add a single item-fee mapping to a fee schedule.
     /// </summary>
     [HttpPost("{id:int}/items")]

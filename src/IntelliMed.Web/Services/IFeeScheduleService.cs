@@ -13,6 +13,8 @@ public interface IFeeScheduleService
     Task<bool> DeleteFeeScheduleAsync(int id);
 
     Task<List<FeeScheduleItemDto>> GetItemsAsync(int feeScheduleId);
+    Task<FeeScheduleItemsPageDto> GetItemsPagedAsync(int feeScheduleId, int skip, int take);
+    Task<FeeScheduleItemDto?> GetItemByIdAsync(int itemId);
     Task<bool> AddItemAsync(int feeScheduleId, CreateFeeScheduleItemDto dto);
     Task<bool> UpdateItemFeeAsync(int itemId, decimal fee);
     Task<bool> RemoveItemAsync(int itemId);
