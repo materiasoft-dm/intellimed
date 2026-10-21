@@ -176,13 +176,13 @@ else
         @if (_showAdminCard)
         {
             <div class="col-sm-6 col-lg-3">
-                <a href="/admin/users" class="text-decoration-none">
+                <a href="/admin" class="text-decoration-none">
                     <div class="card h-100">
                         <div class="card-body d-flex align-items-center gap-3">
                             <span class="stat-icon-badge stat-icon-badge--blue"><i class="bi bi-shield-lock"></i></span>
                             <div>
                                 <div class="fw-semibold">Administration</div>
-                                <div class="text-muted small">Users and role access</div>
+                                <div class="text-muted small">Set-up and configuration pages</div>
                             </div>
                         </div>
                     </div>
@@ -223,8 +223,7 @@ else
         {
             var pages = await AdminService.GetMyAccessiblePagesAsync();
             _showAdminCard = pages is not null &&
-                (pages.Contains("admin/users", StringComparer.OrdinalIgnoreCase) ||
-                 pages.Contains("admin/roles", StringComparer.OrdinalIgnoreCase));
+                pages.Any(p => p.StartsWith("admin/", StringComparison.OrdinalIgnoreCase));
         }
         catch (Exception ex)
         {

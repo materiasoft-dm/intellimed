@@ -1,0 +1,129 @@
+@page "/admin"
+@layout MainLayout
+@using IntelliMed.Web.Services
+@inject IAdminService AdminService
+@inject ILoggerService Logger
+
+<PageTitle>Administration - IntelliMed</PageTitle>
+
+<h3 class="mb-1">Administration</h3>
+<p class="text-muted mb-4">Set-up and configuration pages for the practice.</p>
+
+<div class="mb-4">
+    <div class="input-group" style="max-width: 360px;">
+        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+        <input class="form-control" placeholder="Search administration pages..." @bind="_searchTerm" @bind:event="oninput" />
+    </div>
+</div>
+
+@if (_isLoading)
+{
+    <div class="text-center py-5">
+        <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+        Loading...
+    </div>
+}
+else
+{
+    @foreach (var section in VisibleSections)
+    {
+        <h6 class="text-muted text-uppercase small mt-4 mb-2">@section.Title</h6>
+        <div class="row g-3 mb-2">
+            @foreach (var tile in section.Tiles)
+            {
+                <div class="col-sm-6 col-lg-4">
+                    <a href="@tile.Href" class="text-decoration-none">
+                        <div class="card h-100">
+                            <div class="card-body d-flex align-items-center gap-3">
+                                <span class="stat-icon-badge stat-icon-badge--@section.BadgeColor"><i class="bi @tile.Icon"></i></span>
+                                <div>
+                                    <div class="fw-semibold">@tile.Title</div>
+                                    <div class="text-muted small">@tile.Description</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+    }
+
+    @if (VisibleSections.Count == 0)
+    {
+        <p class="text-muted">No matching administration pages.</p>
+    }
+}
+
+@code {
+    private record AdminTile(string Title, string Description, string Icon, string Href, string PageKey);
+    private record AdminSection(string Title, string BadgeColor, List<AdminTile> Tiles);
+
+    private bool _isLoading = true;
+    private string _searchTerm = "";
+    private HashSet<string> _accessiblePages = new(StringComparer.OrdinalIgnoreCase);
+
+    // Set-up/configuration pages only. Everyday working pages (clients, appointments, invoices)
+    // keep their own sidebar entries and don't belong here.
+    private static readonly List<AdminSection> AllSections = new()
+    {
+        new("Security & Access", "blue", new()
+        {
+            new("User Management", "Manage system users", "bi-person", "/admin/users", "admin/users"),
+            new("Role Configuration", "Configure role permissions", "bi-shield-lock", "/admin/roles", "admin/roles"),
+        }),
+        new("Scheduling", "amber", new()
+        {
+            new("Appointment Types", "Configure the appointment-type/duration-preset catalogue", "bi-tags", "/admin/appointment-types", "admin/appointment-types"),
+        }),
+        new("Communications", "green", new()
+        {
+            new("Email Templates", "Author and assign email templates to system events (invite, forgot password)", "bi-envelope-paper", "/admin/email-templates", "admin/email-templates"),
+        }),
+        new("Clinical Reference Data", "purple", new()
+        {
+            new("Medicine Catalog", "Manage the medicines reference-data catalog and its CSV import", "bi-capsule", "/admin/medicines", "admin/medicines"),
+            new("Drug Interactions", "Manage the drug-interaction reference table used by the prescribing safety check", "bi-shield-exclamation", "/admin/drug-interactions", "admin/drug-interactions"),
+        }),
+        new("System", "blue", new()
+        {
+            new("Command Palette Actions", "Manage the entries searchable from the global command palette", "bi-command", "/admin/search-actions", "admin/search-actions"),
+            new("System Settings", "Configure system parameters", "bi-gear", "/admin/settings", "admin/settings"),
+            new("Database Backups", "Configure and manage scheduled SQLite database backups", "bi-hdd-stack", "/admin/database-backups", "admin/database-backups"),
+        }),
+    };
+
+    private List<AdminSection> VisibleSections
+    {
+        get
+        {
+            var term = _searchTerm.Trim();
+            return AllSections
+                .Select(s => new AdminSection(s.Title, s.BadgeColor, s.Tiles
+                    .Where(t => _accessiblePages.Contains(t.PageKey))
+                    .Where(t => term.Length == 0 ||
+                        t.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                        t.Description.Contains(term, StringComparison.OrdinalIgnoreCase))
+                    .ToList()))
+                .Where(s => s.Tiles.Count > 0)
+                .ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var pages = await AdminService.GetMyAccessiblePagesAsync();
+            if (pages != null)
+            {
+                _accessiblePages = new HashSet<string>(pages, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+        catch (Exception ex)
+        {
+            await Logger.LogErrorAsync(ex, "Administration.OnInitializedAsync");
+        }
+
+        _isLoading = false;
+    }
+}
