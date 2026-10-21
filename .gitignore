@@ -82,6 +82,9 @@ backups/
 _build_junk/
 .git.broken/
 
+# graphify knowledge-graph output (graph.json, cache, cross-repo merge) — large and regenerable
+graphify-out/
+
 # Never commit an environment-specific settings file — these are where the JWT signing key and the
 # /dbadmin credential live (see Api/Configuration/JwtSettings.cs for why they're not in appsettings.json).
 appsettings.Production.json

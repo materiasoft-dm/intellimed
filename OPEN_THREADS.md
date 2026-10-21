@@ -61,6 +61,19 @@ accumulated fixture-database state rather than one interaction. Not root-caused.
 
 ---
 
+## Waiting on a decision
+
+### `ClaimStatus` needs more values before electronic claiming starts
+The six-value `Invoice.ClaimStatus` works while staff set it by hand, but it has no safe value for
+a transmit that fails partway through (the request may already have reached Medicare). Legacy hit
+exactly this as a duplicate re-claim (PRACNET-3019). Proposed: append `TransmitFailed` (or
+`OutcomeUnknown`) and `ExceptionsToReview`, add a transmit-attempt log, and port legacy's
+"only batch `NotSubmitted`" guard. Not urgent until the first claim processor is written, but
+decide before then. Full mapping of legacy's five failure paths in **`BILLING_AND_CLAIMING.md`
+§2.1**.
+
+---
+
 ## Deployment
 
 **`Jwt__Key` is now required.** The app deliberately refuses to start without it outside

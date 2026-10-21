@@ -200,6 +200,52 @@ A real Medicare Online integration needs:
 
 None of this exists in IntelliMed yet — see 3.8.
 
+### 2.1 Claim status — what legacy's failure paths teach (decide before building)
+
+`Invoice.ClaimStatus` has six values today (`NotSubmitted`, `Submitted`, `Accepted`, `Rejected`,
+`PartiallyPaid`, `Paid`), deliberately collapsed from legacy's 21-value `eClaimStatus`
+(`SourceCode/Abaki.Common.Enums/MedicareOnlineEnums.cs` in the legacy repo). Six values are enough
+while staff set the status by hand. They are not enough once code transmits claims.
+
+Legacy's six transmit services (BBSW, DVA, DVA Allied, IMC, OVS, OEC) shared five failure paths
+where a forgotten status write left claims stuck in an ambiguous state (`HANDOFF.md` §8.7; the
+legacy rule file `.claude/rules/claim-transmit-conventions.md`). Under a later design change
+(PRACNET-3014), Bulk Bill, DVA, IMC and OVS deliberately **stay `Batched` on every failure**, so
+staff fix the underlying detail and retransmit without status churn. AIR keeps `TransmitFailed`.
+
+| # | Failure path | Legacy behaviour | IntelliMed with today's six values |
+|---|---|---|---|
+| 1 | OPV pre-check fails | Stays `Batched`; nothing was sent | `NotSubmitted` fits, but nothing records *why* it failed |
+| 2 | Services Australia returns a non-OK HTTP response | Stays `Batched` (IMC still marks failure per claim) | `NotSubmitted` fits. Must **not** become `Rejected`, which should mean Medicare assessed and rejected the claim |
+| 3 | Failure not propagated to linked invoices | Writes the claim's status *and* each linked `Invoice.SentClaimStatus`, from a single writer | Doesn't arise yet — status lives only on `Invoice`. Returns as soon as one claim spans several invoices, as Bulk Bill claims do |
+| 4 | Building the request payload returns null | Guarded; stays `Batched` | `NotSubmitted` plus validation errors. Better: validate before building the payload |
+| 5 | Exception partway through a claim | `TransmitFailed` or stays `Batched`, with a recovery save in its own try/catch | **No safe value.** If the request already reached Medicare, leaving it `NotSubmitted` lets the next batch send it again |
+
+Path 5 has already caused a production incident. In PRACNET-3019 (`HANDOFF.md` §13.6) an
+immunisation claim succeeded but its status write was lost; the next day's auto-batch re-claimed
+it and AIR rejected the duplicate.
+
+Legacy states with no IntelliMed equivalent: `Batched` (queued, not sent), `ExceptionsToReview`
+(the processing report flagged problems with some items), `ExceptionsCleared` (awaiting the payment
+report), `ReadyToReceipt`, `TransmitFailed` and `PartlyTransmitted`. The rest map cleanly:
+`Transmitted` → `Submitted`, `FullyRejected` → `Rejected`, `PartlyPaid` → `PartiallyPaid`,
+`FullyPaid`/`Finalised` → `Paid`.
+
+**Recommended before the first claim processor is written** (awaiting a decision — tracked in
+`OPEN_THREADS.md`):
+
+1. **Append `TransmitFailed` (or `OutcomeUnknown`)** for path 5. `ClaimStatus` is persisted as a
+   plain int and is append-only, so adding it as value 6 is safe.
+2. **Append `ExceptionsToReview`.** A partly rejected claim means fixing specific items — a
+   different job from handling a full rejection.
+3. **Keep a transmit-attempt log** (time, HTTP status, Services Australia error code, transaction
+   ID). Paths 1, 2 and 4 leave the status at `NotSubmitted`, so the reason has to live somewhere.
+   This is IntelliMed's equivalent of legacy's `ClaimingErrorLogger`.
+4. **Port the PRACNET-3019 guard from day one.** The batch builder only picks up `NotSubmitted`
+   invoices, and resending is always an explicit action.
+5. **Follow legacy's writing rules:** one writer owns each status transition, and save after each
+   claim rather than once per batch.
+
 ---
 
 ## Part 3 — How IntelliMed models this today
@@ -301,8 +347,10 @@ name, per client (1.9). There's no fee-schedule-driven pricing difference beyond
 
 ### 3.8 What's explicitly NOT built yet
 
-- **No electronic claim transmission of any kind.** `Invoice` has no claim-status field at all —
-  no PRODA integration, no BBSW/DVA/IMC/OVS/OEC processors, nothing from Part 2. Everything
+- **No electronic claim transmission of any kind.** `Invoice` does carry a `ClaimStatus`
+  (`NotSubmitted`/`Submitted`/`Accepted`/`Rejected`/`PartiallyPaid`/`Paid`) and the consent flags,
+  but staff set it by hand from the invoice detail page — nothing transmits or drives transitions.
+  There's no PRODA integration, no BBSW/DVA/IMC/OVS/OEC processors, nothing from Part 2. Everything
   described in Part 3 so far is **fee/rebate/gap calculation only** — it tells you what a line
   *should* cost and what Medicare/DVA *should* rebate, but doesn't send anything to Services
   Australia, a health fund, or DVA electronically. That's tracked as future work; when it's built,
