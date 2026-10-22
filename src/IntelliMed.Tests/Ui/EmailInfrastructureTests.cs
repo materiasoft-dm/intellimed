@@ -88,7 +88,8 @@ public class EmailInfrastructureTests : UiTestBase
         await page.GetByRole(AriaRole.Button, new() { Name = "Add User" }).ClickAsync();
         await page.Field("First Name").FillAsync("Playwright");
         await page.Field("Last Name").FillAsync("Invitee");
-        await page.Field("Email Address").FillAsync($"pw-invitee-{Guid.NewGuid():N}@example.com");
+        var email = $"pw-invitee-{Guid.NewGuid():N}@example.com";
+        await page.Field("Email Address").FillAsync(email);
 
         await page.GetByRole(AriaRole.Button, new() { Name = "Create User" }).ClickAsync();
 
@@ -96,8 +97,12 @@ public class EmailInfrastructureTests : UiTestBase
         await Assertions.Expect(page.Locator(".modal-footer").GetByRole(AriaRole.Button, new() { Name = "Send Invite" })).ToBeVisibleAsync();
 
         await page.GetByRole(AriaRole.Button, new() { Name = "Done" }).ClickAsync();
-        await Assertions.Expect(page.GetByText("Playwright Invitee")).ToBeVisibleAsync();
-        await Assertions.Expect(page.GetByText("Pending")).ToBeVisibleAsync();
+        // Other UI tests create users too (all "Pending" until invited), so check this user's own row,
+        // filtered via search so list paging can't push it off the first page.
+        await page.GetByPlaceholder("Search users...").FillAsync(email);
+        var row = page.Locator("tr", new PageLocatorOptions { HasTextString = email });
+        await Assertions.Expect(row).ToContainTextAsync("Playwright Invitee");
+        await Assertions.Expect(row).ToContainTextAsync("Pending");
     }
 
     [Fact]
