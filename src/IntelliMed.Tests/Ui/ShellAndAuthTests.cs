@@ -34,6 +34,20 @@ public class ShellAndAuthTests : UiTestBase
     }
 
     [Fact]
+    public async Task Login_ShowsAnAccessNotice_AndNoComplianceBadges()
+    {
+        // The footer used to claim "HIPAA Compliant" — a US law that doesn't apply here and had never
+        // been assessed. Guard against a compliance claim creeping back in without one.
+        var page = await Fixture.NewPageAsync();
+        await page.GotoAsync("/login");
+        await page.WaitForSelectorAsync("#email");
+
+        await Assertions.Expect(page.GetByText("Authorised users only. Patient information is confidential.")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("body")).Not.ToContainTextAsync("HIPAA");
+        await Assertions.Expect(page.Locator("body")).Not.ToContainTextAsync("256-bit SSL");
+    }
+
+    [Fact]
     public async Task ProtectedPage_WhenSignedOut_RedirectsToLogin()
     {
         var page = await Fixture.NewPageAsync();

@@ -102,17 +102,13 @@
                 <hr class="my-4" />
 
                 <div class="login-footer">
+                    @* A plain access notice rather than compliance badges: the old "HIPAA Compliant" chip cited
+                       a US law that doesn't apply to Australian practices and had never been assessed. Make a
+                       privacy claim here only once a real assessment (e.g. against the APPs) backs it. *@
                     <p class="footer-text">
-                        Protected by enterprise-grade security
+                        <i class="bi bi-shield-lock me-1"></i>
+                        Authorised users only. Patient information is confidential.
                     </p>
-                    <div class="security-badges">
-                        <span class="badge bg-outline-secondary security-chip">
-                            <i class="bi bi-shield-lock me-1"></i> HIPAA Compliant
-                        </span>
-                        <span class="badge bg-outline-secondary security-chip">
-                            <i class="bi bi-check-circle-fill me-1"></i> 256-bit SSL
-                        </span>
-                    </div>
                     <div class="mt-2">
                         <AppVersion />
                     </div>
@@ -315,22 +311,6 @@
     .footer-text {
         color: var(--imed-neutral-500);
         margin-bottom: 1rem;
-    }
-
-    .security-badges {
-        display: flex;
-        justify-content: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-
-    .security-chip {
-        font-size: 0.75rem;
-        color: var(--imed-neutral-500);
-        border: 1px solid var(--imed-neutral-300);
-        background: transparent;
-        padding: 0.35em 0.65em;
-        border-radius: 16px;
     }
 
     /* Error alert styling */
