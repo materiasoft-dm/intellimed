@@ -210,6 +210,9 @@
     {
         _practitioners = await PractitionerService.GetAllActiveAsync();
         _selectedPractitionerIds = _practitioners.Select(p => p.Id).ToHashSet();
+        // The scheduler's first LoadData can return before this point; it filtered against the then-
+        // empty practitioner set, so rebuild now or the calendar stays blank until the next reload.
+        RebuildEvents();
 
         var profile = await AuthService.GetMyProfileAsync();
         var clinicSettings = await ClinicSettingsService.GetAsync();

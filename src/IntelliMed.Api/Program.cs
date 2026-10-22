@@ -298,8 +298,12 @@ static async Task SeedDefaultUserAsync(UserManager<ApplicationUser> userManager)
 
 static async Task SeedRolePermissionsAsync(AppDbContext context)
 {
-    // Only seed if the table is empty
-    if (await context.RolePermissions.AnyAsync())
+    // Seed once per database. "Table is empty" is the wrong test: MigrateAsync runs first, and several
+    // migrations (e.g. AddAppointmentSchedulingFeatures) insert permission rows of their own, so a fresh
+    // database was never empty here and silently skipped this whole seed. Instead, treat the seed as done
+    // once any role holds "clients" — only this seed ever grants it (no migration does), and SuperAdmin
+    // always has it — so permissions an admin later removes are never put back on restart.
+    if (await context.RolePermissions.AnyAsync(p => p.PageKey == "clients"))
         return;
 
     var permissions = new List<RolePermission>
@@ -456,7 +460,12 @@ static async Task SeedRolePermissionsAsync(AppDbContext context)
         new() { RoleName = "Receptionist", PageKey = "payments", Category = "Financial" },
     };
 
-    await context.RolePermissions.AddRangeAsync(permissions);
+    // Skip rows a migration already inserted — (RoleName, PageKey) is unique.
+    var existing = (await context.RolePermissions.Select(p => new { p.RoleName, p.PageKey }).ToListAsync())
+        .Select(p => (p.RoleName, p.PageKey))
+        .ToHashSet();
+
+    await context.RolePermissions.AddRangeAsync(permissions.Where(p => !existing.Contains((p.RoleName, p.PageKey))));
     await context.SaveChangesAsync();
 }
 

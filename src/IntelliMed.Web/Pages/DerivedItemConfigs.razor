@@ -449,11 +449,11 @@
 
     private static string ValueSummary(DerivedItemConfigDto config) => config.CalculationType switch
     {
-        DerivedCalculationType.CombinationOperations => $"{config.PercentageFromInvoiceTotal ?? 0}%",
+        DerivedCalculationType.CombinationOperations => $"{config.PercentageFromInvoiceTotal ?? 0:0.##}%",
         DerivedCalculationType.BasicUnits => $"{config.CalculateFromFee ?? 0:C} base",
         DerivedCalculationType.NumberOfPatientsSeen => config.CalculateFromFee.HasValue ? $"{config.CalculateFromFee:C} base" : "assoc. item fee",
         DerivedCalculationType.FieldQuantity or DerivedCalculationType.TimeDuration => $"{config.OverLimitQuantityPlus ?? 0:C}/unit",
-        _ => $"{config.Percentage ?? 0}%"
+        _ => $"{config.Percentage ?? 0:0.##}%"
     };
 
     private static string AssociatedItemDisplay(DerivedItemConfigDto config) =>

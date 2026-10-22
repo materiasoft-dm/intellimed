@@ -221,6 +221,9 @@ code {
     background-color: var(--imed-neutral-100);
     flex: 1;
     overflow-y: auto;
+    /* Room for the fixed command-palette button (52px at bottom: 24px, CommandPalette.razor) so a
+       page's last row — usually its Save/Cancel actions — can always scroll clear of it. */
+    padding-bottom: 96px;
 }
 
 /* Sidebar: docked flex column on desktop, slide-over overlay below the lg breakpoint */

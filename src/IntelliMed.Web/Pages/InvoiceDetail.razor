@@ -367,7 +367,7 @@ else
                         </div>
                         <div class="col-12">
                             <label class="form-label small mb-0">Reason</label>
-                            <textarea class="form-control form-control-sm" rows="2" @bind="_refundReason"></textarea>
+                            <textarea class="form-control form-control-sm" rows="2" @bind="_refundReason" @bind:event="oninput"></textarea>
                         </div>
                     </div>
                 </div>
@@ -413,7 +413,7 @@ else
                         </div>
                         <div class="col-12">
                             <label class="form-label small mb-0">Reason</label>
-                            <textarea class="form-control form-control-sm" rows="2" @bind="_writeOffReason"></textarea>
+                            <textarea class="form-control form-control-sm" rows="2" @bind="_writeOffReason" @bind:event="oninput"></textarea>
                         </div>
                     </div>
                 </div>
@@ -453,7 +453,7 @@ else
                         <i class="bi bi-exclamation-triangle me-1"></i> This will cancel invoice @_invoice.InvoiceNumber. It can no longer be paid or split.
                     </div>
                     <label class="form-label small mb-0">Reason</label>
-                    <textarea class="form-control form-control-sm" rows="2" @bind="_cancelReason"></textarea>
+                    <textarea class="form-control form-control-sm" rows="2" @bind="_cancelReason" @bind:event="oninput"></textarea>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="@(() => _showCancelModal = false)">Keep Invoice</button>

@@ -136,7 +136,7 @@ else
         <div class="card mb-2">
             <div class="card-body py-2">
                 <label class="form-label small mb-0">Reason</label>
-                <textarea class="form-control form-control-sm" rows="2" @bind="_reason"></textarea>
+                <textarea class="form-control form-control-sm" rows="2" @bind="_reason" @bind:event="oninput"></textarea>
             </div>
         </div>
     }
