@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Playwright;
 using Xunit;
 
@@ -60,20 +61,37 @@ public class ClientUpdateTests : UiTestBase
     }
 
     [Fact]
-    public async Task EditClient_UpdatingLifecard_Persists()
+    public async Task EditClient_KeepsAStoredLifecardNumber_AfterTheTabWasRemoved()
     {
+        // The Lifecard tab was removed from the UI (2026-10-22), but numbers already imported from legacy
+        // are kept in Client.LifeCardNum. Saving the client must carry that hidden value through rather
+        // than blank it.
         var (page, id) = await CreateClientAsync(Fixture, "Lifecard", "Holder");
-
-        await page.TabLink("Lifecard").ClickAsync();
-        await page.Field("Lifecard#").FillAsync("1111-2222-3333-4444");
-        await page.GetByRole(AriaRole.Button, new() { Name = "💾 Save" }).ClickAsync();
-        await page.WaitForTimeoutAsync(300);
+        var clientId = int.Parse(id);
+        await using (var context = Fixture.OpenDb())
+        {
+            var client = await context.Clients.SingleAsync(c => c.Id == clientId);
+            client.LifeCardNum = "1111-2222-3333-4444";
+            await context.SaveChangesAsync();
+        }
 
         await page.GotoAsync($"/clients/edit/{id}");
         await page.WaitForSelectorAsync("text=Edit Client");
-        await page.TabLink("Lifecard").ClickAsync();
+        await Assertions.Expect(page.TabLink("Lifecard")).ToHaveCountAsync(0);
 
-        await Assertions.Expect(page.Field("Lifecard#")).ToHaveValueAsync("1111-2222-3333-4444");
+        await page.Field("Ethnicity").FillAsync("Kept Lifecard");
+        await page.GetByRole(AriaRole.Button, new() { Name = "💾 Save" }).ClickAsync();
+
+        // Poll the database until the save lands, then check the hidden field survived it.
+        IntelliMed.Core.Entities.Client? saved = null;
+        for (var attempt = 0; attempt < 50 && saved?.Ethnicity != "Kept Lifecard"; attempt++)
+        {
+            await Task.Delay(200);
+            await using var context = Fixture.OpenDb();
+            saved = await context.Clients.AsNoTracking().SingleAsync(c => c.Id == clientId);
+        }
+        Assert.Equal("Kept Lifecard", saved?.Ethnicity);
+        Assert.Equal("1111-2222-3333-4444", saved?.LifeCardNum);
     }
 
     [Fact]

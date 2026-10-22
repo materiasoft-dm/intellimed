@@ -22,7 +22,7 @@ public class ClientCreateTests : UiTestBase
         await Assertions.Expect(page.Locator(".card-header:has-text('Account')")).ToBeVisibleAsync();
         await Assertions.Expect(page.Locator(".card-header:has-text('File')")).ToBeVisibleAsync();
 
-        foreach (var tab in new[] { "Referrals", "WC/TAC", "Family", "Occupations", "eHealth", "Lifecard", "UDF" })
+        foreach (var tab in new[] { "Referrals", "WC/TAC", "Family", "Occupations", "eHealth", "UDF" })
         {
             await Assertions.Expect(page.TabLink(tab)).ToBeVisibleAsync();
         }
@@ -271,7 +271,7 @@ public class ClientCreateTests : UiTestBase
         await page.GotoAsync("/clients/add");
         await page.WaitForSelectorAsync("text=New Client");
 
-        foreach (var tab in new[] { "Referrals", "WC/TAC", "Family", "Occupations", "eHealth", "Lifecard", "UDF" })
+        foreach (var tab in new[] { "Referrals", "WC/TAC", "Family", "Occupations", "eHealth", "UDF" })
         {
             await page.TabLink(tab).ClickAsync();
             await Assertions.Expect(page.GetByText($"Save the client first to manage {tab}.")).ToBeVisibleAsync();

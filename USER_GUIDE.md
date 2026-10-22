@@ -90,7 +90,6 @@ been saved once, since they need a patient ID to attach to.
 | **Family** | Family relationships, and linking family members to each other |
 | **Occupations** | Employment history |
 | **eHealth** | My Health Record / IHI identifiers (recording only — no live connection) |
-| **Lifecard** | Lifecard number |
 | **UDF** | User-defined fields, configured clinic-wide by an admin |
 | **Patient History** | A read-only timeline of everything that has happened — notes, prescriptions, appointments — newest first |
 

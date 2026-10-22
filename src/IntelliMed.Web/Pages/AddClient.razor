@@ -640,10 +640,6 @@ else
         {
             @RenderEHealthTab()
         }
-        else if (_activeTab == "Lifecard")
-        {
-            @RenderLifecardTab()
-        }
         else if (_activeTab == "UDF")
         {
             @RenderUdfTab()
@@ -845,7 +841,7 @@ else
     private string _addressTab = "Residential";
     private Dictionary<ClientAddressType, ClientAddressDto> _addressCache = new();
 
-    private static readonly string[] _topTabs = { "Details", "Referrals", "Allergies", "Health Issues", "Prescriptions", "Progress Notes", "WC/TAC", "Family", "Occupations", "eHealth", "Lifecard", "UDF", "Patient History" };
+    private static readonly string[] _topTabs = { "Details", "Referrals", "Allergies", "Health Issues", "Prescriptions", "Progress Notes", "WC/TAC", "Family", "Occupations", "eHealth", "UDF", "Patient History" };
     private string _activeTab = "Details";
 
     // Referrals
@@ -2567,16 +2563,6 @@ else
             <div class="col-4 d-flex align-items-end gap-1">
                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => _underConstructionMessage = "IHI Lookup / Validate")">Lookup</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => _underConstructionMessage = "IHI History")">History</button>
-            </div>
-        </div>
-    </div>;
-
-    // ===================== Lifecard =====================
-    private RenderFragment RenderLifecardTab() => @<div>
-        <div class="row g-2">
-            <div class="col-4">
-                <label class="form-label small mb-0">Lifecard#</label>
-                <InputText @bind-Value="_model.LifeCardNum" class="form-control form-control-sm" maxlength="50" placeholder="0000-0000-0000-0000" />
             </div>
         </div>
     </div>;

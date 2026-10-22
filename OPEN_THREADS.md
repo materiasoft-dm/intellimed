@@ -40,20 +40,7 @@ brand to key on.
 
 Full analysis in **`MEDICINE_DATA_ENRICHMENT.md` §1**.
 
-### 2. Lifecard tab has no way to save — **needs a product decision**
-`AddClient.razor`'s `<EditForm>` (and the only `💾 Save` button) sits inside
-`@if (_activeTab == "Details")`. Switching to the Lifecard tab unmounts it, leaving an editable
-field with no save control. The edit isn't lost — `_model` survives the tab switch, so returning to
-Details and saving persists it — but nothing tells the user that.
-
-Two candidate fixes, both product calls:
-- give each tab its own save action, or
-- lift the action bar out of the Details conditional so Save is always present.
-
-`ClientUpdateTests.EditClient_UpdatingLifecard_Persists` fails because of this. Leave it failing
-until the behaviour is decided — it is currently an accurate signal, not a stale test.
-
-### 3. `MedicinesAdminTests.SourceFilter_ShowsOnlyMatchingRows` — order-dependent, unexplained
+### 2. `MedicinesAdminTests.SourceFilter_ShowsOnlyMatchingRows` — order-dependent, unexplained
 Passes alone and in every pairing tried (ClientCreate + ClientList, ClientUpdate, CommandPalette,
 EmailInfrastructure, and all four newer UI classes). Fails only in the full run, which points at
 accumulated fixture-database state rather than one interaction. Not root-caused. Predates the
