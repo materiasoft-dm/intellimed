@@ -89,3 +89,6 @@ graphify-out/
 # /dbadmin credential live (see Api/Configuration/JwtSettings.cs for why they're not in appsettings.json).
 appsettings.Production.json
 appsettings.Local.json
+
+# Self-contained publish output for the IIS host (contains appsettings.Production.json with a live key)
+publish/
