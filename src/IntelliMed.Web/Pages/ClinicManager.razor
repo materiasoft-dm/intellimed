@@ -2,6 +2,7 @@
 @layout MainLayout
 @using System.ComponentModel.DataAnnotations
 @using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
 @using IntelliMed.Web.Services
 @inject IClinicService ClinicService
 
@@ -43,6 +44,7 @@ else if (_clinics != null)
                 <thead class="table-light">
                     <tr>
                         <th>Name</th>
+                        <th>Type</th>
                         <th>Phone</th>
                         <th>Address</th>
                         <th>Users</th>
@@ -58,6 +60,7 @@ else if (_clinics != null)
                                 <i class="bi bi-building me-2 text-muted"></i>
                                 <a href="javascript:void(0)" class="link-primary" @onclick="() => OpenEditDialog(clinic)">@clinic.Name</a>
                             </td>
+                            <td>@clinic.Type</td>
                             <td>@clinic.Phone</td>
                             <td>@(string.IsNullOrWhiteSpace(clinic.Suburb) ? clinic.Address : $"{clinic.Address}, {clinic.Suburb}")</td>
                             <td>@clinic.UserCount</td>
@@ -120,12 +123,19 @@ else if (_clinics != null)
                         <ValidationSummary class="text-danger small mb-3" />
 
                         <div class="row g-3 mb-3">
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 <label class="form-label">Name <span class="text-danger">*</span></label>
                                 <InputText @bind-Value="_dialogModel.Name" class="form-control" />
                                 <ValidationMessage For="() => _dialogModel.Name" />
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label class="form-label">Type</label>
+                                <InputSelect @bind-Value="_dialogModel.Type" class="form-select">
+                                    <option value="@ClinicType.Clinic">Clinic</option>
+                                    <option value="@ClinicType.Hospital">Hospital</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label">ABN</label>
                                 <InputText @bind-Value="_dialogModel.Abn" class="form-control" />
                             </div>
@@ -308,6 +318,7 @@ else if (_clinics != null)
         _dialogModel = new ClinicDialogModel
         {
             Name = clinic.Name,
+            Type = clinic.Type,
             Abn = clinic.Abn,
             Phone = clinic.Phone,
             Fax = clinic.Fax,
@@ -338,6 +349,7 @@ else if (_clinics != null)
                 success = await ClinicService.UpdateAsync(_editingClinicId, new UpdateClinicDto
                 {
                     Name = _dialogModel.Name,
+                    Type = _dialogModel.Type,
                     Abn = _dialogModel.Abn,
                     Phone = _dialogModel.Phone,
                     Fax = _dialogModel.Fax,
@@ -354,6 +366,7 @@ else if (_clinics != null)
                 success = await ClinicService.CreateAsync(new CreateClinicDto
                 {
                     Name = _dialogModel.Name,
+                    Type = _dialogModel.Type,
                     Abn = _dialogModel.Abn,
                     Phone = _dialogModel.Phone,
                     Fax = _dialogModel.Fax,
@@ -438,6 +451,7 @@ else if (_clinics != null)
     {
         [Required]
         public string Name { get; set; } = string.Empty;
+        public ClinicType Type { get; set; } = ClinicType.Clinic;
         public string? Abn { get; set; }
         public string? Phone { get; set; }
         public string? Fax { get; set; }

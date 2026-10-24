@@ -6,204 +6,224 @@
 @inject IAdminService AdminService
 @inject IClinicService ClinicService
 @inject IClinicContextService ClinicContextService
+@inject IResultService ResultService
 @inject ILoggerService Logger
 
 <div class="mdi-layout">
-    @* Menu Bar — hamburger (mobile only), brand, spacer, user + logout *@
-    <nav class="navbar navbar-light mdi-menu-bar px-2">
-        <button class="btn btn-primary border-0 d-lg-none" @onclick="ToggleDrawer" title="Menu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <button class="btn btn-primary border-0 d-none d-lg-inline-flex" @onclick="ToggleSidebarCollapsed" title="@(_sidebarCollapsed ? "Show sidebar" : "Hide sidebar")">
-            <i class="bi @(_sidebarCollapsed ? "bi-chevron-right" : "bi-chevron-left")"></i>
-        </button>
-        <span class="navbar-brand mb-0 h6 ms-2 d-none d-sm-inline">IntelliMed</span>
-        <div class="flex-grow-1"></div>
+    @* Backdrop — only rendered while the mobile drawer is open *@
+    @if (_drawerOpen)
+    {
+        <div class="mdi-overlay-backdrop" @onclick="CloseDrawer" @onclick:preventDefault></div>
+    }
 
-        @if (_myClinics.Count > 0)
-        {
-            <div class="dropdown me-2">
-                <button class="btn btn-outline-secondary border-0 dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-building"></i>
-                    <span class="d-none d-sm-inline small">@(_currentClinicName ?? "Select Clinic")</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    @foreach (var clinic in _myClinics)
+    @* Sidebar — always rendered: docked column on desktop, slide-over drawer on mobile. It runs the
+       full height of the window and carries the brand, so the top bar only holds actions. *@
+    <nav class="mdi-sidebar @(_drawerOpen ? "mdi-sidebar-open" : "") @(_sidebarCollapsed ? "mdi-sidebar-collapsed" : "")">
+        <div class="mdi-sidebar-header">
+            <span class="mdi-logo-mark">IM</span>
+            <h6 class="mb-0">IntelliMed</h6>
+        </div>
+
+        <div class="nav flex-column mdi-nav-menu">
+            @* NavLink (not a bare anchor) so the current page gets the .active highlight. Match=All
+               everywhere except Administration, because /appointments, /invoices etc. are prefixes
+               of their own sub-pages and would otherwise light up two entries at once. *@
+            <NavLink href="/" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                <i class="bi bi-speedometer2"></i> <span class="mdi-nav-label">Dashboard</span>
+            </NavLink>
+
+            @* Clients Section *@
+            @if (_accessiblePages.Contains("clients") || _accessiblePages.Contains("address-book") || _accessiblePages.Contains("results"))
+            {
+                <span class="mdi-nav-section">Clients</span>
+            }
+            @if (_accessiblePages.Contains("clients"))
+            {
+                <NavLink href="/clients/search" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-search"></i> <span class="mdi-nav-label">Find Client</span>
+                </NavLink>
+            }
+            @if (_accessiblePages.Contains("address-book"))
+            {
+                <NavLink href="/address-book" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-person-lines-fill"></i> <span class="mdi-nav-label">Address Book</span>
+                </NavLink>
+            }
+            @if (_accessiblePages.Contains("results"))
+            {
+                <NavLink href="/results" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-clipboard2-pulse"></i> <span class="mdi-nav-label">Results</span>
+                    @if (_resultsWaiting > 0)
                     {
-                        <li>
-                            <button class="dropdown-item d-flex align-items-center justify-content-between @(clinic.Id == _currentClinicId ? "active" : "")"
-                                    type="button" @onclick="() => RequestSwitchClinic(clinic)">
-                                @clinic.Name
-                                @if (clinic.Id == _currentClinicId)
-                                {
-                                    <i class="bi bi-check-lg ms-2"></i>
-                                }
-                            </button>
-                        </li>
+                        <span class="badge rounded-pill bg-danger ms-auto mdi-nav-label" id="resultsBadge">@_resultsWaiting</span>
                     }
-                </ul>
-            </div>
-        }
+                </NavLink>
+            }
 
-        <NotificationBell />
+            @* Appointments Section — every link gated on its own page key, same as Administration.
+               Previously these were always rendered, so a role without the permission still saw
+               the link and hit a failing page. *@
+            @if (_accessiblePages.Contains("appointments"))
+            {
+                <span class="mdi-nav-section">Appointments</span>
+                <NavLink href="/appointments" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-calendar-week"></i> <span class="mdi-nav-label">Appointment List</span>
+                </NavLink>
+            }
+            @if (_accessiblePages.Contains("appointments/create"))
+            {
+                <NavLink href="/appointments/new" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-plus-lg"></i> <span class="mdi-nav-label">New Appointment</span>
+                </NavLink>
+            }
+            @if (_accessiblePages.Contains("appointments"))
+            {
+                <NavLink href="/appointments/calendar" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-calendar3"></i> <span class="mdi-nav-label">Calendar View</span>
+                </NavLink>
+            }
+            @if (_accessiblePages.Contains("appointments/waiting-room"))
+            {
+                <NavLink href="/appointments/waiting-room" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-people"></i> <span class="mdi-nav-label">Waiting Room</span>
+                </NavLink>
+            }
 
-        <div class="dropdown">
-            <button class="btn btn-primary border-0 dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-person-circle"></i>
-                <span class="d-none d-sm-inline small">@GetCurrentUser()</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="/profile"><i class="bi bi-person-gear me-2"></i>Profile Settings</a></li>
-                @if (_accessiblePages.Contains("clinic-settings"))
-                {
-                    <li><a class="dropdown-item" href="/clinic-settings"><i class="bi bi-building me-2"></i>Clinic Settings</a></li>
-                }
-                @if (_accessiblePages.Contains("clinic-manager"))
-                {
-                    <li><a class="dropdown-item" href="/clinic-manager"><i class="bi bi-diagram-3 me-2"></i>Clinic Manager</a></li>
-                }
-                <li><hr class="dropdown-divider" /></li>
-                <li><button class="dropdown-item" type="button" @onclick="SignOut"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</button></li>
-            </ul>
+            @* Invoices Section — Nurse has no invoice permissions at all, and before this gating
+               still saw all three links. *@
+            @if (_accessiblePages.Contains("invoices"))
+            {
+                <span class="mdi-nav-section">Invoices</span>
+                <NavLink href="/invoices" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-receipt"></i> <span class="mdi-nav-label">Invoice List</span>
+                </NavLink>
+            }
+            @if (_accessiblePages.Contains("invoices/create"))
+            {
+                <NavLink href="/invoices/new" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-plus-lg"></i> <span class="mdi-nav-label">New Invoice</span>
+                </NavLink>
+            }
+            @if (_accessiblePages.Contains("payments"))
+            {
+                <NavLink href="/invoices/payments" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-credit-card"></i> <span class="mdi-nav-label">Payments</span>
+                </NavLink>
+            }
+            @if (_accessiblePages.Contains("fee-schedules"))
+            {
+                <NavLink href="/fee-schedules" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-cash-stack"></i> <span class="mdi-nav-label">Fee Schedules</span>
+                </NavLink>
+            }
+            @if (_accessiblePages.Contains("derived-item-configs"))
+            {
+                <NavLink href="/derived-item-configs" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                    <i class="bi bi-calculator"></i> <span class="mdi-nav-label">Derived Item Rules</span>
+                </NavLink>
+            }
+
+            @* Admin Section — collapsed to a single hub link. Each set-up page (users, roles,
+               appointment types, email templates, command palette actions, system settings,
+               database backups, medicine catalog, drug interactions) is still gated on its own
+               page key — that check now lives on the /admin hub page itself, which only shows
+               the tiles the signed-in user actually has access to. *@
+            @if (_accessiblePages.Any(p => p.StartsWith("admin/", StringComparison.OrdinalIgnoreCase)))
+            {
+                <span class="mdi-nav-section">Administration</span>
+                @* No Audit Log entry: there is no application audit trail to view. The only
+                   audit table is DbAdminAuditLog, which covers the deliberately-isolated
+                   /dbadmin console alone. Re-add this link when a real audit trail exists. *@
+                <NavLink href="/admin" class="nav-link mdi-nav-link" Match="NavLinkMatch.Prefix" @onclick="CloseDrawer">
+                    <i class="bi bi-gear"></i> <span class="mdi-nav-label">Administration</span>
+                </NavLink>
+            }
+
+            @* Help Section *@
+            <span class="mdi-nav-section">Help</span>
+            <NavLink href="/about" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                <i class="bi bi-info-circle"></i> <span class="mdi-nav-label">About IntelliMed</span>
+            </NavLink>
+            <NavLink href="/help" class="nav-link mdi-nav-link" Match="NavLinkMatch.All" @onclick="CloseDrawer">
+                <i class="bi bi-question-circle"></i> <span class="mdi-nav-label">User Guide</span>
+            </NavLink>
+        </div>
+
+        <div class="mdi-sidebar-footer">
+            <AppVersion />
         </div>
     </nav>
 
-    <div class="mdi-body">
-        @* Backdrop — only rendered while the mobile drawer is open *@
-        @if (_drawerOpen)
-        {
-            <div class="mdi-overlay-backdrop" @onclick="CloseDrawer" @onclick:preventDefault></div>
-        }
+    <div class="mdi-column">
+        @* Top bar — menu toggle on the left; clinic switcher, notifications and the user chip on the right *@
+        <nav class="mdi-menu-bar">
+            <button class="mdi-icon-btn d-lg-none" @onclick="ToggleDrawer" title="Menu">
+                <i class="bi bi-list"></i>
+            </button>
+            <button class="mdi-icon-btn d-none d-lg-inline-flex" @onclick="ToggleSidebarCollapsed" title="@(_sidebarCollapsed ? "Show sidebar" : "Hide sidebar")">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="flex-grow-1"></div>
 
-        @* Sidebar — always rendered: docked column on desktop, slide-over drawer on mobile *@
-        <nav class="mdi-sidebar @(_drawerOpen ? "mdi-sidebar-open" : "") @(_sidebarCollapsed ? "mdi-sidebar-collapsed" : "")">
-            <div class="mdi-sidebar-header">
-                <span class="mdi-logo-mark">IM</span>
-                <h6 class="mb-0">IntelliMed</h6>
-            </div>
-
-            <div class="nav flex-column mdi-nav-menu">
-                @* Dashboard *@
-                <a href="/" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-speedometer2 me-2"></i> <span class="mdi-nav-label">Dashboard</span>
-                </a>
-
-                <hr class="my-2" />
-
-                @* Clients Section *@
-                @if (_accessiblePages.Contains("clients"))
-                {
-                    <small class="text-muted px-4 text-uppercase">Clients</small>
-                    <a href="/clients/search" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-search me-2"></i> <span class="mdi-nav-label">Find Client</span>
-                    </a>
-                }
-
-                <hr class="my-2" />
-
-                @* Appointments Section — every link gated on its own page key, same as Administration.
-                   Previously these were always rendered, so a role without the permission still saw
-                   the link and hit a failing page. *@
-                @if (_accessiblePages.Contains("appointments"))
-                {
-                    <small class="text-muted px-4 text-uppercase">Appointments</small>
-                    <a href="/appointments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-calendar-week me-2"></i> <span class="mdi-nav-label">Appointment List</span>
-                    </a>
-                }
-                @if (_accessiblePages.Contains("appointments/create"))
-                {
-                    <a href="/appointments/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-plus-lg me-2"></i> <span class="mdi-nav-label">New Appointment</span>
-                    </a>
-                }
-                @if (_accessiblePages.Contains("appointments"))
-                {
-                    <a href="/appointments/calendar" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-calendar3 me-2"></i> <span class="mdi-nav-label">Calendar View</span>
-                    </a>
-                }
-                @if (_accessiblePages.Contains("appointments/waiting-room"))
-                {
-                    <a href="/appointments/waiting-room" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-people me-2"></i> <span class="mdi-nav-label">Waiting Room</span>
-                    </a>
-                }
-
-                <hr class="my-2" />
-
-                @* Invoices Section — Nurse has no invoice permissions at all, and before this gating
-                   still saw all three links. *@
-                @if (_accessiblePages.Contains("invoices"))
-                {
-                    <small class="text-muted px-4 text-uppercase">Invoices</small>
-                    <a href="/invoices" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-receipt me-2"></i> <span class="mdi-nav-label">Invoice List</span>
-                    </a>
-                }
-                @if (_accessiblePages.Contains("invoices/create"))
-                {
-                    <a href="/invoices/new" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-plus-lg me-2"></i> <span class="mdi-nav-label">New Invoice</span>
-                    </a>
-                }
-                @if (_accessiblePages.Contains("payments"))
-                {
-                    <a href="/invoices/payments" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-credit-card me-2"></i> <span class="mdi-nav-label">Payments</span>
-                    </a>
-                }
-                @if (_accessiblePages.Contains("fee-schedules"))
-                {
-                    <a href="/fee-schedules" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-cash-stack me-2"></i> <span class="mdi-nav-label">Fee Schedules</span>
-                    </a>
-                }
-                @if (_accessiblePages.Contains("derived-item-configs"))
-                {
-                    <a href="/derived-item-configs" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-calculator me-2"></i> <span class="mdi-nav-label">Derived Item Rules</span>
-                    </a>
-                }
-
-                @* Admin Section — collapsed to a single hub link. Each set-up page (users, roles,
-                   appointment types, email templates, command palette actions, system settings,
-                   database backups, medicine catalog, drug interactions) is still gated on its own
-                   page key — that check now lives on the /admin hub page itself, which only shows
-                   the tiles the signed-in user actually has access to. *@
-                @if (_accessiblePages.Any(p => p.StartsWith("admin/", StringComparison.OrdinalIgnoreCase)))
-                {
-                    <hr class="my-2" />
-                    <small class="text-muted px-4 text-uppercase">Administration</small>
-                    @* No Audit Log entry: there is no application audit trail to view. The only
-                       audit table is DbAdminAuditLog, which covers the deliberately-isolated
-                       /dbadmin console alone. Re-add this link when a real audit trail exists. *@
-                    <a href="/admin" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                        <i class="bi bi-gear me-2"></i> <span class="mdi-nav-label">Administration</span>
-                    </a>
-                }
-
-                <hr class="my-2" />
-
-                @* Help Section *@
-                <small class="text-muted px-4 text-uppercase">Help</small>
-                <a href="/about" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-info-circle me-2"></i> <span class="mdi-nav-label">About IntelliMed</span>
-                </a>
-                <a href="/help" class="nav-link mdi-nav-link" @onclick="CloseDrawer">
-                    <i class="bi bi-question-circle me-2"></i> <span class="mdi-nav-label">User Guide</span>
-                </a>
-
-                <hr class="my-2" />
-                <div class="px-4 py-1 mdi-nav-label">
-                    <AppVersion />
+            @if (_myClinics.Count > 0)
+            {
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary border-0 dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-building"></i>
+                        <span class="d-none d-sm-inline small">@(_currentClinicName ?? "Select Clinic")</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        @foreach (var clinic in _myClinics)
+                        {
+                            <li>
+                                <button class="dropdown-item d-flex align-items-center justify-content-between @(clinic.Id == _currentClinicId ? "active" : "")"
+                                        type="button" @onclick="() => RequestSwitchClinic(clinic)">
+                                    @clinic.Name
+                                    @if (clinic.Id == _currentClinicId)
+                                    {
+                                        <i class="bi bi-check-lg ms-2"></i>
+                                    }
+                                </button>
+                            </li>
+                        }
+                    </ul>
                 </div>
+            }
+
+            <NotificationBell />
+
+            <div class="dropdown">
+                <button class="mdi-user-chip dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="@GetCurrentUser()">
+                    <span class="mdi-avatar">@GetInitials()</span>
+                    <i class="bi bi-chevron-down small text-muted"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li class="px-3 py-2">
+                        <div class="fw-semibold">@GetCurrentUser()</div>
+                        @if (!string.IsNullOrEmpty(_currentUserEmail) && _currentUserEmail != GetCurrentUser())
+                        {
+                            <div class="small text-muted">@_currentUserEmail</div>
+                        }
+                    </li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li><a class="dropdown-item" href="/profile"><i class="bi bi-person-gear me-2"></i>Profile Settings</a></li>
+                    @if (_accessiblePages.Contains("clinic-settings"))
+                    {
+                        <li><a class="dropdown-item" href="/clinic-settings"><i class="bi bi-building me-2"></i>Clinic Settings</a></li>
+                    }
+                    @if (_accessiblePages.Contains("clinic-manager"))
+                    {
+                        <li><a class="dropdown-item" href="/clinic-manager"><i class="bi bi-diagram-3 me-2"></i>Clinic Manager</a></li>
+                    }
+                    <li><hr class="dropdown-divider" /></li>
+                    <li><button class="dropdown-item" type="button" @onclick="SignOut"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</button></li>
+                </ul>
             </div>
         </nav>
 
         @* Main Content *@
         <main class="mdi-main-content">
-            <div class="container-fluid py-4">
+            <div class="container-fluid py-4 px-4">
                 @Body
             </div>
         </main>
@@ -291,6 +311,7 @@
     private int? _currentClinicId;
     private string? _currentClinicName;
     private MyClinicDto? _switchTargetClinic;
+    private int _resultsWaiting;
 
     protected override async Task OnInitializedAsync()
     {
@@ -304,6 +325,16 @@
         await LoadCurrentUserRoles();
         await LoadAccessiblePages();
         await LoadMyClinics();
+        await LoadResultsBadge();
+    }
+
+    // Unreviewed results (inbox + waiting to be matched) for the sidebar badge. Best-effort: it needs a
+    // selected clinic, so on first load before one is picked it just shows nothing.
+    private async Task LoadResultsBadge()
+    {
+        if (!_accessiblePages.Contains("results") || _currentClinicId == null) return;
+        var counts = await ResultService.GetCountsAsync(mine: true);
+        _resultsWaiting = counts.Inbox + counts.Unmatched;
     }
 
     private async Task LoadMyClinics()
@@ -455,6 +486,15 @@
     string GetCurrentUser()
     {
         return _currentUserName;
+    }
+
+    // Avatar text: first letters of the first and last name parts (or of the email local part)
+    string GetInitials()
+    {
+        var parts = _currentUserName.Split(new[] { ' ', '.', '@' }, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        if (parts.Length == 1) return parts[0][..1].ToUpperInvariant();
+        return (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
     }
 
     void NavigateToHome() { Navigation.NavigateTo("/"); }

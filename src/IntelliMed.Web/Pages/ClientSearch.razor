@@ -402,7 +402,7 @@
                                         <i class="bi bi-check-circle-fill text-primary"></i>
                                     }
                                 </div>
-                                <div class="small text-muted">File# @c.Id.ToString("D5") &middot; @c.DateOfBirth.ToString("dd/MM/yyyy")</div>
+                                <div class="small text-muted">File# @c.Id.ToString("D5") &middot; @c.DateOfBirth?.ToString("dd/MM/yyyy")</div>
                                 @if (!string.IsNullOrWhiteSpace(c.FullAddress))
                                 {
                                     <div class="small mt-1"><i class="bi bi-geo-alt text-muted me-1"></i>@c.FullAddress</div>
@@ -489,7 +489,7 @@
                                 @foreach (var candidate in _payerSearchResults)
                                 {
                                     <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectPayer(candidate))">
-                                        @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                        @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth?.ToString("dd/MM/yyyy"))</span>
                                     </li>
                                 }
                             </ul>

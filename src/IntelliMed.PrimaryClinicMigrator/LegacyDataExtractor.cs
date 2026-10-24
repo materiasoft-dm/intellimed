@@ -73,6 +73,7 @@ public class LegacyDataExtractor
                 rr.GUID, rr.PatientGUID, rr.ReferralDate, rr.ReferralPeriod,
                 rr.IsDefault, rr.IsGP, rr.RequestTypeCde, rr.FirstVisitDate,
                 rr.Note,
+                rr.ReferringProviderGUID AS ProviderGUID,
                 rc.FirstName AS ProviderFirstName, rc.Surname AS ProviderSurname
             FROM ReferralRequests rr
             INNER JOIN Contacts pc ON pc.GUID = rr.PatientGUID AND pc.DeletedDate IS NULL
@@ -119,6 +120,7 @@ public class LegacyDataExtractor
         const string sql = """
             SELECT
                 wc.ClaimGUID, wc.PatientGUID, wc.DateOfInjury,
+                wc.EmployerGUID,
                 ec.FirstName AS EmployerFirstName, ec.Surname AS EmployerSurname,
                 cc.FirstName AS CaseManagerFirstName, cc.Surname AS CaseManagerSurname
             FROM WorkcoverTACClaims wc

@@ -99,39 +99,65 @@ public class ClientUpdateTests : UiTestBase
     {
         var (page, _) = await CreateClientAsync(Fixture, "Referral", "Owner");
 
+        // Referring providers come from the address book; unique surnames keep this test's contacts
+        // apart from anything else in the shared database.
+        var first = $"Dr Alice {UiSeedHelpers.Unique("Referrer")}";
+        var second = $"Dr Alice {UiSeedHelpers.Unique("Updated")}";
+
         await page.TabLink("Referrals").ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "+ New" }).ClickAsync();
 
-        await page.Field("Referring Provider").FillAsync("Dr Alice Referrer");
+        await PickNewReferrerAsync(page, "New Referral", first, providerNumber: "2345678A");
+        await Assertions.Expect(page.Locator(".modal-content", new() { HasTextString = "New Referral" })
+            .Locator("xpath=.//label[normalize-space(text())='Provider#']/following-sibling::input[1]")).ToHaveValueAsync("2345678A");
         await page.GetByLabel("GP").CheckAsync();
         // Exact = true: the main form's submit button is "💾 Save", which would otherwise also
         // match a plain substring search for "Save".
         await page.GetByRole(AriaRole.Button, new() { Name = "Save", Exact = true }).ClickAsync();
 
-        await Assertions.Expect(page.GetByText("Dr Alice Referrer")).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByText(first)).ToBeVisibleAsync();
 
         // Edit it — clicking the provider name link opens it, no separate Edit button anymore
-        await page.GetByRole(AriaRole.Row, new() { NameString = "Dr Alice Referrer" })
-            .GetByRole(AriaRole.Link, new() { Name = "Dr Alice Referrer" }).ClickAsync();
-        await page.Field("Referring Provider").FillAsync("Dr Alice Updated");
+        await page.GetByRole(AriaRole.Row, new() { NameString = first })
+            .GetByRole(AriaRole.Link, new() { Name = first }).ClickAsync();
+        await PickNewReferrerAsync(page, "Edit Referral", second);
         // Exact = true: the main form's submit button is "💾 Save", which would otherwise also
         // match a plain substring search for "Save".
         await page.GetByRole(AriaRole.Button, new() { Name = "Save", Exact = true }).ClickAsync();
-        await Assertions.Expect(page.GetByText("Dr Alice Updated")).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByText(second)).ToBeVisibleAsync();
 
         // Archive it — disappears from the default (non-archived) view
-        await page.GetByRole(AriaRole.Row, new() { NameString = "Dr Alice Updated" })
+        await page.GetByRole(AriaRole.Row, new() { NameString = second })
             .GetByRole(AriaRole.Button, new() { Name = "Archive" }).ClickAsync();
-        await Assertions.Expect(page.GetByText("Dr Alice Updated")).Not.ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByText(second)).Not.ToBeVisibleAsync();
 
         // Reappears (greyed) once "Include archived" is checked
         await page.GetByLabel("Include archived").CheckAsync();
-        await Assertions.Expect(page.GetByText("Dr Alice Updated")).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByText(second)).ToBeVisibleAsync();
 
         // Delete it — gone even with archived included
-        await page.GetByRole(AriaRole.Row, new() { NameString = "Dr Alice Updated" })
+        await page.GetByRole(AriaRole.Row, new() { NameString = second })
             .GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
-        await Assertions.Expect(page.GetByText("Dr Alice Updated")).Not.ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByText(second)).Not.ToBeVisibleAsync();
+    }
+
+    /// <summary>In the open referral modal, opens the address-book picker and quick-adds a new
+    /// contact ("Dr Alice {surname}") which it then selects.</summary>
+    private static async Task PickNewReferrerAsync(IPage page, string modalTitle, string fullName, string? providerNumber = null)
+    {
+        var parts = fullName.Split(' ', 3); // "Dr", "Alice", surname
+        await page.Locator(".modal-content", new() { HasTextString = modalTitle })
+            .GetByRole(AriaRole.Button, new() { Name = "Find", Exact = true }).ClickAsync();
+        var picker = page.Locator(".modal-content", new() { HasTextString = "Find Referring Provider" });
+        await picker.GetByRole(AriaRole.Button, new() { Name = "+ New Contact" }).ClickAsync();
+        await picker.Locator("xpath=.//label[normalize-space(text())='Title']/following-sibling::input[1]").FillAsync(parts[0]);
+        await picker.Locator("xpath=.//label[normalize-space(text())='First Name']/following-sibling::input[1]").FillAsync(parts[1]);
+        await picker.Locator("xpath=.//label[normalize-space(text())='Last Name']/following-sibling::input[1]").FillAsync(parts[2]);
+        if (providerNumber != null)
+            await picker.Locator("xpath=.//label[normalize-space(text())='Provider Number']/following-sibling::input[1]").FillAsync(providerNumber);
+        await picker.GetByRole(AriaRole.Button, new() { Name = "Add & Select" }).ClickAsync();
+        await Assertions.Expect(picker).ToHaveCountAsync(0);
+        await Assertions.Expect(page.GetByPlaceholder("Choose from the address book")).ToHaveValueAsync(fullName);
     }
 
     [Fact]
@@ -142,16 +168,24 @@ public class ClientUpdateTests : UiTestBase
         await page.TabLink("Occupations").ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "+ New" }).ClickAsync();
 
+        // The employer is an organisation client, picked (here: quick-added) rather than typed.
+        var employer = UiSeedHelpers.Unique("Acme Construction ");
         await page.Field("Occupation").FillAsync("Carpenter");
-        await page.Field("Employer").FillAsync("Acme Construction");
+        await page.Locator(".modal-content", new() { HasTextString = "Occupation" })
+            .GetByRole(AriaRole.Button, new() { Name = "Find", Exact = true }).ClickAsync();
+        var picker = page.Locator(".modal-content", new() { HasTextString = "Find Employer" });
+        await picker.GetByPlaceholder("Search organisations by name...").FillAsync(employer);
+        await picker.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("as a new organisation") }).ClickAsync();
+        await Assertions.Expect(picker).ToHaveCountAsync(0);
         await page.GetByLabel("Asbestos").CheckAsync();
         await page.GetByLabel("Dust").CheckAsync();
         // Exact = true: the main form's submit button is "💾 Save", which would otherwise also
         // match a plain substring search for "Save".
         await page.GetByRole(AriaRole.Button, new() { Name = "Save", Exact = true }).ClickAsync();
 
-        await Assertions.Expect(page.GetByText("Carpenter")).ToBeVisibleAsync();
-        await Assertions.Expect(page.GetByText("Asbestos, Dust")).ToBeVisibleAsync();
+        var row = page.Locator("tr", new() { HasTextString = "Carpenter" });
+        await Assertions.Expect(row).ToContainTextAsync(employer);
+        await Assertions.Expect(row).ToContainTextAsync("Asbestos, Dust");
     }
 
     [Fact]
@@ -248,5 +282,23 @@ public class ClientUpdateTests : UiTestBase
 
         await Assertions.Expect(page.GetByText("Preferred Pharmacy")).ToBeVisibleAsync();
         await Assertions.Expect(page.GetByText("Chemist Warehouse")).ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task ClientTabs_OnANarrowScreen_WrapInsteadOfScrollingSideways()
+    {
+        var (page, _) = await CreateClientAsync(Fixture, UiSeedHelpers.Unique("Narrow"), "Tab");
+        await page.SetViewportSizeAsync(560, 900);
+        await page.Locator(".client-tabs-bar").WaitForAsync();
+
+        var overflow = await page.EvaluateAsync<bool>(
+            "() => { const b = document.querySelector('.client-tabs-bar'); return b.scrollWidth > b.clientWidth; }");
+        var rows = await page.EvaluateAsync<int>(
+            "() => new Set([...document.querySelectorAll('.client-tabs .nav-link')].map(a => Math.round(a.getBoundingClientRect().top))).size");
+
+        Assert.False(overflow, "the section tabs must not need a horizontal scrollbar");
+        Assert.True(rows > 1, "twelve tabs cannot fit one line at this width, so they should wrap");
+        // Every section is still reachable.
+        await Assertions.Expect(page.TabLink("Patient History")).ToBeVisibleAsync();
     }
 }

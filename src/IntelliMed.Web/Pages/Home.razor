@@ -276,7 +276,7 @@ else
         {
             var labels = _accountTypeCounts.Select(x => x.Label).ToArray();
             var data = _accountTypeCounts.Select(x => x.Count).ToArray();
-            await JS.InvokeVoidAsync("IntelliMedRenderBarChart", "clientsByAccountTypeChart", labels, data, "#4272d7");
+            await JS.InvokeVoidAsync("IntelliMedRenderBarChart", "clientsByAccountTypeChart", labels, data, "#10b981");
         }
     }
 }

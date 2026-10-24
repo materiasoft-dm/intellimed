@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using IntelliMed.Core.Entities;
 
 namespace IntelliMed.Core.DTOs;
 
@@ -6,6 +7,7 @@ public class ClinicDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public ClinicType Type { get; set; }
     public string? Abn { get; set; }
     public string? Phone { get; set; }
     public string? Fax { get; set; }
@@ -25,12 +27,14 @@ public class MyClinicDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public ClinicType Type { get; set; }
 }
 
 public class CreateClinicDto
 {
     [Required]
     public string Name { get; set; } = string.Empty;
+    public ClinicType Type { get; set; }
     public string? Abn { get; set; }
     public string? Phone { get; set; }
     public string? Fax { get; set; }
@@ -45,6 +49,7 @@ public class UpdateClinicDto
 {
     [Required]
     public string Name { get; set; } = string.Empty;
+    public ClinicType Type { get; set; }
     public string? Abn { get; set; }
     public string? Phone { get; set; }
     public string? Fax { get; set; }

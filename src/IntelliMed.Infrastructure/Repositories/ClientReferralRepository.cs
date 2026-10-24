@@ -15,13 +15,14 @@ public class ClientReferralRepository : Repository<ClientReferral>, IClientRefer
 
     public new async Task<ClientReferralDto?> GetByIdAsync(int id)
     {
-        var referral = await _dbSet.FindAsync(id);
+        var referral = await _dbSet.Include(r => r.ReferringContact).FirstOrDefaultAsync(r => r.Id == id);
         return referral == null ? null : EntityMapper.ToDto(referral);
     }
 
     public async Task<IEnumerable<ClientReferralDto>> GetByClientIdAsync(int clientId)
     {
         var referrals = await _dbSet
+            .Include(r => r.ReferringContact)
             .Where(r => r.ClientId == clientId)
             .OrderByDescending(r => r.ReferralDate)
             .ToListAsync();

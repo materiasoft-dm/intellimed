@@ -83,6 +83,9 @@ public static class ServiceExtensions
         services.AddScoped<IMultipleOperationRuleCalculator, MultipleOperationRuleCalculator>();
         services.AddScoped<IPrimaryClinicMigratorService, PrimaryClinicMigratorService>();
         services.AddScoped<IAppointmentTypeSettingRepository, AppointmentTypeSettingRepository>();
+        services.AddScoped<IAddressBookRepository, AddressBookRepository>();
+        services.AddScoped<IResultRepository, ResultRepository>();
+        services.AddScoped<IResultIngestService, ResultIngestService>();
         services.AddScoped<IProviderScheduleRepository, ProviderScheduleRepository>();
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();

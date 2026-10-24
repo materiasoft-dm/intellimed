@@ -55,12 +55,13 @@ else
     </div>
 
     <div class="card mb-1">
-        <div class="card-header py-1" style="overflow-x: auto;">
-            <ul class="nav nav-tabs card-header-tabs flex-nowrap">
+        @* The twelve sections wrap onto a second line on narrow screens instead of scrolling sideways. *@
+        <div class="card-header client-tabs-bar">
+            <ul class="nav client-tabs">
                 @foreach (var tab in _topTabs)
                 {
                     <li class="nav-item">
-                        <a class="nav-link text-nowrap @(_activeTab == tab ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _activeTab = tab)">@tab</a>
+                        <a class="nav-link @(_activeTab == tab ? "active" : "")" href="javascript:void(0)" @onclick="@(() => _activeTab = tab)">@tab</a>
                     </li>
                 }
             </ul>
@@ -119,23 +120,27 @@ else
                                     <option value="@GenderEnum.Other">Other</option>
                                 </InputSelect>
                             </div>
-                            <div class="col-6">
-                                <label class="form-label small mb-0">D.O.B</label>
-                                <InputDate @bind-Value="_model.DateOfBirth" class="form-control form-control-sm" />
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small mb-0">Accuracy</label>
-                                <InputSelect @bind-Value="_model.DobAccuracy" class="form-select form-select-sm">
-                                    <option value="@DobAccuracyEnum.Day">Day - Accurate</option>
-                                    <option value="@DobAccuracyEnum.Month">Month - Accurate</option>
-                                    <option value="@DobAccuracyEnum.Year">Year - Accurate</option>
-                                    <option value="@DobAccuracyEnum.Estimated">Estimated</option>
-                                </InputSelect>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small mb-0">Age</label>
-                                <input class="form-control form-control-sm" value="@CalculateAge(_model.DateOfBirth)" disabled />
-                            </div>
+                            @* An organisation has no date of birth, so the D.O.B block only applies to a person. *@
+                            @if (_model.Type == ClientTypeEnum.Person)
+                            {
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">D.O.B</label>
+                                    <InputDate @bind-Value="_model.DateOfBirth" class="form-control form-control-sm" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Accuracy</label>
+                                    <InputSelect @bind-Value="_model.DobAccuracy" class="form-select form-select-sm">
+                                        <option value="@DobAccuracyEnum.Day">Day - Accurate</option>
+                                        <option value="@DobAccuracyEnum.Month">Month - Accurate</option>
+                                        <option value="@DobAccuracyEnum.Year">Year - Accurate</option>
+                                        <option value="@DobAccuracyEnum.Estimated">Estimated</option>
+                                    </InputSelect>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">Age</label>
+                                    <input class="form-control form-control-sm" value="@CalculateAge(_model.DateOfBirth)" disabled />
+                                </div>
+                            }
                             <div class="col-6">
                                 <label class="form-label small mb-0">P.O.B</label>
                                 <InputText @bind-Value="_model.PlaceOfBirth" class="form-control form-control-sm" />
@@ -710,7 +715,7 @@ else
                                         @foreach (var candidate in _familySearchResults)
                                         {
                                             <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => LinkExistingFamilyMemberAsync(candidate))">
-                                                @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                                @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth?.ToString("dd/MM/yyyy"))</span>
                                             </li>
                                         }
                                     </ul>
@@ -770,7 +775,7 @@ else
                                     @foreach (var candidate in _payerSearchResults)
                                     {
                                         <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectPayer(candidate))">
-                                            @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                            @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth?.ToString("dd/MM/yyyy"))</span>
                                         </li>
                                     }
                                 </ul>
@@ -849,6 +854,9 @@ else
     private bool _includeArchivedReferrals;
     private bool _showReferralModal;
     private CreateClientReferralDto _referralForm = new();
+    private string? _referralContactName;
+    private string? _referralProviderNumber;
+    private bool _showReferralContactPicker;
     private int? _editingReferralId;
 
     private List<ClientAllergyDto> _allergies = new();
@@ -883,6 +891,7 @@ else
     private bool _includeArchivedClaims;
     private bool _showClaimModal;
     private CreateClientCompensationClaimDto _claimForm = new();
+    private string? _claimEmployerName;
     private int? _editingClaimId;
 
     // Occupations
@@ -890,6 +899,7 @@ else
     private bool _includeArchivedOccupations;
     private bool _showOccupationModal;
     private CreateClientOccupationDto _occupationForm = new();
+    private string? _occupationEmployerName;
     private int? _editingOccupationId;
 
     // Family
@@ -954,7 +964,7 @@ else
             var type = string.Equals(Type, "Organisation", StringComparison.OrdinalIgnoreCase)
                 ? ClientTypeEnum.Organisation
                 : ClientTypeEnum.Person;
-            _model = new ClientFormModel { DateOfBirth = DateTime.Today.AddYears(-30), Type = type };
+            _model = new ClientFormModel { DateOfBirth = type == ClientTypeEnum.Person ? DateTime.Today.AddYears(-30) : null, Type = type };
             _providerAccessDisplay = new();
         }
         _isLoading = false;
@@ -991,11 +1001,12 @@ else
         _udfDefinitions = (await UdfDefinitionService.GetAllActiveAsync()).ToList();
     }
 
-    private static int CalculateAge(DateTime dateOfBirth)
+    private static int? CalculateAge(DateTime? dateOfBirth)
     {
+        if (dateOfBirth is not DateTime dob) return null;
         var today = DateTime.Today;
-        var age = today.Year - dateOfBirth.Year;
-        if (dateOfBirth.Date > today.AddYears(-age)) age--;
+        var age = today.Year - dob.Year;
+        if (dob.Date > today.AddYears(-age)) age--;
         return age;
     }
 
@@ -1298,6 +1309,9 @@ else
 
     private static CreateClientDto MapToCreateDto(ClientFormModel m) => new()
     {
+        // Type used to be missing here, so every client created from this form — organisations
+        // included — was saved as a Person.
+        Type = m.Type,
         FirstName = m.FirstName,
         LastName = m.LastName,
         MiddleName = m.MiddleName,
@@ -1305,7 +1319,7 @@ else
         MaidenName = m.MaidenName,
         Title = m.Title,
         Gender = m.Gender,
-        DateOfBirth = m.DateOfBirth,
+        DateOfBirth = m.Type == ClientTypeEnum.Person ? m.DateOfBirth : null,
         DobAccuracy = m.DobAccuracy,
         PlaceOfBirth = m.PlaceOfBirth,
         InterpreterRequired = m.InterpreterRequired,
@@ -1379,8 +1393,18 @@ else
     private void OpenNewReferralModal()
     {
         _referralForm = new CreateClientReferralDto { ClientId = Id ?? 0, ReferralDate = DateTime.Today };
+        _referralContactName = null;
+        _referralProviderNumber = null;
         _editingReferralId = null;
         _showReferralModal = true;
+    }
+
+    private void SelectReferralContact(AddressBookContactDto contact)
+    {
+        _referralForm.ReferringContactId = contact.Id;
+        _referralContactName = contact.FullName;
+        _referralProviderNumber = contact.ProviderNumber;
+        _showReferralContactPicker = false;
     }
 
     private void OpenEditReferralModal(ClientReferralDto r)
@@ -1392,12 +1416,13 @@ else
             ReferralPeriod = r.ReferralPeriod,
             IsDefault = r.IsDefault,
             IsGP = r.IsGP,
-            ReferringProviderName = r.ReferringProviderName,
-            ReferringProviderNumber = r.ReferringProviderNumber,
+            ReferringContactId = r.ReferringContactId,
             RequestTypeCde = r.RequestTypeCde,
             FirstVisitDate = r.FirstVisitDate,
             Note = r.Note
         };
+        _referralContactName = r.ReferringProviderName;
+        _referralProviderNumber = r.ReferringProviderNumber;
         _editingReferralId = r.Id;
         _showReferralModal = true;
     }
@@ -1414,8 +1439,7 @@ else
                 ReferralPeriod = _referralForm.ReferralPeriod,
                 IsDefault = _referralForm.IsDefault,
                 IsGP = _referralForm.IsGP,
-                ReferringProviderName = _referralForm.ReferringProviderName,
-                ReferringProviderNumber = _referralForm.ReferringProviderNumber,
+                ReferringContactId = _referralForm.ReferringContactId,
                 RequestTypeCde = _referralForm.RequestTypeCde,
                 FirstVisitDate = _referralForm.FirstVisitDate,
                 Note = _referralForm.Note,
@@ -1613,13 +1637,16 @@ else
                         </div>
                         <div class="modal-body">
                             <div class="row g-2">
-                                <div class="col-6">
+                                <div class="col-8">
                                     <label class="form-label small mb-0">Referring Provider</label>
-                                    <input class="form-control form-control-sm" @bind="_referralForm.ReferringProviderName" />
+                                    <div class="input-group input-group-sm">
+                                        <input class="form-control form-control-sm" value="@_referralContactName" readonly placeholder="Choose from the address book" />
+                                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => _showReferralContactPicker = true)">Find</button>
+                                    </div>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <label class="form-label small mb-0">Provider#</label>
-                                    <input class="form-control form-control-sm" @bind="_referralForm.ReferringProviderNumber" />
+                                    <input class="form-control form-control-sm" value="@_referralProviderNumber" readonly />
                                 </div>
                                 <div class="col-4">
                                     <label class="form-label small mb-0">Issue Date</label>
@@ -1655,11 +1682,13 @@ else
                         </div>
                         <div class="modal-footer py-2">
                             <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _showReferralModal = false)">Cancel</button>
-                            <button type="button" class="btn btn-sm btn-primary" @onclick="SaveReferralAsync">Save</button>
+                            <button type="button" class="btn btn-sm btn-primary" disabled="@(_referralForm.ReferringContactId == 0)" @onclick="SaveReferralAsync">Save</button>
                         </div>
                     </div>
                 </div>
             </div>
+            <AddressBookPicker Visible="_showReferralContactPicker" Title="Find Referring Provider"
+                               OnSelected="SelectReferralContact" OnClose="@(() => _showReferralContactPicker = false)" />
         }
     </div>;
 
@@ -2188,8 +2217,27 @@ else
     private void OpenNewClaimModal()
     {
         _claimForm = new CreateClientCompensationClaimDto { ClientId = Id ?? 0 };
+        _claimEmployerName = null;
         _editingClaimId = null;
         _showClaimModal = true;
+    }
+
+    /// <summary>Which form the open employer picker fills: "claim", "occupation", or null when closed.</summary>
+    private string? _employerPickerFor;
+
+    private void SelectEmployer((int Id, string Name) employer)
+    {
+        if (_employerPickerFor == "claim")
+        {
+            _claimForm.EmployerClientId = employer.Id;
+            _claimEmployerName = employer.Name;
+        }
+        else if (_employerPickerFor == "occupation")
+        {
+            _occupationForm.EmployerClientId = employer.Id;
+            _occupationEmployerName = employer.Name;
+        }
+        _employerPickerFor = null;
     }
 
     private void OpenEditClaimModal(ClientCompensationClaimDto c)
@@ -2199,13 +2247,14 @@ else
             ClientId = c.ClientId,
             ClaimNum = c.ClaimNum,
             DateOfInjury = c.DateOfInjury,
-            EmployerName = c.EmployerName,
+            EmployerClientId = c.EmployerClientId,
             CaseManagerName = c.CaseManagerName,
             PayerName = c.PayerName,
             IsDefault = c.IsDefault,
             PublicNote = c.PublicNote,
             PrivateNote = c.PrivateNote
         };
+        _claimEmployerName = c.EmployerName;
         _editingClaimId = c.Id;
         _showClaimModal = true;
     }
@@ -2220,7 +2269,7 @@ else
             {
                 ClaimNum = _claimForm.ClaimNum,
                 DateOfInjury = _claimForm.DateOfInjury,
-                EmployerName = _claimForm.EmployerName,
+                EmployerClientId = _claimForm.EmployerClientId,
                 CaseManagerName = _claimForm.CaseManagerName,
                 PayerName = _claimForm.PayerName,
                 IsDefault = _claimForm.IsDefault,
@@ -2299,7 +2348,15 @@ else
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small mb-0">Employer</label>
-                                    <input class="form-control form-control-sm" @bind="_claimForm.EmployerName" />
+                                    <div class="input-group input-group-sm">
+                                        <input class="form-control form-control-sm" value="@_claimEmployerName" readonly placeholder="No employer" />
+                                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => _employerPickerFor = "claim")">Find</button>
+                                        @if (_claimForm.EmployerClientId.HasValue)
+                                        {
+                                            <button type="button" class="btn btn-outline-secondary" title="Clear employer"
+                                                    @onclick="@(() => { _claimForm.EmployerClientId = null; _claimEmployerName = null; })">x</button>
+                                        }
+                                    </div>
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small mb-0">Case Manager</label>
@@ -2332,6 +2389,8 @@ else
                     </div>
                 </div>
             </div>
+            <OrganisationPicker Visible="@(_employerPickerFor == "claim")" Title="Find Employer"
+                                OnSelected="SelectEmployer" OnClose="@(() => _employerPickerFor = null)" />
         }
     </div>;
 
@@ -2374,6 +2433,7 @@ else
     private void OpenNewOccupationModal()
     {
         _occupationForm = new CreateClientOccupationDto { ClientId = Id ?? 0 };
+        _occupationEmployerName = null;
         _editingOccupationId = null;
         _showOccupationModal = true;
     }
@@ -2384,7 +2444,7 @@ else
         {
             ClientId = o.ClientId,
             Occupation = o.Occupation,
-            Employer = o.Employer,
+            EmployerClientId = o.EmployerClientId,
             StartedYear = o.StartedYear,
             StoppedYear = o.StoppedYear,
             HasAsbestos = o.HasAsbestos,
@@ -2393,6 +2453,7 @@ else
             HasAnimals = o.HasAnimals,
             Comment = o.Comment
         };
+        _occupationEmployerName = o.EmployerName;
         _editingOccupationId = o.Id;
         _showOccupationModal = true;
     }
@@ -2406,7 +2467,7 @@ else
             var update = new UpdateClientOccupationDto
             {
                 Occupation = _occupationForm.Occupation,
-                Employer = _occupationForm.Employer,
+                EmployerClientId = _occupationForm.EmployerClientId,
                 StartedYear = _occupationForm.StartedYear,
                 StoppedYear = _occupationForm.StoppedYear,
                 HasAsbestos = _occupationForm.HasAsbestos,
@@ -2451,7 +2512,7 @@ else
                 {
                     <tr class="@(o.IsArchived ? "text-muted" : "")">
                         <td><a href="javascript:void(0)" class="link-primary" @onclick="@(() => OpenEditOccupationModal(o))">@o.Occupation</a></td>
-                        <td>@o.Employer</td>
+                        <td>@o.EmployerName</td>
                         <td>@o.StartedYear</td>
                         <td>@o.StoppedYear</td>
                         <td>@HazardSummary(o)</td>
@@ -2483,7 +2544,15 @@ else
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small mb-0">Employer</label>
-                                    <input class="form-control form-control-sm" @bind="_occupationForm.Employer" />
+                                    <div class="input-group input-group-sm">
+                                        <input class="form-control form-control-sm" value="@_occupationEmployerName" readonly placeholder="No employer" />
+                                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => _employerPickerFor = "occupation")">Find</button>
+                                        @if (_occupationForm.EmployerClientId.HasValue)
+                                        {
+                                            <button type="button" class="btn btn-outline-secondary" title="Clear employer"
+                                                    @onclick="@(() => { _occupationForm.EmployerClientId = null; _occupationEmployerName = null; })">x</button>
+                                        }
+                                    </div>
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small mb-0">Started (year)</label>
@@ -2524,6 +2593,8 @@ else
                     </div>
                 </div>
             </div>
+            <OrganisationPicker Visible="@(_employerPickerFor == "occupation")" Title="Find Employer"
+                                OnSelected="SelectEmployer" OnClose="@(() => _employerPickerFor = null)" />
         }
     </div>;
 

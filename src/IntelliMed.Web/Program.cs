@@ -60,6 +60,8 @@ builder.Services.AddScoped<IFeeScheduleService, FeeScheduleService>();
 builder.Services.AddScoped<IDerivedItemConfigService, DerivedItemConfigService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentTypeSettingService, AppointmentTypeSettingService>();
+builder.Services.AddScoped<IAddressBookService, AddressBookService>();
+builder.Services.AddScoped<IResultService, ResultService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ISearchActionService, SearchActionService>();
 builder.Services.AddScoped<INotificationService, IntelliMed.Web.Services.NotificationService>();

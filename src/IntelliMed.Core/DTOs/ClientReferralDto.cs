@@ -8,7 +8,10 @@ public class ClientReferralDto
     public string? ReferralPeriod { get; set; }
     public bool IsDefault { get; set; }
     public bool IsGP { get; set; }
+    public int ReferringContactId { get; set; }
+    /// <summary>From the address-book contact (read-only).</summary>
     public string ReferringProviderName { get; set; } = string.Empty;
+    /// <summary>From the address-book contact (read-only).</summary>
     public string? ReferringProviderNumber { get; set; }
     public string? RequestTypeCde { get; set; }
     public DateTime? FirstVisitDate { get; set; }
@@ -25,8 +28,8 @@ public class CreateClientReferralDto
     public string? ReferralPeriod { get; set; }
     public bool IsDefault { get; set; }
     public bool IsGP { get; set; }
-    public string ReferringProviderName { get; set; } = string.Empty;
-    public string? ReferringProviderNumber { get; set; }
+    [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Choose the referring provider from the address book.")]
+    public int ReferringContactId { get; set; }
     public string? RequestTypeCde { get; set; }
     public DateTime? FirstVisitDate { get; set; }
     public string? Note { get; set; }
@@ -38,8 +41,8 @@ public class UpdateClientReferralDto
     public string? ReferralPeriod { get; set; }
     public bool IsDefault { get; set; }
     public bool IsGP { get; set; }
-    public string ReferringProviderName { get; set; } = string.Empty;
-    public string? ReferringProviderNumber { get; set; }
+    [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Choose the referring provider from the address book.")]
+    public int ReferringContactId { get; set; }
     public string? RequestTypeCde { get; set; }
     public DateTime? FirstVisitDate { get; set; }
     public string? Note { get; set; }

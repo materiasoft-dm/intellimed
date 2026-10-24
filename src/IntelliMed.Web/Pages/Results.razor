@@ -1,0 +1,626 @@
+@page "/results"
+@layout MainLayout
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IResultService ResultService
+@inject IAdminService AdminService
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>Results - IntelliMed</PageTitle>
+
+<IMedPageHeader Title="Results"
+                Subtitle="Pathology and imaging reports received from labs. Nothing leaves the inbox until a doctor acknowledges it.">
+    <Actions>
+        @if (_isAdmin)
+        {
+            <button class="btn btn-outline-secondary btn-sm" id="btnConnections" @onclick="OpenConnections">
+                <i class="bi bi-plug me-1"></i> Connections
+            </button>
+        }
+        <label class="btn btn-primary btn-sm mb-0" for="uploadResult">
+            <i class="bi bi-upload me-1"></i> Upload HL7 file
+        </label>
+        <InputFile id="uploadResult" class="d-none" accept=".hl7,.txt,.oru,.msg" OnChange="UploadAsync" />
+    </Actions>
+</IMedPageHeader>
+
+@if (!string.IsNullOrEmpty(_notice))
+{
+    <div class="alert @(_noticeIsError ? "alert-danger" : "alert-success") py-2 small" role="alert">@_notice</div>
+}
+
+<ul class="nav nav-tabs mb-3" id="resultTabs">
+    @foreach (var tab in Tabs)
+    {
+        <li class="nav-item">
+            <button class="nav-link @(_status == tab.Status ? "active" : "")" id="tab-@tab.Status.ToString().ToLowerInvariant()"
+                    @onclick="() => SelectTab(tab.Status)">
+                @tab.Label
+                @if (CountFor(tab.Status) > 0)
+                {
+                    <span class="badge rounded-pill ms-1 @(tab.Status == ResultStatus.Inbox && _counts.InboxAbnormal > 0 ? "bg-danger" : "bg-secondary")">@CountFor(tab.Status)</span>
+                }
+            </button>
+        </li>
+    }
+</ul>
+
+<div class="card">
+    <div class="card-header d-flex flex-wrap align-items-center gap-3 py-2">
+        <div class="input-group input-group-sm" style="max-width: 320px;">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input class="form-control" placeholder="Search patient, report or lab..."
+                   @bind="_query" @bind:event="oninput" @bind:after="SearchAsync" />
+        </div>
+        <div class="form-check form-check-inline small mb-0">
+            <input class="form-check-input" type="checkbox" id="chkAbnormal" @bind="_abnormalOnly" @bind:after="SearchAsync" />
+            <label class="form-check-label" for="chkAbnormal">Abnormal only</label>
+        </div>
+        <div class="form-check form-check-inline small mb-0">
+            <input class="form-check-input" type="checkbox" id="chkMine" @bind="_mine" @bind:after="ReloadAllAsync" />
+            <label class="form-check-label" for="chkMine">My results and unassigned</label>
+        </div>
+        <span class="small text-muted ms-auto">@_total report@(_total == 1 ? "" : "s")</span>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="card-body text-muted small">Loading...</div>
+    }
+    else if (_items.Count == 0)
+    {
+        <div class="card-body imed-empty-state">
+            <i class="bi bi-inbox"></i>
+            <div>@EmptyMessage</div>
+        </div>
+    }
+    else
+    {
+        <table class="table table-hover mb-0" id="resultsTable">
+            <thead>
+                <tr>
+                    <th style="width: 28px;"></th>
+                    <th>Patient</th>
+                    <th>Report</th>
+                    <th>Lab</th>
+                    <th>Collected</th>
+                    <th>Ordered by</th>
+                    <th>Received</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in _items)
+                {
+                    <tr style="cursor: pointer;" @onclick="() => OpenAsync(r.Id)" class="result-row">
+                        <td>
+                            @if (r.HasAbnormal)
+                            {
+                                <i class="bi bi-exclamation-triangle-fill text-danger" title="Abnormal result"></i>
+                            }
+                        </td>
+                        <td>
+                            <div class="fw-semibold">@(r.ClientName ?? (string.IsNullOrWhiteSpace(r.PatientNameAsReceived) ? "(no name)" : r.PatientNameAsReceived))</div>
+                            <div class="small text-muted">
+                                @(r.PatientDateOfBirth?.ToString("dd/MM/yyyy"))
+                                @if (r.Status == ResultStatus.Unmatched)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1">Needs matching</span>
+                                }
+                            </div>
+                        </td>
+                        <td>
+                            @(r.ReportName ?? "Report")
+                            @if (r.Kind == ResultReportKind.Imaging)
+                            {
+                                <span class="badge bg-secondary ms-1">Imaging</span>
+                            }
+                        </td>
+                        <td>@r.SenderName</td>
+                        <td>@(r.CollectedAt?.ToString("dd/MM/yyyy"))</td>
+                        <td>@(r.AssignedPractitionerName ?? r.OrderingProviderName)</td>
+                        <td>@r.ReceivedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (_total > _pageSize)
+        {
+            <div class="card-footer d-flex align-items-center justify-content-between py-2">
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(_page <= 1)" @onclick="PreviousPageAsync">
+                    <i class="bi bi-chevron-left"></i> Previous
+                </button>
+                <span class="small text-muted">Page @_page of @TotalPages</span>
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(_page >= TotalPages)" @onclick="NextPageAsync">
+                    Next <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        }
+    }
+</div>
+
+@* ---- Report viewer ---- *@
+<IMedDrawer IsVisible="_detail != null" IsVisibleChanged="CloseDetail" Title="@(_detail?.ReportName ?? "Report")" Wide="true">
+    <ChildContent>
+        @if (_detail != null)
+        {
+            <div class="d-flex align-items-start justify-content-between mb-2">
+                <div>
+                    <div class="fw-semibold fs-6">@(_detail.ClientName ?? _detail.PatientNameAsReceived)</div>
+                    <div class="small text-muted">
+                        DOB @(_detail.PatientDateOfBirth?.ToString("dd/MM/yyyy") ?? "—")
+                        @if (!string.IsNullOrEmpty(_detail.PatientSex)) { <span> · @_detail.PatientSex</span> }
+                        @if (!string.IsNullOrEmpty(_detail.PatientMedicareNumber)) { <span> · Medicare @_detail.PatientMedicareNumber</span> }
+                    </div>
+                </div>
+                @if (_detail.ClientId.HasValue)
+                {
+                    <a class="btn btn-sm btn-outline-secondary" href="/clients/edit/@_detail.ClientId.Value">
+                        <i class="bi bi-person me-1"></i> Patient record
+                    </a>
+                }
+            </div>
+
+            <div class="imed-section-label">Report</div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><div class="imed-field-label">Lab</div><div class="imed-field-value">@_detail.SenderName</div></div>
+                <div class="col-6"><div class="imed-field-label">Ordered by</div><div class="imed-field-value">@(_detail.OrderingProviderName ?? "—")</div></div>
+                <div class="col-6"><div class="imed-field-label">Collected</div><div class="imed-field-value">@(_detail.CollectedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div></div>
+                <div class="col-6"><div class="imed-field-label">Reported</div><div class="imed-field-value">@(_detail.ReportedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div></div>
+                <div class="col-6"><div class="imed-field-label">Lab accession</div><div class="imed-field-value">@(_detail.FillerOrderNumber ?? "—")</div></div>
+                <div class="col-6"><div class="imed-field-label">Our order number</div><div class="imed-field-value">@(_detail.PlacerOrderNumber ?? "—")</div></div>
+            </div>
+
+            @if (_detail.Status == ResultStatus.Unmatched)
+            {
+                <div class="alert alert-warning small">
+                    <strong>This report isn't filed under a patient.</strong>
+                    Check the name, date of birth and Medicare number above against the patient you pick — it is only filed once you confirm.
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-primary" id="btnFindPatient" @onclick="() => _showFindClient = true">
+                            <i class="bi bi-search me-1"></i> Find patient
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <div class="imed-section-label">Results</div>
+            <table class="table table-sm" id="resultItems">
+                <thead>
+                    <tr><th>Test</th><th class="text-end">Result</th><th>Units</th><th>Reference</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _detail.Items)
+                    {
+                        <tr class="@(item.IsAbnormal ? "table-danger" : "")">
+                            <td>
+                                @item.Name
+                                @if (!string.IsNullOrWhiteSpace(item.Comment))
+                                {
+                                    <div class="small text-muted" style="white-space: pre-line;">@item.Comment</div>
+                                }
+                            </td>
+                            <td class="text-end @(item.IsAbnormal ? "fw-bold" : "")" style="white-space: pre-line;">@item.Value</td>
+                            <td>@item.Units</td>
+                            <td class="text-muted">@item.ReferenceRange</td>
+                            <td>
+                                @if (item.IsAbnormal)
+                                {
+                                    <span class="badge bg-danger">@(string.IsNullOrWhiteSpace(item.AbnormalFlag) ? "Abn" : item.AbnormalFlag)</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (_detail.Attachments.Count > 0)
+            {
+                <div class="imed-section-label">Attachments</div>
+                @foreach (var a in _detail.Attachments)
+                {
+                    <button class="btn btn-sm btn-outline-secondary me-2 mb-2" @onclick="() => DownloadAsync(a)">
+                        <i class="bi bi-file-earmark-arrow-down me-1"></i> @a.FileName
+                    </button>
+                }
+            }
+
+            @if (_detail.Status == ResultStatus.Archived)
+            {
+                <div class="alert alert-secondary small mt-3 mb-0">
+                    Acknowledged@(_detail.ReviewedByName != null ? " by " + _detail.ReviewedByName : "")
+                    @(_detail.ReviewedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))
+                    @if (!string.IsNullOrWhiteSpace(_detail.ReviewComment))
+                    {
+                        <div class="mt-1">“@_detail.ReviewComment”</div>
+                    }
+                </div>
+            }
+            else if (_detail.Status == ResultStatus.Held && !string.IsNullOrWhiteSpace(_detail.HoldNote))
+            {
+                <div class="alert alert-info small mt-3 mb-0">Held: @_detail.HoldNote</div>
+            }
+
+            @if (_detail.Status is ResultStatus.Inbox or ResultStatus.Held)
+            {
+                <div class="imed-section-label">Your review</div>
+                <textarea class="form-control form-control-sm" rows="2" id="reviewComment" placeholder="Comment or action taken (optional)"
+                          @bind="_comment" @bind:event="oninput"></textarea>
+            }
+        }
+    </ChildContent>
+    <FooterContent>
+        @if (_detail != null)
+        {
+            @if (_detail.Status is ResultStatus.Inbox or ResultStatus.Held)
+            {
+                <button class="btn btn-primary" id="btnAcknowledge" disabled="@_busy" @onclick="AcknowledgeAsync">
+                    <i class="bi bi-check2-circle me-1"></i> Acknowledge
+                </button>
+            }
+            @if (_detail.Status == ResultStatus.Inbox)
+            {
+                <button class="btn btn-outline-secondary" id="btnHold" disabled="@_busy" @onclick="HoldAsync">Hold for later</button>
+            }
+            @if (_detail.Status is ResultStatus.Held or ResultStatus.Archived)
+            {
+                <button class="btn btn-outline-secondary" id="btnReopen" disabled="@_busy" @onclick="ReopenAsync">Move back to inbox</button>
+            }
+            <button class="btn btn-outline-secondary ms-auto" @onclick="() => CloseDetail(false)">Close</button>
+        }
+    </FooterContent>
+</IMedDrawer>
+
+<FindClientModal Visible="_showFindClient" VisibleChanged="v => _showFindClient = v" OnSelected="OnPatientPicked" Title="Match to patient" />
+
+@if (_pendingMatch != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2"><h6 class="modal-title">File this report under this patient?</h6></div>
+                <div class="modal-body small">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="imed-section-label mt-0">Lab sent</div>
+                            <div class="fw-semibold">@_detail?.PatientNameAsReceived</div>
+                            <div>DOB @(_detail?.PatientDateOfBirth?.ToString("dd/MM/yyyy") ?? "—")</div>
+                            <div>Medicare @(_detail?.PatientMedicareNumber ?? "—")</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="imed-section-label mt-0">IntelliMed patient</div>
+                            <div class="fw-semibold">@_pendingMatch.FullName</div>
+                            <div>DOB @(_pendingMatch.DateOfBirth?.ToString("dd/MM/yyyy") ?? "—")</div>
+                            <div>Medicare @(string.IsNullOrWhiteSpace(_pendingMatch.MedicareNumber) ? "—" : _pendingMatch.MedicareNumber)</div>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(_detail?.PatientIdentifier))
+                    {
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="chkRemember" @bind="_rememberLab" />
+                            <label class="form-check-label" for="chkRemember">
+                                Remember the lab's patient number (@_detail!.PatientIdentifier) so its next report files itself
+                            </label>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer py-2">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => _pendingMatch = null">Cancel</button>
+                    <button class="btn btn-sm btn-primary" id="btnConfirmMatch" disabled="@_busy" @onclick="ConfirmMatchAsync">Yes, file it</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ---- Ingest connections (admins) ---- *@
+<IMedDrawer IsVisible="_showConnections" IsVisibleChanged="v => _showConnections = v" Title="Result connections">
+    <ChildContent>
+        <p class="small text-muted">
+            A lab feed or relay delivers HL7 results by POSTing them to this clinic's ingest endpoint with a key.
+            Each key only delivers into the clinic it was created in.
+        </p>
+        <div class="imed-section-label">Endpoint</div>
+        <code class="small d-block mb-3">POST @IngestUrl<br />X-Api-Key: &lt;key&gt;</code>
+
+        @if (_newKey != null)
+        {
+            <div class="alert alert-warning small" id="newKeyAlert">
+                <strong>Copy this key now.</strong> It is shown once and can't be recovered.
+                <code class="d-block mt-1 user-select-all" id="newKeyValue">@_newKey.Key</code>
+            </div>
+        }
+
+        <div class="imed-section-label">New key</div>
+        <div class="input-group input-group-sm mb-3">
+            <input class="form-control" id="keyLabel" placeholder="Label, e.g. Acme Pathology relay" @bind="_keyLabel" @bind:event="oninput" />
+            <button class="btn btn-primary" id="btnCreateKey" disabled="@(string.IsNullOrWhiteSpace(_keyLabel) || _busy)" @onclick="CreateKeyAsync">Create</button>
+        </div>
+
+        <div class="imed-section-label">Keys</div>
+        @if (_keys.Count == 0)
+        {
+            <div class="small text-muted">No keys yet.</div>
+        }
+        else
+        {
+            <table class="table table-sm small">
+                <thead><tr><th>Label</th><th>Key</th><th>Last used</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var k in _keys)
+                    {
+                        <tr class="@(k.IsActive ? "" : "text-muted")">
+                            <td>@k.Label</td>
+                            <td><code>@k.KeyPrefix…</code></td>
+                            <td>@(k.LastUsedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "never")</td>
+                            <td class="text-end">
+                                @if (k.IsActive)
+                                {
+                                    <button class="btn btn-link btn-sm text-danger p-0" @onclick="() => RevokeKeyAsync(k.Id)">Revoke</button>
+                                }
+                                else
+                                {
+                                    <span>revoked</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </ChildContent>
+</IMedDrawer>
+
+@code {
+    private record TabInfo(ResultStatus Status, string Label);
+
+    private static readonly TabInfo[] Tabs =
+    {
+        new(ResultStatus.Inbox, "Inbox"),
+        new(ResultStatus.Unmatched, "Unmatched"),
+        new(ResultStatus.Held, "Held"),
+        new(ResultStatus.Archived, "Archived")
+    };
+
+    private const int _pageSize = 25;
+
+    private ResultStatus _status = ResultStatus.Inbox;
+    private string _query = string.Empty;
+    private bool _abnormalOnly;
+    private bool _mine = true;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _isAdmin;
+    private int _page = 1;
+    private int _total;
+
+    private List<ResultSummaryDto> _items = new();
+    private ResultCountsDto _counts = new();
+
+    private ResultDetailDto? _detail;
+    private string? _comment;
+    private bool _showFindClient;
+    private ClientDto? _pendingMatch;
+    private bool _rememberLab = true;
+
+    private bool _showConnections;
+    private List<ResultIngestKeyDto> _keys = new();
+    private string _keyLabel = string.Empty;
+    private CreatedResultIngestKeyDto? _newKey;
+
+    private string? _notice;
+    private bool _noticeIsError;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_total / (double)_pageSize));
+
+    private string EmptyMessage => _status switch
+    {
+        ResultStatus.Inbox => "Nothing waiting for review.",
+        ResultStatus.Unmatched => "No reports are waiting to be matched to a patient.",
+        ResultStatus.Held => "No held reports.",
+        _ => "No acknowledged reports yet."
+    };
+
+    private string IngestUrl => Navigation.ToAbsoluteUri("api/results/ingest").ToString();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var pages = await AdminService.GetMyAccessiblePagesAsync() ?? new List<string>();
+        _isAdmin = pages.Any(p => p.Equals("admin/settings", StringComparison.OrdinalIgnoreCase));
+        await ReloadAllAsync();
+    }
+
+    private int CountFor(ResultStatus status) => status switch
+    {
+        ResultStatus.Inbox => _counts.Inbox,
+        ResultStatus.Unmatched => _counts.Unmatched,
+        ResultStatus.Held => _counts.Held,
+        _ => 0
+    };
+
+    private async Task ReloadAllAsync()
+    {
+        _page = 1;
+        _counts = await ResultService.GetCountsAsync(_mine);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var result = await ResultService.SearchAsync(_status, _query, _abnormalOnly, _mine, _page, _pageSize);
+        _items = result.Items.ToList();
+        _total = result.TotalCount;
+        _loading = false;
+    }
+
+    private async Task SelectTab(ResultStatus status)
+    {
+        _status = status;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync() { _page--; await LoadAsync(); }
+    private async Task NextPageAsync() { _page++; await LoadAsync(); }
+
+    private async Task OpenAsync(int id)
+    {
+        _comment = null;
+        _detail = await ResultService.GetAsync(id);
+    }
+
+    private void CloseDetail(bool visible)
+    {
+        if (!visible) _detail = null;
+    }
+
+    private void SetNotice(string message, bool isError = false)
+    {
+        _notice = message;
+        _noticeIsError = isError;
+    }
+
+    // ---- upload ----
+
+    private async Task UploadAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        _busy = true;
+        try
+        {
+            using var stream = file.OpenReadStream(25 * 1024 * 1024);
+            var (outcome, error) = await ResultService.UploadAsync(stream, file.Name);
+            if (outcome == null)
+            {
+                SetNotice(error ?? "The file could not be uploaded.", true);
+            }
+            else if (outcome.Duplicate)
+            {
+                SetNotice("That report has already been received — nothing was added.");
+            }
+            else
+            {
+                SetNotice(outcome.Status == ResultStatus.Unmatched
+                    ? "Report received, but it couldn't be matched to a patient. Open the Unmatched tab to file it."
+                    : "Report received and filed in the inbox.");
+            }
+            await ReloadAllAsync();
+        }
+        catch (Exception ex)
+        {
+            SetNotice($"The file could not be read: {ex.Message}", true);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // ---- review actions ----
+
+    private async Task AcknowledgeAsync()
+    {
+        if (_detail == null) return;
+        _busy = true;
+        var ok = await ResultService.AcknowledgeAsync(_detail.Id, _comment);
+        _busy = false;
+        if (!ok) { SetNotice("The report could not be acknowledged.", true); return; }
+
+        SetNotice("Report acknowledged.");
+        _detail = null;
+        await ReloadAllAsync();
+    }
+
+    private async Task HoldAsync()
+    {
+        if (_detail == null) return;
+        _busy = true;
+        var ok = await ResultService.HoldAsync(_detail.Id, _comment);
+        _busy = false;
+        if (!ok) { SetNotice("The report could not be held.", true); return; }
+
+        SetNotice("Report held for later.");
+        _detail = null;
+        await ReloadAllAsync();
+    }
+
+    private async Task ReopenAsync()
+    {
+        if (_detail == null) return;
+        _busy = true;
+        var ok = await ResultService.ReopenAsync(_detail.Id);
+        _busy = false;
+        if (!ok) { SetNotice("The report could not be moved back to the inbox.", true); return; }
+
+        SetNotice("Report moved back to the inbox.");
+        _detail = null;
+        await ReloadAllAsync();
+    }
+
+    // ---- matching ----
+
+    private void OnPatientPicked(ClientDto client)
+    {
+        _showFindClient = false;
+        _pendingMatch = client;
+        _rememberLab = true;
+    }
+
+    private async Task ConfirmMatchAsync()
+    {
+        if (_detail == null || _pendingMatch == null) return;
+        _busy = true;
+        var id = _detail.Id;
+        var ok = await ResultService.MatchAsync(id, _pendingMatch.Id, _rememberLab);
+        _busy = false;
+        _pendingMatch = null;
+        if (!ok) { SetNotice("The report could not be matched to that patient.", true); return; }
+
+        SetNotice("Report filed under the patient and moved to the inbox.");
+        await ReloadAllAsync();
+        _detail = await ResultService.GetAsync(id);
+    }
+
+    private async Task DownloadAsync(ResultAttachmentDto attachment)
+    {
+        if (_detail == null) return;
+        var bytes = await ResultService.GetAttachmentAsync(_detail.Id, attachment.Id);
+        if (bytes == null) { SetNotice("The attachment could not be downloaded.", true); return; }
+        await JS.InvokeVoidAsync("IntelliMedDownload.fromBase64", attachment.FileName, Convert.ToBase64String(bytes));
+    }
+
+    // ---- connections ----
+
+    private async Task OpenConnections()
+    {
+        _newKey = null;
+        _keyLabel = string.Empty;
+        _keys = await ResultService.GetIngestKeysAsync();
+        _showConnections = true;
+    }
+
+    private async Task CreateKeyAsync()
+    {
+        _busy = true;
+        _newKey = await ResultService.CreateIngestKeyAsync(_keyLabel);
+        _busy = false;
+        if (_newKey == null) { SetNotice("The key could not be created.", true); return; }
+
+        _keyLabel = string.Empty;
+        _keys = await ResultService.GetIngestKeysAsync();
+    }
+
+    private async Task RevokeKeyAsync(int id)
+    {
+        if (await ResultService.RevokeIngestKeyAsync(id))
+            _keys = await ResultService.GetIngestKeysAsync();
+    }
+}

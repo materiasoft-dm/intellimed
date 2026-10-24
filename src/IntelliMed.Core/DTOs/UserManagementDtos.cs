@@ -160,6 +160,19 @@ public class PageDefinitionDto
     /// Optional description of what the page does.
     /// </summary>
     public string Description { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The parent this permission sits under in Role Configuration (e.g. "Appointments" for the
+    /// view/create/update/remove permissions). Null means it stands alone under its category. A
+    /// group with a single permission is shown as that permission, not as a one-child parent.
+    /// </summary>
+    public string? Group { get; set; }
+
+    /// <summary>
+    /// The short label under <see cref="Group"/> (e.g. "View", "Create", "Update", "Remove"). Falls
+    /// back to <see cref="PageName"/> when null.
+    /// </summary>
+    public string? Action { get; set; }
 }
 
 /// <summary>

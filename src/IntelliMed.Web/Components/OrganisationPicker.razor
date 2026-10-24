@@ -1,0 +1,123 @@
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Core.Entities
+@using IntelliMed.Web.Services
+@inject IClientService ClientService
+
+@* Search organisation clients (Client.Type == Organisation) and pick one — e.g. a patient's
+   employer. Includes a quick-add that creates the organisation client with just its name. *@
+@if (Visible)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">@Title</h6>
+                    <button type="button" class="btn-close" @onclick="CloseAsync"></button>
+                </div>
+                <div class="modal-body">
+                    <input class="form-control form-control-sm mb-2" placeholder="Search organisations by name..."
+                           @bind="_query" @bind:event="oninput" @bind:after="SearchAsync" />
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        @if (_results.Count == 0)
+                        {
+                            <div class="text-muted small">@(string.IsNullOrWhiteSpace(_query) ? "Type to search organisations." : "No matching organisations.")</div>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var org in _results)
+                                {
+                                    <li class="list-group-item list-group-item-action organisation-result" style="cursor:pointer" @onclick="@(() => SelectAsync(org.Id, org.LastName))">
+                                        @org.LastName
+                                        @if (!string.IsNullOrWhiteSpace(org.Suburb))
+                                        {
+                                            <span class="text-muted small"> — @org.Suburb</span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    @if (_error != null)
+                    {
+                        <div class="small text-danger mt-2">@_error</div>
+                    }
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary me-auto"
+                            disabled="@(_saving || string.IsNullOrWhiteSpace(_query))" @onclick="AddAndSelectAsync">
+                        + Add "@_query.Trim()" as a new organisation
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="CloseAsync">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Title { get; set; } = "Find Organisation";
+    /// <summary>The chosen organisation client's id and name.</summary>
+    [Parameter] public EventCallback<(int Id, string Name)> OnSelected { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string _query = string.Empty;
+    private List<ClientDto> _results = new();
+    private bool _saving;
+    private string? _error;
+    private bool _wasVisible;
+
+    protected override void OnParametersSet()
+    {
+        if (Visible && !_wasVisible)
+        {
+            _query = string.Empty;
+            _results = new();
+            _error = null;
+        }
+        _wasVisible = Visible;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            _results = new();
+            return;
+        }
+        var result = await ClientService.SearchClientsAsync(new ClientSearchDto
+        {
+            Query = _query,
+            ClientType = ClientTypeEnum.Organisation,
+            PageSize = 15
+        });
+        _results = result.Items.ToList();
+    }
+
+    private async Task AddAndSelectAsync()
+    {
+        _saving = true;
+        _error = null;
+        var name = _query.Trim();
+        var id = await ClientService.CreateClientAsync(new CreateClientDto
+        {
+            Type = ClientTypeEnum.Organisation,
+            LastName = name,
+            DateOfBirth = null
+        });
+        if (id is int newId)
+        {
+            await SelectAsync(newId, name);
+        }
+        else
+        {
+            _error = "Couldn't add the organisation.";
+        }
+        _saving = false;
+    }
+
+    private Task SelectAsync(int id, string name) => OnSelected.InvokeAsync((id, name));
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+}

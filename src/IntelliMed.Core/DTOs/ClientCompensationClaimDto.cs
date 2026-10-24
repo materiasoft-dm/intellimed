@@ -6,6 +6,9 @@ public class ClientCompensationClaimDto
     public int ClientId { get; set; }
     public string ClaimNum { get; set; } = string.Empty;
     public DateTime? DateOfInjury { get; set; }
+    /// <summary>An organisation client.</summary>
+    public int? EmployerClientId { get; set; }
+    /// <summary>The organisation client's name (read-only).</summary>
     public string? EmployerName { get; set; }
     public string? CaseManagerName { get; set; }
     public string? PayerName { get; set; }
@@ -22,7 +25,8 @@ public class CreateClientCompensationClaimDto
     public int ClientId { get; set; }
     public string ClaimNum { get; set; } = string.Empty;
     public DateTime? DateOfInjury { get; set; }
-    public string? EmployerName { get; set; }
+    /// <summary>An organisation client.</summary>
+    public int? EmployerClientId { get; set; }
     public string? CaseManagerName { get; set; }
     public string? PayerName { get; set; }
     public bool IsDefault { get; set; }
@@ -34,7 +38,8 @@ public class UpdateClientCompensationClaimDto
 {
     public string ClaimNum { get; set; } = string.Empty;
     public DateTime? DateOfInjury { get; set; }
-    public string? EmployerName { get; set; }
+    /// <summary>An organisation client.</summary>
+    public int? EmployerClientId { get; set; }
     public string? CaseManagerName { get; set; }
     public string? PayerName { get; set; }
     public bool IsDefault { get; set; }

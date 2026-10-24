@@ -43,7 +43,8 @@
     [Parameter] public string? Warnings { get; set; }
     [Parameter] public bool InterpreterRequired { get; set; }
     [Parameter] public string? InterpreterLanguage { get; set; }
-    [Parameter] public int Age { get; set; }
+    /// <summary>Null for an organisation (no date of birth) — never flagged as a minor.</summary>
+    [Parameter] public int? Age { get; set; }
     [Parameter] public string? NextOfKinName { get; set; }
     [Parameter] public string? NextOfKinPhone { get; set; }
 

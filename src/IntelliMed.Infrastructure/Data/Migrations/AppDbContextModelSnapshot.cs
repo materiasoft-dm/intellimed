@@ -82,6 +82,101 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.ToTable("ActiveIngredients");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.AddressBookContact", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ClinicId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Fax")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LegacyGuid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Mobile")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Postcode")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Profession")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProviderNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Speciality")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Suburb")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClinicId");
+
+                    b.HasIndex("LastName");
+
+                    b.HasIndex("LegacyGuid")
+                        .IsUnique();
+
+                    b.HasIndex("ProviderNumber");
+
+                    b.ToTable("AddressBookContacts");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -494,7 +589,7 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<bool>("CtgCoPaymentRelief")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("DateOfBirth")
+                    b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("Deceased")
@@ -896,9 +991,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("DateOfInjury")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("EmployerName")
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                    b.Property<int?>("EmployerClientId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsArchived")
                         .HasColumnType("INTEGER");
@@ -927,6 +1021,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId");
+
+                    b.HasIndex("EmployerClientId");
 
                     b.HasIndex("LegacyGuid")
                         .IsUnique();
@@ -1028,6 +1124,38 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.ToTable("ClientHealthIssues");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.ClientLabIdentifier", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Identifier")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderName", "Identifier");
+
+                    b.HasIndex("ClientId", "SenderName", "Identifier")
+                        .IsUnique();
+
+                    b.ToTable("ClientLabIdentifiers");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientOccupation", b =>
                 {
                     b.Property<int>("Id")
@@ -1044,9 +1172,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Employer")
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
+                    b.Property<int?>("EmployerClientId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("HasAnimals")
                         .HasColumnType("INTEGER");
@@ -1082,6 +1209,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId");
+
+                    b.HasIndex("EmployerClientId");
 
                     b.HasIndex("LegacyGuid")
                         .IsUnique();
@@ -1152,14 +1281,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(2)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ReferringProviderName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ReferringProviderNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
+                    b.Property<int>("ReferringContactId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("RequestTypeCde")
                         .HasMaxLength(1)
@@ -1174,6 +1297,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
 
                     b.HasIndex("LegacyGuid")
                         .IsUnique();
+
+                    b.HasIndex("ReferringContactId");
 
                     b.ToTable("ClientReferrals");
                 });
@@ -1262,6 +1387,9 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("Clinics");
@@ -1271,7 +1399,8 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         {
                             Id = 1,
                             IsActive = true,
-                            Name = "Main Clinic"
+                            Name = "Main Clinic",
+                            Type = 0
                         });
                 });
 
@@ -2865,6 +2994,258 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.ToTable("ReceiptPayments");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.ResultAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ResultReportId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResultReportId");
+
+                    b.ToTable("ResultAttachments");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ResultIngestKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClinicId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("KeyPrefix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClinicId");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.ToTable("ResultIngestKeys");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ResultItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AbnormalFlag")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsAbnormal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReferenceRange")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ResultReportId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ResultStatus")
+                        .HasMaxLength(5)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Units")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResultReportId");
+
+                    b.ToTable("ResultItems");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ResultReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AssignedPractitionerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClinicId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CollectedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FillerOrderNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("HasAbnormal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("HoldNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("MatchedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MatchedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MessageControlId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OrderingProviderName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OrderingProviderNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PatientDateOfBirth")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PatientFamilyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PatientGivenName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PatientIdentifier")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PatientMedicareNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PatientSex")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PlacerOrderNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RawMessage")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReportName")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ReportedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewComment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedPractitionerId");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("PlacerOrderNumber");
+
+                    b.HasIndex("ClinicId", "Status");
+
+                    b.HasIndex("ClinicId", "SenderName", "MessageControlId")
+                        .IsUnique();
+
+                    b.ToTable("ResultReports");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.RolePermission", b =>
                 {
                     b.Property<int>("Id")
@@ -3201,6 +3582,16 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("FeeSchedule");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.AddressBookContact", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Clinic", "Clinic")
+                        .WithMany()
+                        .HasForeignKey("ClinicId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Clinic");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.ApplicationUser", b =>
                 {
                     b.HasOne("IntelliMed.Core.Entities.ProviderGroup", "Group")
@@ -3333,7 +3724,14 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("IntelliMed.Core.Entities.Client", "EmployerClient")
+                        .WithMany()
+                        .HasForeignKey("EmployerClientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Client");
+
+                    b.Navigation("EmployerClient");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientFamilyRelationship", b =>
@@ -3366,6 +3764,17 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("Client");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.ClientLabIdentifier", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientOccupation", b =>
                 {
                     b.HasOne("IntelliMed.Core.Entities.Client", "Client")
@@ -3374,7 +3783,14 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("IntelliMed.Core.Entities.Client", "EmployerClient")
+                        .WithMany()
+                        .HasForeignKey("EmployerClientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Client");
+
+                    b.Navigation("EmployerClient");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientProviderAccess", b =>
@@ -3404,7 +3820,15 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("IntelliMed.Core.Entities.AddressBookContact", "ReferringContact")
+                        .WithMany()
+                        .HasForeignKey("ReferringContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Client");
+
+                    b.Navigation("ReferringContact");
                 });
 
             modelBuilder.Entity("IntelliMed.Core.Entities.ClientUserDefinedFieldValue", b =>
@@ -3822,6 +4246,56 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("Receipt");
                 });
 
+            modelBuilder.Entity("IntelliMed.Core.Entities.ResultAttachment", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.ResultReport", "ResultReport")
+                        .WithMany("Attachments")
+                        .HasForeignKey("ResultReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ResultReport");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ResultIngestKey", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Clinic", "Clinic")
+                        .WithMany()
+                        .HasForeignKey("ClinicId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Clinic");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ResultItem", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.ResultReport", "ResultReport")
+                        .WithMany("Items")
+                        .HasForeignKey("ResultReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ResultReport");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ResultReport", b =>
+                {
+                    b.HasOne("IntelliMed.Core.Entities.Practitioner", "AssignedPractitioner")
+                        .WithMany()
+                        .HasForeignKey("AssignedPractitionerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("IntelliMed.Core.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AssignedPractitioner");
+
+                    b.Navigation("Client");
+                });
+
             modelBuilder.Entity("IntelliMed.Core.Entities.UserClinic", b =>
                 {
                     b.HasOne("IntelliMed.Core.Entities.ApplicationUser", "ApplicationUser")
@@ -3946,6 +4420,13 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Navigation("Allocations");
 
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("IntelliMed.Core.Entities.ResultReport", b =>
+                {
+                    b.Navigation("Attachments");
+
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

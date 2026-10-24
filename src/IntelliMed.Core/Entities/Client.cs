@@ -17,7 +17,8 @@ public class Client
     public string? MaidenName { get; set; }
     public string? Title { get; set; }
     public GenderEnum? Gender { get; set; }
-    public DateTime DateOfBirth { get; set; }
+    /// <summary>Null for an organisation; required for a person (enforced by Create/UpdateClientDto).</summary>
+    public DateTime? DateOfBirth { get; set; }
     public DobAccuracyEnum DobAccuracy { get; set; } = DobAccuracyEnum.Day;
     public string? PlaceOfBirth { get; set; }
     public bool InterpreterRequired { get; set; }

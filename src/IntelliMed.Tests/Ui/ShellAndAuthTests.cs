@@ -12,7 +12,7 @@ public class ShellAndAuthTests : UiTestBase
     public ShellAndAuthTests(PlaywrightServerFixture fixture) : base(fixture) { }
 
     private static ILocator UserMenuToggle(IPage page) =>
-        page.Locator("button.dropdown-toggle:has(i.bi-person-circle)");
+        page.Locator("button.mdi-user-chip");
 
     private static ILocator AdminTiles(IPage page) => page.Locator("a > .card");
 

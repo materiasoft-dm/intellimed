@@ -274,7 +274,9 @@ public class ClientRepository : Repository<Client>, IClientRepository
         {
             var term = search.ReferredBy.ToLower();
             query = query.Where(p => _context.ClientReferrals.Any(r =>
-                r.ClientId == p.Id && r.ReferringProviderName.ToLower().Contains(term)));
+                r.ClientId == p.Id && r.ReferringContact != null &&
+                (r.ReferringContact.LastName.ToLower().Contains(term) ||
+                 (r.ReferringContact.FirstName != null && r.ReferringContact.FirstName.ToLower().Contains(term)))));
         }
         if (search.ClientType.HasValue)
         {

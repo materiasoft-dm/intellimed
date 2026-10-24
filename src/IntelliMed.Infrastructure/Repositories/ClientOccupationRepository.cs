@@ -15,13 +15,14 @@ public class ClientOccupationRepository : Repository<ClientOccupation>, IClientO
 
     public new async Task<ClientOccupationDto?> GetByIdAsync(int id)
     {
-        var occupation = await _dbSet.FindAsync(id);
+        var occupation = await _dbSet.Include(o => o.EmployerClient).FirstOrDefaultAsync(o => o.Id == id);
         return occupation == null ? null : EntityMapper.ToDto(occupation);
     }
 
     public async Task<IEnumerable<ClientOccupationDto>> GetByClientIdAsync(int clientId)
     {
         var occupations = await _dbSet
+            .Include(o => o.EmployerClient)
             .Where(o => o.ClientId == clientId)
             .OrderByDescending(o => o.StartedYear)
             .ToListAsync();

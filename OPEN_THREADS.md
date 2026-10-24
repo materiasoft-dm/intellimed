@@ -91,8 +91,16 @@ documentation. None of it is committed.
 
 From the Medinet feature-gap comparison, in priority order:
 
-1. **Investigations & results** — pathology/radiology inbox, HL7 v2 ingestion, result-to-patient
-   matching, acknowledge/action workflow. Biggest daily-workflow gap; also the largest lift.
+1. **Investigations & results** — the inbox, HL7 v2 ingestion, patient matching and acknowledge/hold
+   are built (see `USER_GUIDE.md` → Results inbox). Still to do, in this order: **requests** with an
+   outstanding-requests list that clears when a result with the matching order number arrives;
+   one-click result→progress note / recall / patient message; a Results tab on the patient record;
+   alerting on results left unacknowledged for N days; rate limiting on `/api/results/ingest`; a
+   relay agent for labs that only write to a local folder; and a real vendor feed once an agreement
+   exists (Argus reportedly discontinued after HealthLink's acquisition — verify; Medical-Objects has
+   public developer docs). Ingest is HL7 `ORU^R01` only; Medinet's HL7 code
+   (`Abaki.Core.HL7`) has not been compared against it yet, so field mappings for real labs may need
+   adjusting.
 2. **Recalls & reminders** — safety plus recurring revenue. Cheaper now that the Health Issues
    problem list exists to drive it.
 3. **Referral letters** — outbound authoring. Note `ClientReferral` is *inbound* referral tracking

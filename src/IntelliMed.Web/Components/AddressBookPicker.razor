@@ -1,0 +1,159 @@
+@using IntelliMed.Core.DTOs
+@using IntelliMed.Web.Services
+@inject IAddressBookService AddressBookService
+
+@* Search the address book and pick a person (e.g. a referring provider). Includes a quick-add so a
+   missing referrer can be created without leaving the client record. *@
+@if (Visible)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">@Title</h6>
+                    <button type="button" class="btn-close" @onclick="CloseAsync"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!_adding)
+                    {
+                        <input class="form-control form-control-sm mb-2" placeholder="Search by name, provider number or speciality..."
+                               @bind="_query" @bind:event="oninput" @bind:after="SearchAsync" />
+                        <div style="max-height: 320px; overflow-y: auto;">
+                            @if (_results.Count == 0)
+                            {
+                                <div class="text-muted small">@(string.IsNullOrWhiteSpace(_query) ? "Type to search the address book." : "No matching contacts.")</div>
+                            }
+                            else
+                            {
+                                <ul class="list-group">
+                                    @foreach (var contact in _results)
+                                    {
+                                        <li class="list-group-item list-group-item-action address-book-result" style="cursor:pointer" @onclick="@(() => SelectAsync(contact))">
+                                            <div class="fw-semibold">@contact.FullName</div>
+                                            <div class="small text-muted">
+                                                @(string.Join(" · ", new[] { contact.Speciality ?? contact.Profession, contact.ProviderNumber is { } pn ? $"Provider# {pn}" : null, contact.ClinicName }.Where(s => !string.IsNullOrWhiteSpace(s))))
+                                            </div>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="small text-muted mb-2">New address book contact</div>
+                        <div class="row g-2">
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Title</label>
+                                <input class="form-control form-control-sm" @bind="_new.Title" />
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small mb-0">First Name</label>
+                                <input class="form-control form-control-sm" @bind="_new.FirstName" />
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small mb-0">Last Name</label>
+                                <input class="form-control form-control-sm" @bind="_new.LastName" @bind:event="oninput" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Provider Number</label>
+                                <input class="form-control form-control-sm" @bind="_new.ProviderNumber" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Profession</label>
+                                <input class="form-control form-control-sm" placeholder="e.g. GP, Specialist" @bind="_new.Profession" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Speciality</label>
+                                <input class="form-control form-control-sm" @bind="_new.Speciality" />
+                            </div>
+                        </div>
+                        @if (_error != null)
+                        {
+                            <div class="small text-danger mt-2">@_error</div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer py-2">
+                    @if (!_adding)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-primary me-auto" @onclick="StartAdding">+ New Contact</button>
+                        <button type="button" class="btn btn-sm btn-secondary" @onclick="CloseAsync">Cancel</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-sm btn-secondary" @onclick="@(() => _adding = false)">Back</button>
+                        <button type="button" class="btn btn-sm btn-primary" disabled="@(_saving || string.IsNullOrWhiteSpace(_new.LastName))" @onclick="AddAndSelectAsync">Add &amp; Select</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Title { get; set; } = "Find Contact";
+    [Parameter] public EventCallback<AddressBookContactDto> OnSelected { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string _query = string.Empty;
+    private List<AddressBookContactDto> _results = new();
+    private bool _adding;
+    private bool _saving;
+    private string? _error;
+    private SaveAddressBookContactDto _new = new();
+    private bool _wasVisible;
+
+    protected override void OnParametersSet()
+    {
+        // Start fresh each time the picker opens.
+        if (Visible && !_wasVisible)
+        {
+            _query = string.Empty;
+            _results = new();
+            _adding = false;
+            _error = null;
+            _new = new();
+        }
+        _wasVisible = Visible;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            _results = new();
+            return;
+        }
+        var result = await AddressBookService.SearchAsync(new AddressBookSearchDto { Query = _query, PageSize = 15 });
+        _results = result.Items.ToList();
+    }
+
+    private void StartAdding()
+    {
+        _new = new SaveAddressBookContactDto { LastName = _query.Trim() };
+        _error = null;
+        _adding = true;
+    }
+
+    private async Task AddAndSelectAsync()
+    {
+        _saving = true;
+        _error = null;
+        var id = await AddressBookService.CreateAsync(_new);
+        if (id is int newId && await AddressBookService.GetByIdAsync(newId) is { } created)
+        {
+            await SelectAsync(created);
+        }
+        else
+        {
+            _error = "Couldn't add the contact.";
+        }
+        _saving = false;
+    }
+
+    private Task SelectAsync(AddressBookContactDto contact) => OnSelected.InvokeAsync(contact);
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+}

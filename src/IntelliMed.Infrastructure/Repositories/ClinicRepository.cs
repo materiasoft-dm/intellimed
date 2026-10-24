@@ -20,6 +20,7 @@ public class ClinicRepository : Repository<Clinic>, IClinicRepository
             {
                 Id = c.Id,
                 Name = c.Name,
+                Type = c.Type,
                 Abn = c.Abn,
                 Phone = c.Phone,
                 Fax = c.Fax,
@@ -44,6 +45,7 @@ public class ClinicRepository : Repository<Clinic>, IClinicRepository
             {
                 Id = c.Id,
                 Name = c.Name,
+                Type = c.Type,
                 Abn = c.Abn,
                 Phone = c.Phone,
                 Fax = c.Fax,
@@ -65,6 +67,7 @@ public class ClinicRepository : Repository<Clinic>, IClinicRepository
         var clinic = new Clinic
         {
             Name = dto.Name,
+            Type = dto.Type,
             Abn = dto.Abn,
             Phone = dto.Phone,
             Fax = dto.Fax,
@@ -87,6 +90,7 @@ public class ClinicRepository : Repository<Clinic>, IClinicRepository
             throw new InvalidOperationException($"Clinic with ID {id} not found");
 
         clinic.Name = dto.Name;
+        clinic.Type = dto.Type;
         clinic.Abn = dto.Abn;
         clinic.Phone = dto.Phone;
         clinic.Fax = dto.Fax;
@@ -105,7 +109,7 @@ public class ClinicRepository : Repository<Clinic>, IClinicRepository
         return await _context.UserClinics
             .Where(uc => uc.ApplicationUserId == applicationUserId && uc.Clinic!.IsActive)
             .OrderBy(uc => uc.Clinic!.Name)
-            .Select(uc => new MyClinicDto { Id = uc.ClinicId, Name = uc.Clinic!.Name })
+            .Select(uc => new MyClinicDto { Id = uc.ClinicId, Name = uc.Clinic!.Name, Type = uc.Clinic!.Type })
             .ToListAsync();
     }
 
@@ -114,7 +118,7 @@ public class ClinicRepository : Repository<Clinic>, IClinicRepository
         return await _dbSet
             .Where(c => c.IsActive)
             .OrderBy(c => c.Name)
-            .Select(c => new MyClinicDto { Id = c.Id, Name = c.Name })
+            .Select(c => new MyClinicDto { Id = c.Id, Name = c.Name, Type = c.Type })
             .ToListAsync();
     }
 

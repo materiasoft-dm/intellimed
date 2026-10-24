@@ -5,7 +5,10 @@ public class ClientOccupationDto
     public int Id { get; set; }
     public int ClientId { get; set; }
     public string? Occupation { get; set; }
-    public string? Employer { get; set; }
+    /// <summary>An organisation client.</summary>
+    public int? EmployerClientId { get; set; }
+    /// <summary>The organisation client's name (read-only).</summary>
+    public string? EmployerName { get; set; }
     public int? StartedYear { get; set; }
     public int? StoppedYear { get; set; }
     public bool HasAsbestos { get; set; }
@@ -22,7 +25,8 @@ public class CreateClientOccupationDto
 {
     public int ClientId { get; set; }
     public string? Occupation { get; set; }
-    public string? Employer { get; set; }
+    /// <summary>An organisation client.</summary>
+    public int? EmployerClientId { get; set; }
     public int? StartedYear { get; set; }
     public int? StoppedYear { get; set; }
     public bool HasAsbestos { get; set; }
@@ -35,7 +39,8 @@ public class CreateClientOccupationDto
 public class UpdateClientOccupationDto
 {
     public string? Occupation { get; set; }
-    public string? Employer { get; set; }
+    /// <summary>An organisation client.</summary>
+    public int? EmployerClientId { get; set; }
     public int? StartedYear { get; set; }
     public int? StoppedYear { get; set; }
     public bool HasAsbestos { get; set; }

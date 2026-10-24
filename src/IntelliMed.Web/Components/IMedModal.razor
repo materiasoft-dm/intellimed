@@ -1,0 +1,57 @@
+@namespace IntelliMed.Web.Components
+
+@if (IsVisible)
+{
+    <div class="imed-modal-overlay" @onclick="OnBackdropClick">
+        <div class="imed-modal" @onclick:stopPropagation>
+            @if (ShowHeader || !string.IsNullOrWhiteSpace(Title) || HeaderContent != null)
+            {
+                <div class="imed-modal-header">
+                    @if (HeaderContent != null)
+                    {
+                        @HeaderContent
+                    }
+                    else
+                    {
+                        <h5 class="imed-modal-title">@Title</h5>
+                    }
+                    <button class="imed-modal-close" @onclick="Close">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            }
+            <div class="imed-modal-body">
+                @ChildContent
+            </div>
+            @if (FooterContent != null || FooterActions != null)
+            {
+                <div class="imed-modal-footer">
+                    @FooterContent
+                    @FooterActions
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+    [Parameter] public RenderFragment? FooterActions { get; set; }
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+
+    private Task OnBackdropClick()
+    {
+        return Close();
+    }
+}

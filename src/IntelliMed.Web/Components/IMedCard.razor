@@ -1,0 +1,36 @@
+@namespace IntelliMed.Web.Components
+
+<div class="imed-card" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrWhiteSpace(Header) || HeaderContent != null)
+    {
+        <div class="imed-card-header">
+            @HeaderContent
+            @if (HeaderContent == null)
+            {
+                <span class="imed-fw-semibold">@Header</span>
+            }
+        </div>
+    }
+    <div class="imed-card-body">
+        @ChildContent
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Footer) || FooterContent != null)
+    {
+        <div class="imed-card-footer">
+            @FooterContent
+            @if (FooterContent == null)
+            {
+                <span>@Footer</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Header { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public string? Footer { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

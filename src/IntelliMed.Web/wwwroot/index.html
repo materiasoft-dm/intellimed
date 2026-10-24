@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>IntelliMed</title>
     <base href="/" />
-    <link href="css/app.css" rel="stylesheet" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -13,6 +12,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
     <link href="_content/Radzen.Blazor/css/material-base.css" rel="stylesheet" />
+    <!-- Last, so the IntelliMed theme overrides Bootstrap and Radzen on equal specificity -->
+    <link href="css/app.css" rel="stylesheet" />
     <style>
         #app:has(.imed-splash) {
             height: 100vh;
@@ -26,7 +27,7 @@
             align-items: center;
             justify-content: center;
             gap: 1.25rem;
-            background: linear-gradient(160deg, #f5f7fa 0%, #eaf0fc 55%, #dce8fb 100%);
+            background: linear-gradient(160deg, #f9f9f8 0%, #e6f8f0 55%, #d1f2e3 100%);
             font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
         .imed-splash-mark {
@@ -41,16 +42,16 @@
             position: absolute;
             inset: 0;
             border-radius: 50%;
-            border: 4px solid rgba(66, 114, 215, 0.15);
-            border-top-color: #4272d7;
-            border-right-color: #2f5bc4;
+            border: 4px solid rgba(16, 185, 129, 0.15);
+            border-top-color: #10b981;
+            border-right-color: #059669;
             animation: imed-spin 0.9s linear infinite;
         }
         .imed-splash-logo {
             width: 60px;
             height: 60px;
             border-radius: 16px;
-            background: linear-gradient(135deg, #4272d7, #085041);
+            background: linear-gradient(135deg, #10b981, #047857);
             color: #fff;
             font-weight: 700;
             font-size: 1.35rem;
@@ -58,7 +59,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 24px rgba(47, 91, 196, 0.28);
+            box-shadow: 0 10px 24px rgba(5, 150, 105, 0.28);
             animation: imed-pulse 1.6s ease-in-out infinite;
         }
         .imed-splash-title {
@@ -150,6 +151,7 @@
     <script src="js/chart-interop.js"></script>
     <script src="js/command-palette.js"></script>
     <script src="js/download-interop.js"></script>
+    <script src="js/tri-state.js"></script>
     <script src="js/calendar-context-menu.js"></script>
     <script src="js/infinite-scroll.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

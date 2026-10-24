@@ -97,7 +97,7 @@ else
             <div class="col-8">
                 <div class="text-muted small">Patient</div>
                 <div class="fw-semibold">@_issue.ClientName</div>
-                <div class="small">DOB: @_issue.ClientDateOfBirth.ToString("dd/MM/yyyy")</div>
+                <div class="small">DOB: @_issue.ClientDateOfBirth?.ToString("dd/MM/yyyy")</div>
                 @if (!string.IsNullOrWhiteSpace(_issue.ClientMedicareNumber))
                 {
                     <div class="small">Medicare: @_issue.ClientMedicareNumber</div>

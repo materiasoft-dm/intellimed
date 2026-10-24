@@ -5,7 +5,9 @@ public class ClientOccupation
     public int Id { get; set; }
     public int ClientId { get; set; }
     public string? Occupation { get; set; }
-    public string? Employer { get; set; }
+    /// <summary>The employer — an organisation client.</summary>
+    public int? EmployerClientId { get; set; }
+    public Client? EmployerClient { get; set; }
     public int? StartedYear { get; set; }
     public int? StoppedYear { get; set; }
     public bool HasAsbestos { get; set; }

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using IntelliMed.Core.Entities;
 
 namespace IntelliMed.Core.DTOs;
@@ -17,8 +18,9 @@ public class ClientDto
     public string? MaidenName { get; set; }
     public string? Title { get; set; }
     public GenderEnum? Gender { get; set; }
-    public DateTime DateOfBirth { get; set; }
-    public int Age => CalculateAge(DateOfBirth);
+    public DateTime? DateOfBirth { get; set; }
+    /// <summary>Null for an organisation, which has no date of birth.</summary>
+    public int? Age => DateOfBirth.HasValue ? CalculateAge(DateOfBirth.Value) : null;
     public DobAccuracyEnum DobAccuracy { get; set; }
     public string? PlaceOfBirth { get; set; }
     public bool InterpreterRequired { get; set; }
@@ -123,7 +125,7 @@ public class ClientDto
     }
 }
 
-public class CreateClientDto
+public class CreateClientDto : IValidatableObject
 {
     /// <summary>Set server-side from the caller's current clinic context (X-Clinic-Id header), not client-supplied.</summary>
     public int ClinicId { get; set; }
@@ -138,7 +140,15 @@ public class CreateClientDto
     public string? MaidenName { get; set; }
     public string? Title { get; set; }
     public GenderEnum? Gender { get; set; }
-    public DateTime DateOfBirth { get; set; }
+    public DateTime? DateOfBirth { get; set; }
+
+    /// <summary>A person must have a date of birth; an organisation has none.</summary>
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Type == ClientTypeEnum.Person && DateOfBirth == null)
+            yield return new ValidationResult("Date of birth is required.", new[] { nameof(DateOfBirth) });
+    }
+
     public DobAccuracyEnum DobAccuracy { get; set; } = DobAccuracyEnum.Day;
     public string? PlaceOfBirth { get; set; }
     public bool InterpreterRequired { get; set; }
@@ -234,7 +244,7 @@ public class CreateClientDto
     public string? LifeCardNum { get; set; }
 }
 
-public class UpdateClientDto
+public class UpdateClientDto : IValidatableObject
 {
     public ClientTypeEnum Type { get; set; } = ClientTypeEnum.Person;
 
@@ -246,7 +256,15 @@ public class UpdateClientDto
     public string? MaidenName { get; set; }
     public string? Title { get; set; }
     public GenderEnum? Gender { get; set; }
-    public DateTime DateOfBirth { get; set; }
+    public DateTime? DateOfBirth { get; set; }
+
+    /// <summary>A person must have a date of birth; an organisation has none.</summary>
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Type == ClientTypeEnum.Person && DateOfBirth == null)
+            yield return new ValidationResult("Date of birth is required.", new[] { nameof(DateOfBirth) });
+    }
+
     public DobAccuracyEnum DobAccuracy { get; set; }
     public string? PlaceOfBirth { get; set; }
     public bool InterpreterRequired { get; set; }

@@ -1,0 +1,41 @@
+@namespace IntelliMed.Web.Components
+
+@* Right-hand slide-over for create/edit forms. Put the form fields in ChildContent and the
+   Save/Cancel buttons in FooterContent. *@
+@if (IsVisible)
+{
+    <div class="imed-drawer-overlay" @onclick="Close">
+        <aside class="imed-drawer @(Wide ? "imed-drawer--wide" : "")" @onclick:stopPropagation role="dialog" aria-label="@Title">
+            <div class="imed-drawer-header">
+                <h5 class="imed-drawer-title">@Title</h5>
+                <button type="button" class="imed-modal-close" @onclick="Close" aria-label="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="imed-drawer-body">
+                @ChildContent
+            </div>
+            @if (FooterContent != null)
+            {
+                <div class="imed-drawer-footer">
+                    @FooterContent
+                </div>
+            }
+        </aside>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool Wide { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+}

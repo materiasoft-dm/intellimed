@@ -170,66 +170,80 @@ public class RolePermissionsController : ControllerBase
         };
     }
 
+    /// <summary>The permission catalogue — every page key that can be granted to a role, with the
+    /// parent group and action label Role Configuration uses to lay them out as a tree. Public so the
+    /// tests can check the catalogue itself.</summary>
+    public static List<PageDefinitionDto> GetPageCatalogue() => GetPageDefinitionsList();
+
     /// <summary>
     /// Returns the page definitions list directly (not wrapped in ActionResult).
     /// Used internally by GetMyAccessiblePages to avoid ActionResult.Value null issue.
+    ///
+    /// Group/Action only affect how Role Configuration lays the permissions out: a group becomes a
+    /// parent checkbox (ticked when all of its permissions are, partly ticked when some are). The stored
+    /// and enforced permission is still the flat PageKey. Declaration order is display order.
     /// </summary>
     private static List<PageDefinitionDto> GetPageDefinitionsList()
     {
+        static PageDefinitionDto P(string key, string name, string category, string description, string? group = null, string? action = null) =>
+            new() { PageKey = key, PageName = name, Category = category, Description = description, Group = group, Action = action };
+
         return new List<PageDefinitionDto>
         {
             // Clinical
-            new() { PageKey = "clients", PageName = "Client Records", Category = "Clinical", Description = "View and manage client records" },
-            new() { PageKey = "clients/create", PageName = "Add Client", Category = "Clinical", Description = "Create new client records" },
-            new() { PageKey = "clients/edit", PageName = "Edit Client", Category = "Clinical", Description = "Edit existing client records" },
-            new() { PageKey = "clients/delete", PageName = "Delete Client", Category = "Clinical", Description = "Remove client records" },
-            new() { PageKey = "appointments", PageName = "Appointments", Category = "Clinical", Description = "View appointment schedule" },
-            new() { PageKey = "appointments/create", PageName = "New Appointment", Category = "Clinical", Description = "Schedule new appointments" },
-            new() { PageKey = "appointments/edit", PageName = "Edit Appointment", Category = "Clinical", Description = "Modify existing appointments" },
-            new() { PageKey = "appointments/delete", PageName = "Delete Appointment", Category = "Clinical", Description = "Cancel appointments" },
-            new() { PageKey = "appointments/waiting-room", PageName = "Waiting Room", Category = "Clinical", Description = "View and manage the waiting room" },
-            new() { PageKey = "prescriptions", PageName = "Prescriptions", Category = "Clinical", Description = "View a client's prescriptions" },
-            new() { PageKey = "prescriptions/create", PageName = "Write Prescription", Category = "Clinical", Description = "Write new prescriptions and run the safety check" },
-            new() { PageKey = "prescriptions/edit", PageName = "Edit Prescription", Category = "Clinical", Description = "Update, cease, cancel, and issue/reprint existing prescriptions" },
-            new() { PageKey = "progress-notes", PageName = "Progress Notes", Category = "Clinical", Description = "View a client's progress notes and episodes" },
-            new() { PageKey = "progress-notes/create", PageName = "Write Progress Note", Category = "Clinical", Description = "Create new progress notes and episodes" },
-            new() { PageKey = "progress-notes/edit", PageName = "Edit Progress Note", Category = "Clinical", Description = "Update drafts, finalize, add addenda, delete drafts, and manage episodes" },
-            new() { PageKey = "health-issues", PageName = "Health Issues", Category = "Clinical", Description = "View a patient's problem list" },
-            new() { PageKey = "health-issues/create", PageName = "Add Health Issue", Category = "Clinical", Description = "Record a new condition on the problem list" },
-            new() { PageKey = "health-issues/edit", PageName = "Edit Health Issue", Category = "Clinical", Description = "Update or archive an existing health issue" },
+            P("clients", "Client Records", "Clinical", "View and manage client records", "Clients", "View"),
+            P("clients/create", "Add Client", "Clinical", "Create new client records", "Clients", "Create"),
+            P("clients/edit", "Edit Client", "Clinical", "Edit existing client records", "Clients", "Update"),
+            P("clients/delete", "Delete Client", "Clinical", "Remove client records", "Clients", "Remove"),
+            P("address-book", "Address Book", "Clinical", "Add and edit GPs, specialists and other providers in the address book"),
+            P("results", "Results Inbox", "Clinical", "Review pathology and imaging results received from labs"),
+            P("appointments", "Appointments", "Clinical", "View appointment schedule", "Appointments", "View"),
+            P("appointments/create", "New Appointment", "Clinical", "Schedule new appointments", "Appointments", "Create"),
+            P("appointments/edit", "Edit Appointment", "Clinical", "Modify existing appointments", "Appointments", "Update"),
+            P("appointments/delete", "Delete Appointment", "Clinical", "Cancel appointments", "Appointments", "Remove"),
+            P("appointments/waiting-room", "Waiting Room", "Clinical", "View and manage the waiting room", "Appointments", "Waiting room"),
+            P("prescriptions", "Prescriptions", "Clinical", "View a client's prescriptions", "Prescriptions", "View"),
+            P("prescriptions/create", "Write Prescription", "Clinical", "Write new prescriptions and run the safety check", "Prescriptions", "Create"),
+            P("prescriptions/edit", "Edit Prescription", "Clinical", "Update, cease, cancel, and issue/reprint existing prescriptions", "Prescriptions", "Update"),
+            P("progress-notes", "Progress Notes", "Clinical", "View a client's progress notes and episodes", "Progress Notes", "View"),
+            P("progress-notes/create", "Write Progress Note", "Clinical", "Create new progress notes and episodes", "Progress Notes", "Create"),
+            P("progress-notes/edit", "Edit Progress Note", "Clinical", "Update drafts, finalize, add addenda, delete drafts, and manage episodes", "Progress Notes", "Update"),
+            P("health-issues", "Health Issues", "Clinical", "View a patient's problem list", "Health Issues", "View"),
+            P("health-issues/create", "Add Health Issue", "Clinical", "Record a new condition on the problem list", "Health Issues", "Create"),
+            P("health-issues/edit", "Edit Health Issue", "Clinical", "Update or archive an existing health issue", "Health Issues", "Update"),
 
             // Financial
-            new() { PageKey = "invoices", PageName = "Invoices", Category = "Financial", Description = "View invoices" },
-            new() { PageKey = "invoices/create", PageName = "New Invoice", Category = "Financial", Description = "Create new invoices" },
-            new() { PageKey = "invoices/edit", PageName = "Edit Invoice", Category = "Financial", Description = "Modify existing invoices" },
-            new() { PageKey = "invoices/delete", PageName = "Delete Invoice", Category = "Financial", Description = "Remove invoices" },
-            new() { PageKey = "invoices/refund", PageName = "Refund Invoice", Category = "Financial", Description = "Refund a paid invoice or a payer's account credit" },
-            new() { PageKey = "invoices/write-off", PageName = "Write Off Invoice", Category = "Financial", Description = "Forgive part or all of an invoice's outstanding balance" },
-            new() { PageKey = "invoices/void", PageName = "Cancel Invoice", Category = "Financial", Description = "Cancel an unpaid invoice" },
-            new() { PageKey = "invoices/split", PageName = "Split Invoice", Category = "Financial", Description = "Divide an unpaid invoice's line items across new invoices" },
-            new() { PageKey = "payments", PageName = "Payments", Category = "Financial", Description = "View and process payments" },
-            new() { PageKey = "fee-schedules", PageName = "Fee Schedules", Category = "Financial", Description = "Manage fee schedules and health fund rate tables" },
-            new() { PageKey = "derived-item-configs", PageName = "Derived Item Rules", Category = "Financial", Description = "Configure MBS items whose fee derives from other items on the invoice" },
+            P("invoices", "Invoices", "Financial", "View invoices", "Invoices", "View"),
+            P("invoices/create", "New Invoice", "Financial", "Create new invoices", "Invoices", "Create"),
+            P("invoices/edit", "Edit Invoice", "Financial", "Modify existing invoices", "Invoices", "Update"),
+            P("invoices/delete", "Delete Invoice", "Financial", "Remove invoices", "Invoices", "Remove"),
+            P("invoices/refund", "Refund Invoice", "Financial", "Refund a paid invoice or a payer's account credit", "Invoices", "Refund"),
+            P("invoices/write-off", "Write Off Invoice", "Financial", "Forgive part or all of an invoice's outstanding balance", "Invoices", "Write off"),
+            P("invoices/void", "Cancel Invoice", "Financial", "Cancel an unpaid invoice", "Invoices", "Cancel"),
+            P("invoices/split", "Split Invoice", "Financial", "Divide an unpaid invoice's line items across new invoices", "Invoices", "Split"),
+            P("payments", "Payments", "Financial", "View and process payments"),
+            P("fee-schedules", "Fee Schedules", "Financial", "Manage fee schedules and health fund rate tables"),
+            P("derived-item-configs", "Derived Item Rules", "Financial", "Configure MBS items whose fee derives from other items on the invoice"),
 
             // Admin
-            new() { PageKey = "admin/users", PageName = "User Management", Category = "Admin", Description = "Manage system users" },
-            new() { PageKey = "admin/roles", PageName = "Role Configuration", Category = "Admin", Description = "Configure role permissions" },
-            new() { PageKey = "admin/settings", PageName = "System Settings", Category = "Admin", Description = "Configure system parameters" },
-            new() { PageKey = "admin/appointment-types", PageName = "Appointment Types", Category = "Admin", Description = "Configure the appointment-type/duration-preset catalogue" },
-            new() { PageKey = "admin/email-templates", PageName = "Email Templates", Category = "Admin", Description = "Author and assign email templates to system events (invite, forgot password)" },
-            new() { PageKey = "admin/search-actions", PageName = "Command Palette Actions", Category = "Admin", Description = "Manage the entries searchable from the global command palette" },
-            new() { PageKey = "admin/database-backups", PageName = "Database Backups", Category = "Admin", Description = "Configure and manage scheduled SQLite database backups" },
-            new() { PageKey = "admin/medicines", PageName = "Medicine Catalog", Category = "Admin", Description = "Manage the medicines reference-data catalog and its CSV import" },
-            new() { PageKey = "admin/drug-interactions", PageName = "Drug Interactions", Category = "Admin", Description = "Manage the drug-interaction reference table used by the prescribing safety check" },
+            P("admin/users", "User Management", "Admin", "Manage system users"),
+            P("admin/roles", "Role Configuration", "Admin", "Configure role permissions"),
+            P("admin/settings", "System Settings", "Admin", "Configure system parameters"),
+            P("admin/appointment-types", "Appointment Types", "Admin", "Configure the appointment-type/duration-preset catalogue"),
+            P("admin/email-templates", "Email Templates", "Admin", "Author and assign email templates to system events (invite, forgot password)"),
+            P("admin/search-actions", "Command Palette Actions", "Admin", "Manage the entries searchable from the global command palette"),
+            P("admin/database-backups", "Database Backups", "Admin", "Configure and manage scheduled SQLite database backups"),
+            P("admin/medicines", "Medicine Catalog", "Admin", "Manage the medicines reference-data catalog and its CSV import"),
+            P("admin/drug-interactions", "Drug Interactions", "Admin", "Manage the drug-interaction reference table used by the prescribing safety check"),
 
             // Practice
-            new() { PageKey = "clinic-settings", PageName = "Clinic Settings", Category = "Practice", Description = "Configure practice-wide identity and contact information" },
-            new() { PageKey = "clinic-manager", PageName = "Clinic Manager", Category = "Practice", Description = "Manage clinic locations and which users belong to each" },
+            P("clinic-settings", "Clinic Settings", "Practice", "Configure practice-wide identity and contact information"),
+            P("clinic-manager", "Clinic Manager", "Practice", "Manage clinic locations and which users belong to each"),
 
             // Reports
-            new() { PageKey = "reports", PageName = "Reports Dashboard", Category = "Reports", Description = "View practice reports" },
-            new() { PageKey = "reports/financial", PageName = "Financial Reports", Category = "Reports", Description = "Revenue and billing reports" },
-            new() { PageKey = "reports/clinical", PageName = "Clinical Reports", Category = "Reports", Description = "Client and appointment analytics" },
+            P("reports", "Reports Dashboard", "Reports", "View practice reports", "Reports", "Dashboard"),
+            P("reports/financial", "Financial Reports", "Reports", "Revenue and billing reports", "Reports", "Financial"),
+            P("reports/clinical", "Clinical Reports", "Reports", "Client and appointment analytics", "Reports", "Clinical"),
         };
     }
 }

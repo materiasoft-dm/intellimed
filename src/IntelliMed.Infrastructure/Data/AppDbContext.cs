@@ -26,6 +26,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<ClientAddress> ClientAddresses => Set<ClientAddress>();
     public DbSet<ClientReferral> ClientReferrals => Set<ClientReferral>();
+    public DbSet<AddressBookContact> AddressBookContacts => Set<AddressBookContact>();
+    public DbSet<ResultReport> ResultReports => Set<ResultReport>();
+    public DbSet<ResultItem> ResultItems => Set<ResultItem>();
+    public DbSet<ResultAttachment> ResultAttachments => Set<ResultAttachment>();
+    public DbSet<ClientLabIdentifier> ClientLabIdentifiers => Set<ClientLabIdentifier>();
+    public DbSet<ResultIngestKey> ResultIngestKeys => Set<ResultIngestKey>();
     public DbSet<ClientCompensationClaim> ClientCompensationClaims => Set<ClientCompensationClaim>();
     public DbSet<ClientOccupation> ClientOccupations => Set<ClientOccupation>();
     public DbSet<ClientFamilyRelationship> ClientFamilyRelationships => Set<ClientFamilyRelationship>();
@@ -333,16 +339,132 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ReferralPeriod).HasMaxLength(2);
-            entity.Property(e => e.ReferringProviderName).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.ReferringProviderNumber).HasMaxLength(20);
             entity.Property(e => e.RequestTypeCde).HasMaxLength(1);
             entity.Property(e => e.Note).HasMaxLength(255);
             entity.HasOne(e => e.Client)
                 .WithMany()
                 .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReferringContact)
+                .WithMany()
+                .HasForeignKey(e => e.ReferringContactId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => e.ClientId);
             entity.HasIndex(e => e.LegacyGuid).IsUnique();
+        });
+
+        // AddressBookContact configuration — people only; organisations are Clients, workplaces are Clinics
+        modelBuilder.Entity<AddressBookContact>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(20);
+            entity.Property(e => e.FirstName).HasMaxLength(100);
+            entity.Property(e => e.LastName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Profession).HasMaxLength(100);
+            entity.Property(e => e.Speciality).HasMaxLength(100);
+            entity.Property(e => e.ProviderNumber).HasMaxLength(20);
+            entity.Property(e => e.Phone).HasMaxLength(50);
+            entity.Property(e => e.Mobile).HasMaxLength(50);
+            entity.Property(e => e.Fax).HasMaxLength(50);
+            entity.Property(e => e.Email).HasMaxLength(200);
+            entity.Property(e => e.Address).HasMaxLength(200);
+            entity.Property(e => e.Suburb).HasMaxLength(100);
+            entity.Property(e => e.Postcode).HasMaxLength(10);
+            entity.Property(e => e.State).HasMaxLength(10);
+            entity.HasOne(e => e.Clinic)
+                .WithMany()
+                .HasForeignKey(e => e.ClinicId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.LastName);
+            entity.HasIndex(e => e.ProviderNumber);
+            entity.HasIndex(e => e.LegacyGuid).IsUnique();
+        });
+
+        // Results inbox — pathology / imaging reports received from labs
+        modelBuilder.Entity<ResultReport>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SenderName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.MessageControlId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.PatientIdentifier).HasMaxLength(100);
+            entity.Property(e => e.PatientFamilyName).HasMaxLength(200);
+            entity.Property(e => e.PatientGivenName).HasMaxLength(200);
+            entity.Property(e => e.PatientSex).HasMaxLength(10);
+            entity.Property(e => e.PatientMedicareNumber).HasMaxLength(20);
+            entity.Property(e => e.OrderingProviderName).HasMaxLength(200);
+            entity.Property(e => e.OrderingProviderNumber).HasMaxLength(20);
+            entity.Property(e => e.PlacerOrderNumber).HasMaxLength(100);
+            entity.Property(e => e.FillerOrderNumber).HasMaxLength(100);
+            entity.Property(e => e.ReportName).HasMaxLength(300);
+            entity.Property(e => e.ReviewComment).HasMaxLength(1000);
+            entity.Property(e => e.HoldNote).HasMaxLength(500);
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.AssignedPractitioner)
+                .WithMany()
+                .HasForeignKey(e => e.AssignedPractitionerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            // A re-sent message must not create a second report.
+            entity.HasIndex(e => new { e.ClinicId, e.SenderName, e.MessageControlId }).IsUnique();
+            entity.HasIndex(e => new { e.ClinicId, e.Status });
+            entity.HasIndex(e => e.ClientId);
+            entity.HasIndex(e => e.PlacerOrderNumber);
+        });
+
+        modelBuilder.Entity<ResultItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Code).HasMaxLength(100);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.Units).HasMaxLength(100);
+            entity.Property(e => e.ReferenceRange).HasMaxLength(200);
+            entity.Property(e => e.AbnormalFlag).HasMaxLength(10);
+            entity.Property(e => e.ResultStatus).HasMaxLength(5);
+            entity.HasOne(e => e.ResultReport)
+                .WithMany(r => r.Items)
+                .HasForeignKey(e => e.ResultReportId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => e.ResultReportId);
+        });
+
+        modelBuilder.Entity<ResultAttachment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FileName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ContentType).IsRequired().HasMaxLength(100);
+            entity.HasOne(e => e.ResultReport)
+                .WithMany(r => r.Attachments)
+                .HasForeignKey(e => e.ResultReportId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => e.ResultReportId);
+        });
+
+        modelBuilder.Entity<ClientLabIdentifier>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SenderName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Identifier).IsRequired().HasMaxLength(100);
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.SenderName, e.Identifier });
+            entity.HasIndex(e => new { e.ClientId, e.SenderName, e.Identifier }).IsUnique();
+        });
+
+        modelBuilder.Entity<ResultIngestKey>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Label).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.KeyPrefix).IsRequired().HasMaxLength(16);
+            entity.Property(e => e.KeyHash).IsRequired().HasMaxLength(64);
+            entity.HasOne(e => e.Clinic)
+                .WithMany()
+                .HasForeignKey(e => e.ClinicId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.KeyHash).IsUnique();
         });
 
         // ClientCompensationClaim configuration
@@ -350,7 +472,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ClaimNum).IsRequired().HasMaxLength(30);
-            entity.Property(e => e.EmployerName).HasMaxLength(200);
             entity.Property(e => e.CaseManagerName).HasMaxLength(200);
             entity.Property(e => e.PayerName).HasMaxLength(200);
             entity.Property(e => e.PublicNote).HasMaxLength(500);
@@ -358,6 +479,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(e => e.Client)
                 .WithMany()
                 .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.EmployerClient)
+                .WithMany()
+                .HasForeignKey(e => e.EmployerClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => e.ClientId);
             entity.HasIndex(e => e.LegacyGuid).IsUnique();
@@ -368,11 +493,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Occupation).HasMaxLength(255);
-            entity.Property(e => e.Employer).HasMaxLength(255);
             entity.Property(e => e.Comment).HasMaxLength(255);
             entity.HasOne(e => e.Client)
                 .WithMany()
                 .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.EmployerClient)
+                .WithMany()
+                .HasForeignKey(e => e.EmployerClientId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => e.ClientId);
             entity.HasIndex(e => e.LegacyGuid).IsUnique();

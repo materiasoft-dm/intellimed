@@ -8,8 +8,9 @@ public class ClientReferral
     public string? ReferralPeriod { get; set; }
     public bool IsDefault { get; set; }
     public bool IsGP { get; set; }
-    public string ReferringProviderName { get; set; } = string.Empty;
-    public string? ReferringProviderNumber { get; set; }
+    /// <summary>The referring provider, from the address book (name and provider number live there).</summary>
+    public int ReferringContactId { get; set; }
+    public AddressBookContact? ReferringContact { get; set; }
     public string? RequestTypeCde { get; set; }
     public DateTime? FirstVisitDate { get; set; }
     public string? Note { get; set; }

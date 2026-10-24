@@ -15,13 +15,14 @@ public class ClientCompensationClaimRepository : Repository<ClientCompensationCl
 
     public new async Task<ClientCompensationClaimDto?> GetByIdAsync(int id)
     {
-        var claim = await _dbSet.FindAsync(id);
+        var claim = await _dbSet.Include(c => c.EmployerClient).FirstOrDefaultAsync(c => c.Id == id);
         return claim == null ? null : EntityMapper.ToDto(claim);
     }
 
     public async Task<IEnumerable<ClientCompensationClaimDto>> GetByClientIdAsync(int clientId)
     {
         var claims = await _dbSet
+            .Include(c => c.EmployerClient)
             .Where(c => c.ClientId == clientId)
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();

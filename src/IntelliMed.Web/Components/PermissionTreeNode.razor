@@ -1,0 +1,71 @@
+@namespace IntelliMed.Web.Components
+@using IntelliMed.Core.Permissions
+
+@* One row of the Role Configuration tree, recursing into its children. A branch (category or group)
+   shows a tri-state checkbox: ticked when everything under it is granted, partly ticked when only some
+   is. Ticking it grants or revokes everything under it. A leaf is a single stored permission. *@
+
+@{
+    var state = PermissionTree.StateOf(Node, Selected);
+    var inputId = "chk_" + Node.Id;
+    var indent = $"padding-left: {0.75 + Depth * 1.75}rem;";
+}
+
+<li class="perm-node" data-node="@Node.Id">
+    @if (Node.IsLeaf)
+    {
+        <div class="perm-row perm-leaf" style="@indent">
+            <span class="perm-chevron-spacer"></span>
+            <input type="checkbox" class="form-check-input" id="@inputId"
+                   data-tri="@(state == CheckState.All ? "on" : "off")"
+                   checked="@(state == CheckState.All)"
+                   @onchange="e => ToggleAsync((bool)(e.Value ?? false))" />
+            <label class="perm-label" for="@inputId">@Node.Label</label>
+            @if (!string.IsNullOrWhiteSpace(Node.Description))
+            {
+                <span class="perm-desc">@Node.Description</span>
+            }
+        </div>
+    }
+    else
+    {
+        var expanded = !Collapsed.Contains(Node.Id);
+        var granted = Node.LeafKeys.Count(Selected.Contains);
+        <div class="perm-row perm-branch perm-depth-@Depth" style="@indent">
+            <button type="button" class="perm-chevron" aria-expanded="@(expanded ? "true" : "false")"
+                    aria-label="@(expanded ? "Collapse" : "Expand") @Node.Label"
+                    @onclick="() => OnExpandToggle.InvokeAsync(Node.Id)">
+                <i class="bi @(expanded ? "bi-chevron-down" : "bi-chevron-right")"></i>
+            </button>
+            <input type="checkbox" class="form-check-input" id="@inputId"
+                   data-tri="@(state == CheckState.All ? "on" : state == CheckState.Some ? "mixed" : "off")"
+                   checked="@(state == CheckState.All)"
+                   @onchange="e => ToggleAsync((bool)(e.Value ?? false))" />
+            <label class="perm-label" for="@inputId">@Node.Label</label>
+            <span class="perm-count">@granted of @Node.LeafKeys.Count</span>
+        </div>
+        @if (expanded)
+        {
+            <ul class="perm-children">
+                @foreach (var child in Node.Children)
+                {
+                    <PermissionTreeNode @key="child.Id" Node="child" Depth="Depth + 1" Selected="Selected"
+                                        Collapsed="Collapsed" OnToggle="OnToggle" OnExpandToggle="OnExpandToggle" />
+                }
+            </ul>
+        }
+    }
+</li>
+
+@code {
+    [Parameter, EditorRequired] public PermissionNode Node { get; set; } = default!;
+    [Parameter] public int Depth { get; set; }
+    [Parameter, EditorRequired] public HashSet<string> Selected { get; set; } = default!;
+    [Parameter, EditorRequired] public HashSet<string> Collapsed { get; set; } = default!;
+    [Parameter] public EventCallback<PermissionToggle> OnToggle { get; set; }
+    [Parameter] public EventCallback<string> OnExpandToggle { get; set; }
+
+    private Task ToggleAsync(bool isChecked) => OnToggle.InvokeAsync(new PermissionToggle(Node, isChecked));
+
+    public record PermissionToggle(PermissionNode Node, bool IsChecked);
+}

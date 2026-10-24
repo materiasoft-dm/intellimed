@@ -6,7 +6,9 @@ public class ClientCompensationClaim
     public int ClientId { get; set; }
     public string ClaimNum { get; set; } = string.Empty;
     public DateTime? DateOfInjury { get; set; }
-    public string? EmployerName { get; set; }
+    /// <summary>The employer at the time of injury — an organisation client.</summary>
+    public int? EmployerClientId { get; set; }
+    public Client? EmployerClient { get; set; }
     public string? CaseManagerName { get; set; }
     public string? PayerName { get; set; }
     public bool IsDefault { get; set; }

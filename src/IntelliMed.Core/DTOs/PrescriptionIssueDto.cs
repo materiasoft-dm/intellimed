@@ -42,6 +42,6 @@ public class PrescriptionIssueDto
     public string? StateAuthorityCode { get; set; }
 
     public string ClientName { get; set; } = string.Empty;
-    public DateTime ClientDateOfBirth { get; set; }
+    public DateTime? ClientDateOfBirth { get; set; }
     public string? ClientMedicareNumber { get; set; }
 }

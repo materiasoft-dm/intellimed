@@ -49,7 +49,7 @@ public class ClinicTests : UiTestBase
         await page.GotoAsync("/");
         await page.WaitForSelectorAsync("text=Welcome,");
 
-        await page.Locator("button.dropdown-toggle:has(i.bi-person-circle)").ClickAsync();
+        await page.Locator("button.mdi-user-chip").ClickAsync();
         await page.Locator(".dropdown-menu a[href='/clinic-manager']").ClickAsync();
 
         await page.WaitForURLAsync(url => url.EndsWith("/clinic-manager"));
@@ -97,7 +97,8 @@ public class ClinicTests : UiTestBase
         await page.Locator(".modal-content").GetByRole(AriaRole.Button, new() { Name = "Save", Exact = true }).ClickAsync();
 
         await Assertions.Expect(page.GetByText("Clinic users updated successfully.")).ToBeVisibleAsync();
-        await Assertions.Expect(ClinicRow(page, name).Locator("td").Nth(3)).ToHaveTextAsync("1");
+        // Columns: Name, Type, Phone, Address, Users, Status.
+        await Assertions.Expect(ClinicRow(page, name).Locator("td").Nth(4)).ToHaveTextAsync("1");
     }
 
     // ---- Clinic Settings -----------------------------------------------------------------------

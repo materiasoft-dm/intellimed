@@ -39,7 +39,8 @@ public class AppointmentDto
     public string? ClientWarnings { get; set; }
     public bool ClientInterpreterRequired { get; set; }
     public string? ClientInterpreterLanguage { get; set; }
-    public int ClientAge { get; set; }
+    /// <summary>Null when the client is an organisation (no date of birth).</summary>
+    public int? ClientAge { get; set; }
 }
 
 public class CreateAppointmentDto

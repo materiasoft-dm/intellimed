@@ -3,7 +3,7 @@ using Xunit;
 
 namespace IntelliMed.Tests.Ui;
 
-// Covers the set-up pages under /admin that had no UI coverage: Role Configuration, User
+// Covers the set-up pages under /admin that had no UI coverage: User
 // Management (edit, deactivate, search), Appointment Types, Command Palette Actions, System
 // Settings and Database Backups. Every test uses unique names, and anything that changes shared
 // configuration (role permissions, settings, backup schedule) restores it before finishing, since
@@ -18,65 +18,7 @@ public class AdminSetupTests : UiTestBase
     private static ILocator Row(IPage page, string text) =>
         page.Locator("tr", new PageLocatorOptions { HasTextString = text });
 
-    // ---- Role Configuration --------------------------------------------------------------------
-
-    private static async Task SetReceptionistPageAsync(IPage page, string pageKey, bool grant)
-    {
-        await page.GotoAsync("/admin/roles");
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Role Configuration" }).WaitForAsync();
-        await page.Field("Select Role").SelectOptionAsync("Receptionist");
-
-        var checkbox = page.Locator($"input[id='chk_{pageKey}']");
-        await checkbox.WaitForAsync();
-        if (await checkbox.IsCheckedAsync() != grant)
-        {
-            await checkbox.ClickAsync();
-        }
-        await page.GetByRole(AriaRole.Button, new() { Name = "Save Permissions" }).ClickAsync();
-        await Assertions.Expect(page.GetByText("Permissions saved for 'Receptionist'")).ToBeVisibleAsync();
-    }
-
-    [Fact]
-    public async Task RoleConfiguration_GrantingAnAdminPage_ShowsItOnThatRolesAdminHub()
-    {
-        // Receptionist has no admin/* pages by default and no other UI test depends on it.
-        var adminPage = await Fixture.NewAuthenticatedPageAsync();
-        await SetReceptionistPageAsync(adminPage, "admin/appointment-types", grant: true);
-        try
-        {
-            var page = await Fixture.NewPageSignedInAsRoleAsync("Receptionist");
-            await page.GotoAsync("/admin");
-
-            var tiles = page.Locator("a > .card");
-            await Assertions.Expect(tiles).ToHaveCountAsync(1);
-            await Assertions.Expect(tiles).ToContainTextAsync("Appointment Types");
-            await Assertions.Expect(page.Locator("a.mdi-nav-link[href='/admin']")).ToBeVisibleAsync();
-        }
-        finally
-        {
-            await SetReceptionistPageAsync(adminPage, "admin/appointment-types", grant: false);
-        }
-    }
-
-    [Fact]
-    public async Task RoleConfiguration_SelectingARole_ShowsItsCurrentPageAccess()
-    {
-        var page = await Fixture.NewAuthenticatedPageAsync();
-        await page.GotoAsync("/admin/roles");
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Role Configuration" }).WaitForAsync();
-        await Assertions.Expect(page.GetByText("Select a role above to configure its page access")).ToBeVisibleAsync();
-
-        await page.Field("Select Role").SelectOptionAsync("Receptionist");
-
-        // Regression (fixed 2026-10-22): on a fresh database Program.cs's default seed used to be skipped,
-        // because migrations insert a few permission rows first. The fixture's database is fresh, so the
-        // seed-only defaults (clients, invoices) must be here alongside the migration-inserted
-        // waiting-room key.
-        await Assertions.Expect(page.Locator("input[id='chk_clients']")).ToBeCheckedAsync();
-        await Assertions.Expect(page.Locator("input[id='chk_invoices']")).ToBeCheckedAsync();
-        await Assertions.Expect(page.Locator("input[id='chk_appointments/waiting-room']")).ToBeCheckedAsync();
-        await Assertions.Expect(page.Locator("input[id='chk_admin/users']")).Not.ToBeCheckedAsync();
-    }
+    // Role Configuration (the permission tree) is covered in RoleConfigurationTests.
 
     // ---- User Management -----------------------------------------------------------------------
 

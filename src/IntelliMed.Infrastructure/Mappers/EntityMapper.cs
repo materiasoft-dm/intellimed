@@ -300,8 +300,9 @@ public static class EntityMapper
         ReferralPeriod = entity.ReferralPeriod,
         IsDefault = entity.IsDefault,
         IsGP = entity.IsGP,
-        ReferringProviderName = entity.ReferringProviderName,
-        ReferringProviderNumber = entity.ReferringProviderNumber,
+        ReferringContactId = entity.ReferringContactId,
+        ReferringProviderName = entity.ReferringContact == null ? string.Empty : ContactDisplayName(entity.ReferringContact),
+        ReferringProviderNumber = entity.ReferringContact?.ProviderNumber,
         RequestTypeCde = entity.RequestTypeCde,
         FirstVisitDate = entity.FirstVisitDate,
         Note = entity.Note,
@@ -317,8 +318,7 @@ public static class EntityMapper
         ReferralPeriod = dto.ReferralPeriod,
         IsDefault = dto.IsDefault,
         IsGP = dto.IsGP,
-        ReferringProviderName = dto.ReferringProviderName,
-        ReferringProviderNumber = dto.ReferringProviderNumber,
+        ReferringContactId = dto.ReferringContactId,
         RequestTypeCde = dto.RequestTypeCde,
         FirstVisitDate = dto.FirstVisitDate,
         Note = dto.Note,
@@ -331,8 +331,7 @@ public static class EntityMapper
         entity.ReferralPeriod = dto.ReferralPeriod;
         entity.IsDefault = dto.IsDefault;
         entity.IsGP = dto.IsGP;
-        entity.ReferringProviderName = dto.ReferringProviderName;
-        entity.ReferringProviderNumber = dto.ReferringProviderNumber;
+        entity.ReferringContactId = dto.ReferringContactId;
         entity.RequestTypeCde = dto.RequestTypeCde;
         entity.FirstVisitDate = dto.FirstVisitDate;
         entity.Note = dto.Note;
@@ -611,7 +610,8 @@ public static class EntityMapper
         ClientId = entity.ClientId,
         ClaimNum = entity.ClaimNum,
         DateOfInjury = entity.DateOfInjury,
-        EmployerName = entity.EmployerName,
+        EmployerClientId = entity.EmployerClientId,
+        EmployerName = entity.EmployerClient == null ? null : ClientDisplayName(entity.EmployerClient),
         CaseManagerName = entity.CaseManagerName,
         PayerName = entity.PayerName,
         IsDefault = entity.IsDefault,
@@ -627,7 +627,7 @@ public static class EntityMapper
         ClientId = dto.ClientId,
         ClaimNum = dto.ClaimNum,
         DateOfInjury = dto.DateOfInjury,
-        EmployerName = dto.EmployerName,
+        EmployerClientId = dto.EmployerClientId,
         CaseManagerName = dto.CaseManagerName,
         PayerName = dto.PayerName,
         IsDefault = dto.IsDefault,
@@ -640,7 +640,7 @@ public static class EntityMapper
     {
         entity.ClaimNum = dto.ClaimNum;
         entity.DateOfInjury = dto.DateOfInjury;
-        entity.EmployerName = dto.EmployerName;
+        entity.EmployerClientId = dto.EmployerClientId;
         entity.CaseManagerName = dto.CaseManagerName;
         entity.PayerName = dto.PayerName;
         entity.IsDefault = dto.IsDefault;
@@ -656,7 +656,8 @@ public static class EntityMapper
         Id = entity.Id,
         ClientId = entity.ClientId,
         Occupation = entity.Occupation,
-        Employer = entity.Employer,
+        EmployerClientId = entity.EmployerClientId,
+        EmployerName = entity.EmployerClient == null ? null : ClientDisplayName(entity.EmployerClient),
         StartedYear = entity.StartedYear,
         StoppedYear = entity.StoppedYear,
         HasAsbestos = entity.HasAsbestos,
@@ -673,7 +674,7 @@ public static class EntityMapper
     {
         ClientId = dto.ClientId,
         Occupation = dto.Occupation,
-        Employer = dto.Employer,
+        EmployerClientId = dto.EmployerClientId,
         StartedYear = dto.StartedYear,
         StoppedYear = dto.StoppedYear,
         HasAsbestos = dto.HasAsbestos,
@@ -687,7 +688,7 @@ public static class EntityMapper
     public static void UpdateEntity(ClientOccupation entity, UpdateClientOccupationDto dto)
     {
         entity.Occupation = dto.Occupation;
-        entity.Employer = dto.Employer;
+        entity.EmployerClientId = dto.EmployerClientId;
         entity.StartedYear = dto.StartedYear;
         entity.StoppedYear = dto.StoppedYear;
         entity.HasAsbestos = dto.HasAsbestos;
@@ -802,7 +803,7 @@ public static class EntityMapper
         ClientWarnings = entity.Client?.Warnings,
         ClientInterpreterRequired = entity.Client?.InterpreterRequired ?? false,
         ClientInterpreterLanguage = entity.Client?.InterpreterLanguage,
-        ClientAge = entity.Client != null ? CalculateAge(entity.Client.DateOfBirth) : 0
+        ClientAge = entity.Client?.DateOfBirth is DateTime dob ? CalculateAge(dob) : null
     };
 
     // Duplicated on purpose — ClientDto.CalculateAge (Core/DTOs/ClientDto.cs) and AddClient.razor's own
@@ -1324,4 +1325,61 @@ public static class EntityMapper
         LinkUrl = dto.LinkUrl,
         CreatedAt = DateTime.UtcNow
     };
+
+    // AddressBookContact mappings
+    public static AddressBookContactDto ToDto(AddressBookContact entity) => new()
+    {
+        Id = entity.Id,
+        Title = entity.Title,
+        FirstName = entity.FirstName,
+        LastName = entity.LastName,
+        FullName = ContactDisplayName(entity),
+        Profession = entity.Profession,
+        Speciality = entity.Speciality,
+        ProviderNumber = entity.ProviderNumber,
+        Phone = entity.Phone,
+        Mobile = entity.Mobile,
+        Fax = entity.Fax,
+        Email = entity.Email,
+        Address = entity.Address,
+        Suburb = entity.Suburb,
+        Postcode = entity.Postcode,
+        State = entity.State,
+        ClinicId = entity.ClinicId,
+        ClinicName = entity.Clinic?.Name,
+        ClinicType = entity.Clinic?.Type,
+        Notes = entity.Notes,
+        IsArchived = entity.IsArchived
+    };
+
+    public static void UpdateEntity(AddressBookContact entity, SaveAddressBookContactDto dto)
+    {
+        entity.Title = dto.Title;
+        entity.FirstName = dto.FirstName;
+        entity.LastName = dto.LastName;
+        entity.Profession = dto.Profession;
+        entity.Speciality = dto.Speciality;
+        entity.ProviderNumber = dto.ProviderNumber;
+        entity.Phone = dto.Phone;
+        entity.Mobile = dto.Mobile;
+        entity.Fax = dto.Fax;
+        entity.Email = dto.Email;
+        entity.Address = dto.Address;
+        entity.Suburb = dto.Suburb;
+        entity.Postcode = dto.Postcode;
+        entity.State = dto.State;
+        entity.ClinicId = dto.ClinicId;
+        entity.Notes = dto.Notes;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>"Dr Jane Citizen" — title, first and last name, skipping blanks.</summary>
+    public static string ContactDisplayName(AddressBookContact contact) =>
+        string.Join(" ", new[] { contact.Title, contact.FirstName, contact.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+    /// <summary>An organisation's name lives in LastName ("Family/Org"); a person is "First Last".</summary>
+    public static string ClientDisplayName(Client client) =>
+        client.Type == ClientTypeEnum.Organisation
+            ? client.LastName
+            : $"{client.FirstName} {client.LastName}".Trim();
 }

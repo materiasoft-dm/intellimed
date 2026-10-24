@@ -192,8 +192,12 @@ public class PrimaryClinicMigratorService : IPrimaryClinicMigratorService
             referral.RequestTypeCde = GetString(row, "RequestTypeCde");
             referral.FirstVisitDate = GetDateTime(row, "FirstVisitDate");
             referral.Note = GetString(row, "Note");
-            var providerName = string.Join(" ", new[] { GetString(row, "ProviderFirstName"), GetString(row, "ProviderSurname") }.Where(s => !string.IsNullOrWhiteSpace(s)));
-            referral.ReferringProviderName = string.IsNullOrWhiteSpace(providerName) ? referral.ReferringProviderName : providerName;
+            var providerGuid = GetOptionalGuid(row, "ProviderGUID");
+            var providerFirst = GetString(row, "ProviderFirstName");
+            var providerSurname = GetString(row, "ProviderSurname");
+            // Keep an existing link when legacy has no provider for this row; otherwise resolve one.
+            if (existing == null || providerGuid != null || !string.IsNullOrWhiteSpace(providerFirst) || !string.IsNullOrWhiteSpace(providerSurname))
+                referral.ReferringContactId = await ResolveReferringContactAsync(providerGuid, providerFirst, providerSurname);
             referral.UpdatedAt = DateTime.UtcNow;
 
             if (existing == null)
@@ -230,7 +234,8 @@ public class PrimaryClinicMigratorService : IPrimaryClinicMigratorService
             var occupation = existing ?? new ClientOccupation { ClientId = clientId.Value, LegacyGuid = legacyGuid };
 
             occupation.Occupation = GetString(row, "Occupation");
-            occupation.Employer = GetString(row, "Employer");
+            var clinicId = await _context.Clients.Where(c => c.Id == clientId.Value).Select(c => c.ClinicId).FirstAsync();
+            occupation.EmployerClientId = await ResolveEmployerAsync(clinicId, null, GetString(row, "Employer"));
             occupation.StartedYear = GetDateTime(row, "StartedYear")?.Year;
             occupation.StoppedYear = GetDateTime(row, "StoppedYear")?.Year;
             occupation.HasAsbestos = GetBool(row, "HasAsbestos");
@@ -312,7 +317,8 @@ public class PrimaryClinicMigratorService : IPrimaryClinicMigratorService
 
             claim.DateOfInjury = GetDateTime(row, "DateOfInjury");
             var employerName = string.Join(" ", new[] { GetString(row, "EmployerFirstName"), GetString(row, "EmployerSurname") }.Where(s => !string.IsNullOrWhiteSpace(s)));
-            claim.EmployerName = string.IsNullOrWhiteSpace(employerName) ? null : employerName;
+            var clinicId = await _context.Clients.Where(c => c.Id == clientId.Value).Select(c => c.ClinicId).FirstAsync();
+            claim.EmployerClientId = await ResolveEmployerAsync(clinicId, GetOptionalGuid(row, "EmployerGUID"), employerName);
             var caseManagerName = string.Join(" ", new[] { GetString(row, "CaseManagerFirstName"), GetString(row, "CaseManagerSurname") }.Where(s => !string.IsNullOrWhiteSpace(s)));
             claim.CaseManagerName = string.IsNullOrWhiteSpace(caseManagerName) ? null : caseManagerName;
             claim.UpdatedAt = DateTime.UtcNow;
@@ -618,5 +624,80 @@ public class PrimaryClinicMigratorService : IPrimaryClinicMigratorService
     private static string GetGuid(Dictionary<string, JsonElement> row, string key)
     {
         return row[key].GetGuid().ToString();
+    }
+
+    /// <summary>As <see cref="GetGuid"/>, for a nullable or LEFT JOINed GUID column.</summary>
+    private static string? GetOptionalGuid(Dictionary<string, JsonElement> row, string key)
+    {
+        return row.TryGetValue(key, out var v) && v.ValueKind == JsonValueKind.String ? v.GetGuid().ToString() : null;
+    }
+
+    // =========================================================================
+    // CONTACT RESOLUTION — legacy keeps referrers and employers as Contacts rows
+    // =========================================================================
+
+    /// <summary>The address-book contact for a legacy referring provider: matched on the legacy
+    /// Contacts.GUID when there is one, then on name; created if neither matches. Saved immediately so
+    /// the referral can point at its id.</summary>
+    private async Task<int> ResolveReferringContactAsync(string? legacyGuid, string? firstName, string? surname)
+    {
+        if (legacyGuid != null &&
+            await _context.AddressBookContacts.FirstOrDefaultAsync(c => c.LegacyGuid == legacyGuid) is { } byGuid)
+            return byGuid.Id;
+
+        var first = string.IsNullOrWhiteSpace(firstName) ? null : firstName.Trim();
+        var last = string.IsNullOrWhiteSpace(surname) ? first ?? "Unknown referrer" : surname.Trim();
+        if (string.IsNullOrWhiteSpace(surname)) first = null;
+
+        var byName = await _context.AddressBookContacts.FirstOrDefaultAsync(c =>
+            c.LegacyGuid == null && c.LastName.ToLower() == last.ToLower() &&
+            (c.FirstName ?? "").ToLower() == (first ?? "").ToLower());
+        if (byName != null)
+        {
+            byName.LegacyGuid ??= legacyGuid;
+            await _context.SaveChangesAsync();
+            return byName.Id;
+        }
+
+        var contact = new AddressBookContact
+        {
+            FirstName = first,
+            LastName = last,
+            LegacyGuid = legacyGuid,
+            Notes = "Imported from legacy referrals"
+        };
+        _context.AddressBookContacts.Add(contact);
+        await _context.SaveChangesAsync();
+        return contact.Id;
+    }
+
+    /// <summary>The organisation client for a legacy employer, within the patient's clinic: matched on
+    /// the legacy Contacts.GUID (the employer may already have been imported as a client), then on
+    /// organisation name; created with just its name if neither matches. Null when there's no employer.</summary>
+    private async Task<int?> ResolveEmployerAsync(int clinicId, string? legacyGuid, string? name)
+    {
+        if (legacyGuid != null &&
+            await _context.Clients.FirstOrDefaultAsync(c => c.LegacyGuid == legacyGuid) is { } byGuid)
+            return byGuid.Id;
+
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var trimmed = name.Trim();
+
+        var byName = await _context.Clients.FirstOrDefaultAsync(c =>
+            c.Type == ClientTypeEnum.Organisation && c.ClinicId == clinicId && c.LastName.ToLower() == trimmed.ToLower());
+        if (byName != null) return byName.Id;
+
+        var organisation = new Client
+        {
+            ClinicId = clinicId,
+            Type = ClientTypeEnum.Organisation,
+            LastName = trimmed,
+            DateOfBirth = null,
+            LegacyGuid = legacyGuid,
+            Notes = "Created from employer details on legacy patient records"
+        };
+        _context.Clients.Add(organisation);
+        await _context.SaveChangesAsync();
+        return organisation.Id;
     }
 }

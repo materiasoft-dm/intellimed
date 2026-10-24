@@ -83,7 +83,7 @@
                                     {
                                         <tr style="cursor:pointer" @onclick="() => Select(c)">
                                             <td>@c.FullName</td>
-                                            <td>@c.DateOfBirth.ToString("dd/MM/yyyy")</td>
+                                            <td>@c.DateOfBirth?.ToString("dd/MM/yyyy")</td>
                                             <td>@c.MedicareNumber</td>
                                             <td>@c.DvaNumber</td>
                                             <td>@c.FileNumber</td>

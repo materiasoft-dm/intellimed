@@ -1,0 +1,19 @@
+@namespace IntelliMed.Web.Components
+
+<table class="imed-table" @attributes="AdditionalAttributes">
+    <thead>
+        @if (HeaderContent != null)
+        {
+            @HeaderContent
+        }
+    </thead>
+    <tbody>
+        @ChildContent
+    </tbody>
+</table>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

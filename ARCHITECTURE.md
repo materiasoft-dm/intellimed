@@ -485,6 +485,13 @@ out of date and have been rewritten against the actual code rather than the orig
 
 **Clinical**
 - [x] Patients with addresses, referrals, family, occupations, compensation claims, user-defined fields
+- [x] Contacts: address book of outside practitioners (referrers, specialists) linked to a clinic or
+      hospital, and organisation clients as employers and payers
+- [x] Results inbox: HL7 v2 `ORU^R01` ingestion (browser upload, plus `POST /api/results/ingest` with a
+      per-clinic API key), conservative patient matching, unmatched queue, acknowledge/hold audit trail.
+      Tables: `ResultReports`, `ResultItems`, `ResultAttachments`, `ClientLabIdentifiers`,
+      `ResultIngestKeys`. Page key `results` (not granted to Receptionist). Parser:
+      `Infrastructure/Hl7/Hl7ResultParser.cs`; matching: `Infrastructure/Services/ResultIngestService.cs`
 - [x] Appointments — list, calendar (drag to move/resize), waiting room, appointment types
 - [x] Progress notes — SOAP, draft/finalize, append-only addenda, episodes, walk-in auto-appointment
 - [x] Health issues (problem list), ported from Medinet's Past History
@@ -556,9 +563,10 @@ rather than left to mislead.
 
 Current priorities, in order, from the Medinet feature-gap comparison:
 
-1. **Investigations & results** — pathology/radiology inbox with HL7 v2 ingestion, result-to-patient
-   matching, and an acknowledge/action workflow. The single biggest daily workflow still missing, and
-   the largest remaining lift.
+1. **Investigations & results** — *inbox, HL7 v2 ingestion, matching and acknowledge are built.*
+   Remaining: pathology/imaging requests with an outstanding-requests list, result-to-note/recall/
+   patient-message actions, a Results tab on the patient record, and live lab or messaging-vendor feeds
+   (needs a vendor agreement; the ingest endpoint is where they plug in).
 2. **Recalls & reminders** — patient safety plus recurring revenue; much cheaper now that the health
    issues problem list exists to drive it.
 3. **Referral letters** — outbound letter authoring and printing. Note `ClientReferral` is *inbound*

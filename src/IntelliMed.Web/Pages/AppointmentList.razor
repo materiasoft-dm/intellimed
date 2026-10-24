@@ -140,7 +140,7 @@
                                 @foreach (var candidate in _clientSearchResults)
                                 {
                                     <li class="list-group-item list-group-item-action" style="cursor:pointer" @onclick="@(() => SelectClient(candidate))">
-                                        @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth.ToString("dd/MM/yyyy"))</span>
+                                        @candidate.FullName <span class="text-muted small">(@candidate.DateOfBirth?.ToString("dd/MM/yyyy"))</span>
                                     </li>
                                 }
                             </ul>

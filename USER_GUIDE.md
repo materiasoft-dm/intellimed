@@ -60,9 +60,27 @@ same search is embedded wherever a patient must be picked — for example when r
 you never have to leave a task to go looking one up.
 
 ### Creating a patient
-**Find Client → New**, or navigate to *Add Client* directly. Only **Surname** and **Given** name are
-required to save; everything else can be filled in later. Saving takes you straight to the patient's
-record.
+**Find Client → New**, or navigate to *Add Client* directly. Only **Surname**, **Given** name and
+**D.O.B** are required to save; everything else can be filled in later. Saving takes you straight to
+the patient's record.
+
+### Organisations
+A client can be a **Person** or an **Organisation** (the type selector at the top of the record). An
+organisation — an employer, a school, a company paying for its staff's check-ups — has a name
+(*Family/Org*) but no date of birth. Patients link to organisations in two independent ways:
+
+- **Employer** — on the Occupations and WC/TAC tabs ("works for").
+- **Payer** — the *DF Payer* on the Details tab ("paid for by"). Invoices bill the payer automatically.
+
+The same organisation can be both, or a patient can be paid for by an organisation they don't work for.
+
+### Address book
+**Address Book** (sidebar, under Clients) holds the people the practice deals with — GPs, specialists,
+allied health — shared by every clinic. Each contact has a name, profession and speciality, provider
+number, contact details, and optionally a **workplace**: a clinic or hospital from Clinic Manager.
+Search covers name, provider number, profession, speciality and workplace. Contacts are archived, never
+deleted, so referrals that point at them keep working. Organisations are not stored here — they are
+clients (see above).
 
 ### Who can see which patients
 Patients are visible to staff assigned to them via **Providers with Access** on the patient's
@@ -81,14 +99,14 @@ been saved once, since they need a patient ID to attach to.
 | Tab | What it holds |
 |---|---|
 | **Details** | Demographics, entitlements (Medicare/DVA/concession), addresses, contact details, health fund, account type, file number, assigned providers |
-| **Referrals** | Inbound referrals *from* other providers — referring doctor, provider number, referral date and period. Drives Medicare billing eligibility |
+| **Referrals** | Inbound referrals *from* other providers. The referring doctor is picked from the [address book](#address-book) (or added there on the spot), which supplies their provider number. Referral date and period drive Medicare billing eligibility |
 | **Allergies** | Recorded allergies and adverse reactions. Feeds the prescribing safety check |
 | **Health Issues** | The problem list — ongoing and past conditions ([section 5](#health-issues-problem-list)) |
 | **Prescriptions** | Every script written for this patient, current and ceased |
 | **Progress Notes** | Clinical notes, drafts and signed ([section 5](#progress-notes)) |
-| **WC/TAC** | WorkCover and Transport Accident Commission claim details |
+| **WC/TAC** | WorkCover and Transport Accident Commission claim details. The employer is an [organisation](#organisations) client |
 | **Family** | Family relationships, and linking family members to each other |
-| **Occupations** | Employment history |
+| **Occupations** | Employment history. The employer is an [organisation](#organisations) client, picked or added on the spot |
 | **eHealth** | My Health Record / IHI identifiers (recording only — no live connection) |
 | **UDF** | User-defined fields, configured clinic-wide by an admin |
 | **Patient History** | A read-only timeline of everything that has happened — notes, prescriptions, appointments — newest first |
@@ -173,6 +191,44 @@ different actions: untick *Active* for the latter.
 Recorded per patient with substance, type, reaction, severity, and onset. Where the substance matches
 an ingredient in the medicine catalogue it is marked **confirmed**, and the prescribing safety check
 can then match on it reliably rather than on text alone.
+
+### Results inbox
+**Results** (sidebar, under Clients) is where pathology and imaging reports from labs arrive. A red
+number beside it counts what is still waiting.
+
+**How a report gets in.** Staff can **Upload HL7 file** on the Results page. Lab feeds and relays send
+reports to the clinic's ingest endpoint instead (see *Connections* below). Either way the same thing
+happens: IntelliMed reads the report and tries to file it under a patient. It only does so when exactly
+one patient fits — the lab's patient number remembered from an earlier match, or Medicare number plus
+date of birth, or exact name plus date of birth. Anything less certain goes to **Unmatched**; it is
+never filed on a guess. Sending the same report twice does nothing the second time.
+
+**The tabs.**
+
+| Tab | What is in it |
+|---|---|
+| **Inbox** | Filed under a patient, waiting for a doctor to acknowledge. Reports with an abnormal value show a red triangle and sort to the top. |
+| **Unmatched** | Could not be matched safely. Open one, **Find patient**, and confirm — you see what the lab sent beside the patient you picked. Tick *Remember the lab's patient number* and that lab's next report for the patient files itself. |
+| **Held** | Parked by a doctor to review later. Still counts as unacknowledged. |
+| **Archived** | Acknowledged. Shows who acknowledged it, when, and their comment. Can be moved back to the inbox. |
+
+**My results and unassigned** (ticked by default) shows reports for the doctor who ordered them plus
+any whose ordering doctor could not be identified. A report is routed to a doctor by Medicare provider
+number, or by exact name; otherwise it stays in the clinic-wide inbox. Untick it to see the whole clinic.
+
+**Reviewing.** Click a report to open it. Abnormal values are highlighted, lab comments sit under the
+test they belong to, and any PDF the lab attached can be downloaded. **Acknowledge** (with an optional
+comment) archives it; **Hold for later** parks it. Nothing leaves the inbox any other way, and an
+unmatched report cannot be acknowledged until it has a patient.
+
+**Connections (Admin).** Admins see a **Connections** button. It creates an **ingest key** for the
+selected clinic — the credential a lab feed or relay presents (`X-Api-Key`) when it POSTs HL7 to
+`/api/results/ingest`. The key is shown **once**; IntelliMed keeps only a hash, so a lost key must be
+replaced. Each key only delivers into the clinic it was created in, and can be revoked.
+
+Not built yet: raising pathology and imaging *requests* and the outstanding-requests list, turning a
+result into a progress note, recall or patient message in one click, a Results tab on the patient
+record, and live connections to specific lab or messaging vendors.
 
 ---
 
@@ -263,8 +319,37 @@ New users are invited by email and set their own password from the link — admi
 or type a user's password.
 
 ### Roles and permissions
-**Admin → Roles** shows every screen and action as a *page key*, grouped into Clinical, Financial,
-Admin and Reports, with a tick per role. Changes take effect immediately.
+**Admin → Roles** shows what each role can do as a tree. Pick a role, then tick what it may do:
+
+```
+Clinical                          ← category
+  Appointments                    ← parent
+    View · Create · Update · Remove · Waiting room
+  Clients
+    View · Create · Update · Remove
+Financial
+  Invoices
+    View · Create · Update · Remove · Refund · Write off · Cancel · Split
+```
+
+- **Ticking a parent grants everything under it**; unticking it takes everything away. This works at
+  both levels — tick *Appointments* for all five appointment permissions, or *Clinical* for every
+  clinical one.
+- A **partly ticked parent** (a dash instead of a tick) means only some of what is under it is
+  granted. The count beside it (for example *4 of 5*) says how many. Clicking a partly ticked parent
+  grants the rest.
+- Tick or untick any single permission to fine-tune. A parent is never granted on its own — it simply
+  reflects its children — so *View* only is a perfectly valid grant.
+- A permission that stands alone (Address Book, Payments, Results Inbox, each Admin screen) appears
+  directly under its category with no parent.
+- **Search** narrows the tree to what matches, keeping the parents so you can see where a match lives;
+  a parent still shows the state of *everything* under it, including what is hidden by the search.
+  **Expand all / Collapse all** and the arrow beside each parent fold sections away without changing
+  what is ticked. **Select All** and **Clear All** apply to the whole role.
+- Nothing is saved until **Save Permissions**. Changes then take effect immediately.
+
+Under the hood each role still holds a plain list of page keys (`appointments`, `appointments/create`
+and so on) — the tree is just a faster way to set them, so existing roles carry over unchanged.
 
 Five roles ship by default: **SuperAdmin** (all access, always — it bypasses the permission table
 entirely), **Admin**, **Doctor**, **Nurse**, **Receptionist**. See the matrix in
@@ -334,7 +419,7 @@ passwords from that point on.
 - **Appointment Types** — durations and defaults for booking.
 - **Email Templates** — templates for outbound email, including the user invite.
 - **Search Actions** — the catalogue behind the Ctrl+K palette.
-- **Clinic Settings / Clinic Manager** — practice details, SMTP configuration, and multi-clinic setup.
+- **Clinic Settings / Clinic Manager** — practice details, SMTP configuration, and multi-clinic setup. Each entry in Clinic Manager is a **Clinic** or a **Hospital**; external clinics and hospitals added here can be set as an address-book contact's workplace, and only appear in someone's clinic switcher if they are assigned to it.
 - **Database Backups** — scheduled and manual backups, with interval configuration.
 
 ### Database admin console
@@ -370,6 +455,8 @@ Defaults as shipped. All of it is editable at **Admin → Roles**.
 | Patients | Full | Full + delete | View/add/edit | View/add/edit | View/add/edit |
 | Appointments | Full | Full + delete | View/add/edit | View/add/edit | View/add/edit |
 | Waiting room | Yes | Yes | Yes | Yes | Yes |
+| Address book | Yes | Yes | Yes | Yes | Yes |
+| Results inbox | Yes | Yes | Yes | Yes | — |
 | Progress notes | Full | **View only** | Full | Full | — |
 | Health issues | Full | **View only** | Full | Full | — |
 | Prescriptions | Full | **View only** | Full | **View only** | — |
@@ -408,7 +495,8 @@ IntelliMed favours append-only clinical records. These actions cannot be undone:
 ### What is not built yet
 
 So nobody goes looking: electronic prescribing (eRx) transmission, Medicare/PRODA electronic
-claiming, My Health Record upload, pathology and radiology results, immunisation records and AIR
+claiming, My Health Record upload, pathology and radiology *requests* and live lab connections
+(results can be received and reviewed — see *Results inbox*), immunisation records and AIR
 submission, referral-letter authoring, care plans, recalls and reminders, and reporting screens.
 Permission entries exist for Reports, but the screens themselves do not exist yet.
 
