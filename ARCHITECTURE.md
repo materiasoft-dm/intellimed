@@ -487,6 +487,10 @@ out of date and have been rewritten against the actual code rather than the orig
 - [x] Patients with addresses, referrals, family, occupations, compensation claims, user-defined fields
 - [x] Contacts: address book of outside practitioners (referrers, specialists) linked to a clinic or
       hospital, and organisation clients as employers and payers
+- [x] Server-side permission enforcement: `[RequirePage("key|other-key")]` (any one key suffices;
+      `Api/Authorization/RequirePageAttribute.cs`, shared sets in `PageAccess.cs`) on every controller that
+      previously checked nothing beyond "signed in". `AuthorizationCoverageTests` fails when a new action
+      has no gate or a catalogue key is enforced nowhere.
 - [x] Results inbox: HL7 v2 `ORU^R01` ingestion (browser upload, plus `POST /api/results/ingest` with a
       per-clinic API key), conservative patient matching, unmatched queue, acknowledge/hold audit trail.
       Tables: `ResultReports`, `ResultItems`, `ResultAttachments`, `ClientLabIdentifiers`,

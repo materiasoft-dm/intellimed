@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Api.Authorization;
 
 namespace IntelliMed.Api.Controllers;
 
@@ -33,6 +34,7 @@ public class ClientsController : ControllerBase
     /// </summary>
     /// <param name="search">Search parameters (query, isActive, page, pageSize).</param>
     /// <returns>Paged list of clients and total count.</returns>
+    [RequirePage(PageAccess.ClientLookup)]
     [HttpGet("search")]
     [ProducesResponseType(typeof(PagedResult<ClientDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Search([FromQuery] ClientSearchDto search)
@@ -56,6 +58,7 @@ public class ClientsController : ControllerBase
     /// Doctor — the common front-desk intake case) always gets visible-to-all, regardless of what
     /// was posted, since there's no "creator's own provider" to narrow it to.
     /// </summary>
+    [RequirePage("clients/create")]
     [HttpPost]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -83,6 +86,7 @@ public class ClientsController : ControllerBase
     /// provider-restricted and isn't granted access to this client — same response either way, so
     /// this never confirms to a caller whether a given id merely exists.
     /// </summary>
+    [RequirePage(PageAccess.ClientLookup)]
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ClientDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -98,6 +102,7 @@ public class ClientsController : ControllerBase
     /// Update an existing client, including its provider-access list. The creator's own grant can
     /// never be removed via ProviderIds — see ClientProviderAccessRepository.SetForClientAsync.
     /// </summary>
+    [RequirePage("clients/edit")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -119,6 +124,7 @@ public class ClientsController : ControllerBase
     /// <summary>
     /// Archive (soft-delete) a client by setting IsActive to false.
     /// </summary>
+    [RequirePage("clients/delete")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

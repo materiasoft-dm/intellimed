@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Microsoft.Playwright;
 
 namespace IntelliMed.Tests.Ui;
@@ -52,5 +53,49 @@ public static class UiUserHelpers
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign In" }).ClickAsync();
         await page.WaitForURLAsync(url => !url.Contains("/login"));
         return page;
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Task<HttpClient>> ApiClients = new();
+
+    /// <summary>
+    /// An <see cref="HttpClient"/> for the test server, signed in (bearer token) as a throwaway user
+    /// holding <paramref name="roleLabel"/>. For asserting what the API itself allows a role — the UI
+    /// hides things, but only a direct call shows whether the server would have stopped it. One user is
+    /// created per role and reused for the rest of the run.
+    /// </summary>
+    public static async Task<HttpClient> NewApiClientForRoleAsync(this PlaywrightServerFixture fixture, string roleLabel)
+    {
+        var key = $"{fixture.BaseUrl}|{roleLabel}";
+        try
+        {
+            return await ApiClients.GetOrAdd(key, _ => CreateApiClientAsync(fixture, roleLabel));
+        }
+        catch
+        {
+            // Never cache a failed setup, or every later test for this role would fail instantly on it.
+            ApiClients.TryRemove(key, out _);
+            throw;
+        }
+    }
+
+    private static async Task<HttpClient> CreateApiClientAsync(PlaywrightServerFixture fixture, string roleLabel)
+    {
+        var adminPage = await fixture.NewAuthenticatedPageAsync();
+        var email = await adminPage.CreateUserAsync($"Api{roleLabel.Replace(" ", "")}{Guid.NewGuid():N}"[..(roleLabel.Length + 11)], roleLabel);
+
+        await adminPage.Locator("tr", new PageLocatorOptions { HasTextString = email })
+            .GetByTitle("Reset Password")
+            .ClickAsync();
+        await adminPage.Locator("input[type='password']").FillAsync(TestUserPassword);
+        await adminPage.GetByRole(AriaRole.Button, new() { Name = "Reset Password" }).ClickAsync();
+        await adminPage.WaitForSelectorAsync("text=Password reset successfully.");
+
+        var client = new HttpClient { BaseAddress = new Uri(fixture.BaseUrl) };
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password = TestUserPassword });
+        response.EnsureSuccessStatusCode();
+        var login = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var token = login.GetProperty("token").GetString();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Api.Authorization;
 
 namespace IntelliMed.Api.Controllers;
 
@@ -24,6 +25,7 @@ public class InvoicesController : ControllerBase
     /// <summary>
     /// Search invoices with optional client/status/date filters, returning paged results.
     /// </summary>
+    [RequirePage(PageAccess.InvoiceView)]
     [HttpGet("search")]
     [ProducesResponseType(typeof(PagedResult<InvoiceDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Search([FromQuery] InvoiceSearchDto search)
@@ -42,6 +44,7 @@ public class InvoicesController : ControllerBase
     /// <summary>
     /// Get all payments across invoices (for the flat "Payments" list page), with date/method filters.
     /// </summary>
+    [RequirePage("payments")]
     [HttpGet("payments")]
     [ProducesResponseType(typeof(PagedResult<PaymentDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllPayments([FromQuery] PaymentSearchDto search)
@@ -60,6 +63,7 @@ public class InvoicesController : ControllerBase
     /// <summary>
     /// Create a new invoice with its line items.
     /// </summary>
+    [RequirePage("invoices/create")]
     [HttpPost]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -76,6 +80,7 @@ public class InvoicesController : ControllerBase
     /// <summary>
     /// Resolve a line item's fee / rebate / GST for the current billing context (live UI preview).
     /// </summary>
+    [RequirePage("invoices/create|invoices/edit")]
     [HttpPost("resolve-line")]
     [ProducesResponseType(typeof(ResolveLineResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> ResolveLine([FromBody] ResolveLineRequest request)
@@ -88,6 +93,7 @@ public class InvoicesController : ControllerBase
     /// <summary>
     /// List the account-type → fee-schedule mappings for the current clinic (one row per account type).
     /// </summary>
+    [RequirePage("clinic-settings|fee-schedules|invoices/create")]
     [HttpGet("fee-schedule-mappings")]
     [ProducesResponseType(typeof(IEnumerable<AccountTypeFeeScheduleMappingDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFeeScheduleMappings()
@@ -99,6 +105,7 @@ public class InvoicesController : ControllerBase
     /// <summary>
     /// Upsert (or clear) a single account-type → fee-schedule mapping for the current clinic.
     /// </summary>
+    [RequirePage("clinic-settings|fee-schedules")]
     [HttpPut("fee-schedule-mappings")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> SaveFeeScheduleMapping([FromBody] SaveAccountTypeFeeScheduleMappingDto dto)
@@ -110,6 +117,7 @@ public class InvoicesController : ControllerBase
     /// <summary>
     /// Get a single invoice with its client, items, and payments.
     /// </summary>
+    [RequirePage(PageAccess.InvoiceView)]
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -123,6 +131,7 @@ public class InvoicesController : ControllerBase
     /// <summary>
     /// Record a payment against an invoice, updating its paid amount and status.
     /// </summary>
+    [RequirePage("payments")]
     [HttpPost("{id:int}/payments")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -143,6 +152,7 @@ public class InvoicesController : ControllerBase
     /// <summary>
     /// Update an invoice's status (e.g. Sent, Cancelled).
     /// </summary>
+    [RequirePage("invoices/edit")]
     [HttpPut("{id:int}/status")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -159,6 +169,7 @@ public class InvoicesController : ControllerBase
     /// Update an invoice's Medicare/DVA/fund claim-lodgement status — manual for now, since no
     /// electronic claiming pipeline exists yet to drive it automatically.
     /// </summary>
+    [RequirePage("invoices/edit")]
     [HttpPut("{id:int}/claim-status")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

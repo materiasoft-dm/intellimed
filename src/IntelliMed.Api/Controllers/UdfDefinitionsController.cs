@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Api.Authorization;
 
 namespace IntelliMed.Api.Controllers;
 
@@ -18,6 +19,7 @@ public class UdfDefinitionsController : ControllerBase
         _repository = repository;
     }
 
+    [RequirePage(PageAccess.ClientLookup)]
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<UserDefinedFieldTypeDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllActive()
@@ -26,6 +28,7 @@ public class UdfDefinitionsController : ControllerBase
         return Ok(fieldTypes);
     }
 
+    [RequirePage("admin/settings")]
     [HttpPost]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] CreateUserDefinedFieldTypeDto dto)
@@ -34,6 +37,7 @@ public class UdfDefinitionsController : ControllerBase
         return CreatedAtAction(nameof(GetAllActive), new { id }, new { id });
     }
 
+    [RequirePage("admin/settings")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -61,6 +61,24 @@ decide before then. Full mapping of legacy's five failure paths in **`BILLING_AN
 
 ---
 
+## Permissions audit follow-ups
+
+The API now enforces page keys on clients, client sub-records, appointments, invoices, receipts, fee
+schedules and derived item rules (`[RequirePage]`; see `AuthorizationCoverageTests` for the guard).
+Still open, deliberately:
+
+- **Role-bound, not key-bound:** `admin/users`, `admin/roles`, `admin/database-backups` and invoice
+  refund / write-off / cancel / split (`invoices/refund|write-off|void|split`) are enforced by a hard-coded
+  SuperAdmin/Admin role attribute, so granting those keys to another role does nothing. Moving the four
+  invoice ones onto their keys is safe (and `InvoiceDetail.razor`'s `_isAdmin` should follow); the three
+  admin ones are a privilege-escalation risk if delegated, so they likely stay role-bound.
+- `reports`, `reports/financial`, `reports/clinical` have no screens.
+- `invoices/delete` has no matching endpoint (invoices are cancelled, not deleted).
+- Admin has no default `clinic-settings` / `clinic-manager` — only SuperAdmin can open them. Intended?
+- Controllers on `AuthorizationCoverageTests.InlinePageCheck` still check inline; converting them to
+  `[RequirePage]` would remove that allow-list.
+- Nothing enforces dependencies between keys (e.g. Create without View).
+
 ## Deployment
 
 **`Jwt__Key` is now required.** The app deliberately refuses to start without it outside

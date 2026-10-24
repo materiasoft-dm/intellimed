@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Api.Authorization;
 
 namespace IntelliMed.Api.Controllers;
 
@@ -20,6 +21,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Search fee schedules with optional code/description filters and archived toggle, returning paged results.
     /// </summary>
+    [RequirePage(PageAccess.FeeScheduleView)]
     [HttpGet("search")]
     [ProducesResponseType(typeof(PagedResult<FeeScheduleDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Search([FromQuery] FeeScheduleSearchDto search)
@@ -37,6 +39,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Lightweight list of active fee schedules, used to populate the Health Fund/Fee Table dropdowns elsewhere.
     /// </summary>
+    [RequirePage(PageAccess.FeeScheduleView)]
     [HttpGet("active")]
     [ProducesResponseType(typeof(IEnumerable<FeeScheduleDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllActive()
@@ -48,6 +51,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Create a new fee schedule.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -63,6 +67,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Get a single fee schedule by id.
     /// </summary>
+    [RequirePage(PageAccess.FeeScheduleView)]
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(FeeScheduleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -76,6 +81,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Update an existing fee schedule.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -95,6 +101,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Archive (soft-delete) a fee schedule by setting IsArchived to true.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost("{id:int}/archive")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -110,6 +117,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Permanently delete a fee schedule.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -125,6 +133,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// List the item-fee mappings for a fee schedule.
     /// </summary>
+    [RequirePage(PageAccess.FeeScheduleView)]
     [HttpGet("{id:int}/items")]
     [ProducesResponseType(typeof(IEnumerable<FeeScheduleItemDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetItems(int id)
@@ -137,6 +146,7 @@ public class FeeSchedulesController : ControllerBase
     /// Page through the item-fee mappings for a fee schedule, ordered by item number — backs the
     /// Items tab's infinite scroll so a schedule with thousands of items doesn't load them all at once.
     /// </summary>
+    [RequirePage(PageAccess.FeeScheduleView)]
     [HttpGet("{id:int}/items/paged")]
     [ProducesResponseType(typeof(FeeScheduleItemsPageDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetItemsPaged(int id, [FromQuery] int skip = 0, [FromQuery] int take = 50)
@@ -152,6 +162,7 @@ public class FeeSchedulesController : ControllerBase
     /// Re-fetch a single item (with its derived-item rates) by its own id — used to refresh the
     /// Derived-Item Overrides modal after a change, without reloading the whole items list.
     /// </summary>
+    [RequirePage(PageAccess.FeeScheduleView)]
     [HttpGet("items/{itemId:int}")]
     [ProducesResponseType(typeof(FeeScheduleItemDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -165,6 +176,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Add a single item-fee mapping to a fee schedule.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost("{id:int}/items")]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -180,6 +192,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Update the fee of a single item-fee mapping.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPut("items/{itemId:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> UpdateItemFee(int itemId, [FromBody] UpdateFeeScheduleItemFeeDto dto)
@@ -192,6 +205,7 @@ public class FeeSchedulesController : ControllerBase
     /// Update a single item's per-schedule derived-item override fields (MedicalGapPercent,
     /// PercentageFromAssociatedItemFee, OverLimitQuantityPlus).
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPut("items/{itemId:int}/overrides")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> UpdateItemOverrides(int itemId, [FromBody] UpdateFeeScheduleItemOverridesDto dto)
@@ -203,6 +217,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Upsert a pre-calculated fee override for a specific patient count / field quantity on this item.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost("items/{itemId:int}/rates")]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     public async Task<IActionResult> AddPrecalculatedRate(int itemId, [FromBody] SaveDerivedItemRateCalculatedDto dto)
@@ -214,6 +229,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Remove a pre-calculated fee override.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpDelete("rates/{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemovePrecalculatedRate(int id)
@@ -225,6 +241,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Every fee this item has held, most recent first — lets a user see when a price last moved.
     /// </summary>
+    [RequirePage(PageAccess.FeeScheduleView)]
     [HttpGet("items/{itemId:int}/history")]
     [ProducesResponseType(typeof(IEnumerable<FeeScheduleItemHistoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetItemHistory(int itemId)
@@ -236,6 +253,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Remove a single item-fee mapping.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpDelete("items/{itemId:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemoveItem(int itemId)
@@ -247,6 +265,7 @@ public class FeeSchedulesController : ControllerBase
     /// <summary>
     /// Reset every existing item's fee to the current MBS schedule fee.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost("{id:int}/items/copy-from-mbs")]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     public async Task<IActionResult> CopyFeesFromMbs(int id)
@@ -259,6 +278,7 @@ public class FeeSchedulesController : ControllerBase
     /// Bulk-populate this schedule's items from another schedule's item-fee list (or the whole MBS
     /// catalog when SourceFeeScheduleId is null), optionally applying a percentage/flat adjustment.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost("{id:int}/items/import")]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     public async Task<IActionResult> ImportItems(int id, [FromBody] ImportFeeScheduleItemsRequest request)
@@ -271,6 +291,7 @@ public class FeeSchedulesController : ControllerBase
     /// Find-or-creates the BBGP/BBO/BBI bulk-bill schedules and (re)populates their items from the
     /// MBS catalog's 100% benefit, so bulk-bill rebate resolution works without any external file.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost("seed-bulk-bill")]
     [ProducesResponseType(typeof(SeedBulkBillResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SeedBulkBillSchedules()
@@ -283,6 +304,7 @@ public class FeeSchedulesController : ControllerBase
     /// Find-or-creates the VAGP/VASO/VASI DVA schedule shells. No fee auto-population — populate via
     /// the generic CSV importer or manual Add Item once a DVA fee schedule CSV is available.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost("seed-dva")]
     [ProducesResponseType(typeof(SeedBulkBillResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SeedDvaScheduleShells()
@@ -295,6 +317,7 @@ public class FeeSchedulesController : ControllerBase
     /// Find-or-creates the WorkCover QLD schedule shell. No fee auto-population — populate via the
     /// generic CSV importer or manual Add Item once a WorkCover QLD fee list is available.
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost("seed-workcover-qld")]
     [ProducesResponseType(typeof(SeedBulkBillResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SeedWorkCoverQldScheduleShell()
@@ -307,6 +330,7 @@ public class FeeSchedulesController : ControllerBase
     /// Downloads and parses the schedule's configured SourceUrl now, on demand (the same operation
     /// the background auto-import service runs periodically).
     /// </summary>
+    [RequirePage("fee-schedules")]
     [HttpPost("{id:int}/fetch-now")]
     [ProducesResponseType(typeof(FeeScheduleFetchResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

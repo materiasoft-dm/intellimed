@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Api.Authorization;
 
 namespace IntelliMed.Api.Controllers;
 
@@ -18,6 +19,7 @@ public class DerivedItemConfigsController : ControllerBase
     /// <summary>
     /// List every derived-item rule (global catalog, not clinic-scoped).
     /// </summary>
+    [RequirePage("derived-item-configs")]
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<DerivedItemConfigDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
@@ -29,6 +31,7 @@ public class DerivedItemConfigsController : ControllerBase
     /// <summary>
     /// Get a single derived-item rule by id.
     /// </summary>
+    [RequirePage("derived-item-configs")]
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(DerivedItemConfigDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -42,6 +45,7 @@ public class DerivedItemConfigsController : ControllerBase
     /// <summary>
     /// Create a new derived-item rule for a billing item.
     /// </summary>
+    [RequirePage("derived-item-configs")]
     [HttpPost]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -57,6 +61,7 @@ public class DerivedItemConfigsController : ControllerBase
     /// <summary>
     /// Update an existing derived-item rule.
     /// </summary>
+    [RequirePage("derived-item-configs")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -76,6 +81,7 @@ public class DerivedItemConfigsController : ControllerBase
     /// <summary>
     /// Delete a derived-item rule.
     /// </summary>
+    [RequirePage("derived-item-configs")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

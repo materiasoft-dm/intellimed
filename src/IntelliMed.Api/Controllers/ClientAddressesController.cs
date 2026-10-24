@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Api.Authorization;
 
 namespace IntelliMed.Api.Controllers;
 
@@ -15,6 +16,7 @@ public class ClientAddressesController : ControllerBase
         _repository = repository;
     }
 
+    [RequirePage(PageAccess.ClientLookup)]
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<ClientAddressDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetByClient(int clientId)
@@ -23,6 +25,7 @@ public class ClientAddressesController : ControllerBase
         return Ok(addresses);
     }
 
+    [RequirePage("clients/create|clients/edit")]
     [HttpPost]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(int clientId, [FromBody] CreateClientAddressDto dto)
@@ -32,6 +35,7 @@ public class ClientAddressesController : ControllerBase
         return CreatedAtAction(nameof(GetByClient), new { clientId }, new { id });
     }
 
+    [RequirePage("clients/edit")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -44,6 +48,7 @@ public class ClientAddressesController : ControllerBase
         return NoContent();
     }
 
+    [RequirePage("clients/edit")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

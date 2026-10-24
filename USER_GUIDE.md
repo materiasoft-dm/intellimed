@@ -348,6 +348,25 @@ Financial
   what is ticked. **Select All** and **Clear All** apply to the whole role.
 - Nothing is saved until **Save Permissions**. Changes then take effect immediately.
 
+**The server enforces these permissions, not just the sidebar.** A role that lacks a permission is
+refused by the API as well as not being shown the link, so a missing tick cannot be bypassed by typing a
+URL or calling the API directly. A few things to know:
+
+- **Looking up a patient is shared.** Searching for or opening a client is allowed by *any* of the
+  features that need a patient (Clients, Appointments, Invoices, Results, Prescriptions, Progress Notes,
+  Health Issues). A role that can book appointments but has no *Clients → View* can still find the
+  patient it is booking.
+- **Client sub-records follow the client.** Addresses, allergies, referrals, occupations, family,
+  compensation claims and user-defined field values are read with the client and changed with
+  *Clients → Update* (or *Create*, while adding a new client).
+- **Some actions are fixed to Admin regardless of the tick:** User Management, Role Configuration,
+  Database Backups, and invoice refund / write-off / cancel / split. They change who can do what or
+  move money, so granting their keys to another role does not open them. (Admin itself can still be
+  limited by the keys it holds for everything else.)
+- **Reports** has permission entries but no screens yet, so ticking them does nothing.
+- Fee schedules and derived item rules: reading is allowed to roles that raise invoices (they price
+  lines from them); changing them needs *Fee Schedules* / *Derived Item Rules*.
+
 Under the hood each role still holds a plain list of page keys (`appointments`, `appointments/create`
 and so on) — the tree is just a faster way to set them, so existing roles carry over unchanged.
 

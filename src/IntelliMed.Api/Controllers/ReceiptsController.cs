@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Api.Authorization;
 
 namespace IntelliMed.Api.Controllers;
 
@@ -19,6 +20,7 @@ public class ReceiptsController : ControllerBase
     /// <summary>
     /// Get a single receipt with its tenders and allocations.
     /// </summary>
+    [RequirePage(PageAccess.InvoiceView)]
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ReceiptDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -33,6 +35,7 @@ public class ReceiptsController : ControllerBase
     /// Record a receipt: one or more tenders allocated across one or more invoices/line items for
     /// the same payer.
     /// </summary>
+    [RequirePage("payments")]
     [HttpPost]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -57,6 +60,7 @@ public class ReceiptsController : ControllerBase
     /// <summary>
     /// List a payer's outstanding (unpaid/partially-paid) invoices, for the multi-invoice receipt picker.
     /// </summary>
+    [RequirePage("payments|invoices|invoices/create|invoices/refund")]
     [HttpGet("outstanding")]
     [ProducesResponseType(typeof(List<OutstandingInvoiceDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOutstanding([FromQuery] int payerClientId, [FromQuery] int? excludeInvoiceId)
@@ -93,6 +97,7 @@ public class ReceiptsController : ControllerBase
     /// <summary>
     /// A payer's available (unrefunded, unspent) account credit balance.
     /// </summary>
+    [RequirePage("payments|invoices|invoices/create|invoices/refund")]
     [HttpGet("available-credit")]
     [ProducesResponseType(typeof(decimal), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAvailableCredit([FromQuery] int payerClientId)

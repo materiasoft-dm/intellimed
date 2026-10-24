@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using IntelliMed.Core.DTOs;
 using IntelliMed.Core.Entities;
 using IntelliMed.Core.Interfaces;
+using IntelliMed.Api.Authorization;
 
 namespace IntelliMed.Api.Controllers;
 
@@ -29,6 +30,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Search appointments with optional client/practitioner/date/status filters, returning paged results.
     /// </summary>
+    [RequirePage(PageAccess.AppointmentView)]
     [HttpGet("search")]
     [ProducesResponseType(typeof(PagedResult<AppointmentDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Search([FromQuery] AppointmentSearchDto search)
@@ -47,6 +49,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Today's (or a given date's) Arrived/InProgress appointments across practitioners for the current clinic, sorted by arrival time.
     /// </summary>
+    [RequirePage("appointments/waiting-room|appointments")]
     [HttpGet("waiting-room")]
     [ProducesResponseType(typeof(IEnumerable<AppointmentDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetWaitingRoom([FromQuery] DateTime? date)
@@ -58,6 +61,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Get a single appointment with its client and practitioner.
     /// </summary>
+    [RequirePage(PageAccess.AppointmentView)]
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -71,6 +75,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// All occurrences that share a recurring series id.
     /// </summary>
+    [RequirePage(PageAccess.AppointmentView)]
     [HttpGet("series/{seriesId:guid}")]
     [ProducesResponseType(typeof(IEnumerable<AppointmentDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSeries(Guid seriesId)
@@ -82,6 +87,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Whether a practitioner is free for the given date/time range (used for the booking form's double-booking warning).
     /// </summary>
+    [RequirePage(PageAccess.AppointmentView)]
     [HttpGet("availability")]
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     public async Task<IActionResult> CheckAvailability([FromQuery] int practitionerId, [FromQuery] DateTime date, [FromQuery] TimeSpan startTime, [FromQuery] TimeSpan endTime, [FromQuery] int? excludeAppointmentId)
@@ -95,6 +101,7 @@ public class AppointmentsController : ControllerBase
     /// covers this date? Soft-matches the practitioner to a logged-in user by email — returns null
     /// (no opinion) if the practitioner has no linked user account or no schedule configured.
     /// </summary>
+    [RequirePage(PageAccess.AppointmentView)]
     [HttpGet("practitioner-schedule")]
     [ProducesResponseType(typeof(ProviderScheduleDayDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPractitionerSchedule([FromQuery] int practitionerId, [FromQuery] DateTime date)
@@ -109,6 +116,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Book a single appointment.
     /// </summary>
+    [RequirePage(PageAccess.AppointmentCreate)]
     [HttpPost]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -129,6 +137,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Book a recurring series — materializes one appointment row per occurrence, all sharing a new series id.
     /// </summary>
+    [RequirePage(PageAccess.AppointmentCreate)]
     [HttpPost("series")]
     [ProducesResponseType(typeof(IEnumerable<int>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -148,6 +157,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Update an appointment's booking details.
     /// </summary>
+    [RequirePage("appointments/edit")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -167,6 +177,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Transition an appointment's status (Confirm, Arrived, Start, Complete, Cancel, No-show) — sets the matching visit-lifecycle timestamp server-side.
     /// </summary>
+    [RequirePage(PageAccess.AppointmentProgress)]
     [HttpPut("{id:int}/status")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -182,6 +193,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Move an appointment to a new date/time (drag-to-reschedule on the calendar), re-validating the slot is free.
     /// </summary>
+    [RequirePage("appointments/edit")]
     [HttpPut("{id:int}/reschedule")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -209,6 +221,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Cancel/delete a single appointment.
     /// </summary>
+    [RequirePage("appointments/delete")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -224,6 +237,7 @@ public class AppointmentsController : ControllerBase
     /// <summary>
     /// Cancel a whole recurring series, or just this-and-following occurrences when fromDate is given.
     /// </summary>
+    [RequirePage("appointments/delete")]
     [HttpDelete("series/{seriesId:guid}")]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteSeries(Guid seriesId, [FromQuery] DateTime? fromDate)
