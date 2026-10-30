@@ -36,10 +36,15 @@ up to date independently:
 - API + Blazor WASM client: `dotnet run` from `src/IntelliMed.Api` (client is served at `/`).
   Local API: `http://localhost:5284`. DB migrations run automatically on startup (SQLite,
   `intellimed.db`).
-- Docker (matches the Render.com staging deploy): `docker build` from the repo root, see
-  `Dockerfile` — `dotnet publish src/IntelliMed.Api -c Release`, entrypoint
-  `dotnet IntelliMed.Api.dll`.
-- Tests: `IntelliMed.Tests` project (`dotnet test`).
+- Docker: `docker build` from the repo root, see `Dockerfile` — `dotnet publish src/IntelliMed.Api
+  -c Release`, entrypoint `dotnet IntelliMed.Api.dll`. (It was written for the Render.com staging
+  deploy, which is no longer used.)
+- IIS upload (e.g. the bsite.net test site): `scripts/publish-selfcontained.ps1` builds a
+  self-contained Windows folder in `publish/` (gitignored), puts the JWT key in its `appsettings.json`
+  and boots it to prove it starts. Upload the whole folder; skip only `intellimed.db` after the first
+  deploy. Details in `OPEN_THREADS.md` → Deployment.
+- Tests: `IntelliMed.Tests` project (`dotnet test`). The UI tests are slow (~25 min, a visible
+  browser); `HEADLESS=1` runs them unattended.
 
 ## Notes / planned features
 
@@ -74,3 +79,20 @@ When adding a new source: register it in `ServiceExtensions.AddInfrastructure` a
 `IMedicineSourceProvider` HttpClient registration. `MedicineCsvAssemblyService` resolves all of
 them via `IEnumerable<IMedicineSourceProvider>` and merges by name (first source to report a name
 wins, so register the most authoritative first).
+
+## graphify — use the knowledge graph before grepping
+
+`graphify-out/` (gitignored, built locally) holds a knowledge graph of the code and the docs:
+~8.5k nodes, with `GRAPH_REPORT.md` listing the god nodes, communities and suggested questions.
+For any question about how the codebase fits together, check the graph first, then read the files
+it points to:
+
+- `graphify query "<question>"` — traverse the graph for context (`--dfs` to follow one path,
+  `--budget N` to cap the answer).
+- `graphify path "A" "B"` — how two things connect; `graphify explain "X"` — one node and its
+  neighbours.
+- Read `graphify-out/GRAPH_REPORT.md` before broad architecture work.
+
+Keep it current: after code changes run `graphify update .` (no LLM, no API key); after changing
+docs run `/graphify --update`, which re-extracts the changed docs. The graph was last refreshed on
+2026-10-30 at commit `cd255c7`. The graph can lag the code, so confirm what it says against the source.
