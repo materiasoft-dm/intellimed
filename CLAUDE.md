@@ -80,19 +80,27 @@ When adding a new source: register it in `ServiceExtensions.AddInfrastructure` a
 them via `IEnumerable<IMedicineSourceProvider>` and merges by name (first source to report a name
 wins, so register the most authoritative first).
 
-## graphify — use the knowledge graph before grepping
+## graphify — how it is set up here
 
-`graphify-out/` (gitignored, built locally) holds a knowledge graph of the code and the docs:
-~8.5k nodes, with `GRAPH_REPORT.md` listing the god nodes, communities and suggested questions.
-For any question about how the codebase fits together, check the graph first, then read the files
-it points to:
+The block below is written by `graphify claude install` (re-run it to refresh, `graphify claude
+uninstall` to remove). What is specific to this repo:
 
-- `graphify query "<question>"` — traverse the graph for context (`--dfs` to follow one path,
-  `--budget N` to cap the answer).
-- `graphify path "A" "B"` — how two things connect; `graphify explain "X"` — one node and its
-  neighbours.
-- Read `graphify-out/GRAPH_REPORT.md` before broad architecture work.
+- `graphify-out/` is **gitignored and local** (~8.5k nodes, built 2026-10-30), so each machine builds
+  its own: `graphify update .` for code, or `/graphify --update` in Claude Code when docs changed.
+- Git hooks keep the code part current after every commit, checkout, merge and rewrite. They live in
+  `.git/hooks` and are not committed, so on a new clone run `graphify hook install` once.
+  `.claude/settings.json` (also local, it hard-codes this machine's graphify path) registers the
+  Claude Code hooks that nudge towards the graph.
+- Docs are **not** refreshed by the hooks — they need `/graphify --update` (semantic extraction).
+- The graph can lag the code; confirm what it says against the source before relying on it.
 
-Keep it current: after code changes run `graphify update .` (no LLM, no API key); after changing
-docs run `/graphify --update`, which re-extracts the changed docs. The graph was last refreshed on
-2026-10-30 at commit `cd255c7`. The graph can lag the code, so confirm what it says against the source.
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
