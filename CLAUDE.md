@@ -94,6 +94,40 @@ uninstall` to remove). What is specific to this repo:
 - Docs are **not** refreshed by the hooks — they need `/graphify --update` (semantic extraction).
 - The graph can lag the code; confirm what it says against the source before relying on it.
 
+### Querying this graph well
+
+`graphify query` matches the words of a question against node names literally (case-folded
+substring, no synonyms), so a sentence like "what stops a controller shipping without a permission
+check" lands on generic nodes (`Action`, `ControllerBase`, `Task`) that connect to everything and
+returns noise. What works:
+
+1. **Query with identifiers, not sentences** — `graphify query "RequirePage PageAccess coverage"`.
+   Pick the words from the entry points below or from `graphify god-nodes`.
+2. **Start from a node** — `graphify explain "ResultIngestService"`, or
+   `graphify query "<topic>" --seed ResultIngestService`.
+3. **"What depends on X / what breaks if X changes"** — `graphify affected "RequirePageAttribute"`
+   (reverse traversal; the most precise tool here).
+4. **Ambiguous names** (exit 3) exist as both code and a doc concept — retry as
+   `src/IntelliMed.Api/Authorization/RequirePageAttribute.cs::RequirePageAttribute` (path::Name).
+5. **Never `query`/traverse from a framework stub** (`ControllerBase`, `Task`, `List`,
+   `IEnumerable`, `DateTime`): they have no source file and link hundreds of unrelated nodes. Use
+   `--context call` to follow calls only.
+6. **Attribute usages** (`[RequirePage("…")]`, `[Authorize]`) link to a stub named WITHOUT the
+   "Attribute" suffix, so ask `graphify affected "RequirePage"` — it lists every gated action across
+   the 14 controllers — not `affected "RequirePageAttribute"`, which only shows the class's own
+   tests. `affected` is the right tool for stubs; `query` is not.
+
+Entry points (exact node names; ones marked † also exist as a doc concept, so use `path::Name`):
+
+| Area | Start from |
+|---|---|
+| Permissions | `RequirePageAttribute`, `PageAccess`, `RolePermissionsController`, `PermissionTree`, `RoleEnforcementApiTests`, `AuthorizationCoverageTests`†, `RolePermissions`† |
+| Results inbox | `ResultsController`, `ResultIngestController`, `ResultIngestService`, `ResultRepository`, `ResultReport`, `Results.razor`, `Hl7ResultParser`† |
+| Billing | `BillingCalculator`, `InvoiceRepository`, `InvoicesController`, `ReceiptRepository`, `FeeSchedulesController`, `InvoiceDetail.razor`, `DerivedFeeCalculator`† |
+| Prescribing | `PrescribeNew.razor`, `PrescriptionsController`, `PrescriptionRepository`, `MedicationInteractionChecker`†, `MedicineCsvAssemblyService`†, `ArtgEnrichmentService`† |
+| Clients & appointments | `AddClient.razor`, `ClientsController`, `ClientRepository`, `AppointmentsController`, `AppointmentRepository`, `AppointmentCalendar.razor` |
+| Data | `AppDbContext`, `EntityMapper`, `ServiceExtensions` |
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
