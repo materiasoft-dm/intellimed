@@ -83,8 +83,9 @@ reconciled automatically when they do.
 More is already in place than it looks: `Invoice` already carries `ClaimStatus`,
 `ClaimSubmissionAuthorised`, `SubmissionAuthorityReceived`, `BenefitAssignmentRequested`, and a
 `PayeePractitionerId` override — the consent and paperwork fields a real claim needs. The code's own
-comment on `ClaimStatus` says it exactly: *"nothing drives real transitions until real electronic
-claiming exists, so this is manually set for now."* The paperwork model is done; the wire is not.
+comment on `ClaimStatus` says it exactly: nothing drives real transitions until real electronic
+claiming exists. It is shown read-only on the invoice and there is no way to set it by hand — it will
+follow the claim itself. The paperwork model is done; the wire is not.
 
 | Claim family | Payer | Gateway | Status |
 |---|---|---|---|

@@ -68,12 +68,9 @@ else
                         <div class="col-6"><span class="badge bg-primary">@_invoice.StatusName</span></div>
                         <div class="col-6 text-muted">Claim Status</div>
                         <div class="col-6">
-                            <select class="form-select form-select-sm" style="width:auto;font-size:0.8rem" value="@_invoice.ClaimStatus" @onchange="OnClaimStatusChangedAsync">
-                                @foreach (var status in Enum.GetValues<ClaimStatus>())
-                                {
-                                    <option value="@status">@status</option>
-                                }
-                            </select>
+                            @* Read-only on purpose: this reflects where the claim actually is, so it will be driven by the
+                               claim itself once electronic claiming exists — never typed in by hand. *@
+                            <span class="badge bg-secondary" title="Set automatically from the claim's progress once electronic claiming is built">@_invoice.ClaimStatus</span>
                         </div>
                         <div class="col-6 text-muted">Total</div>
                         <div class="col-6">@_invoice.TotalAmount.ToString("C")</div>
@@ -759,23 +756,6 @@ else
             list.Add(("Assignment Requested", _invoice.BenefitAssignmentRequested));
 
         return list;
-    }
-
-    private async Task OnClaimStatusChangedAsync(ChangeEventArgs e)
-    {
-        if (_invoice == null || e.Value == null) return;
-        if (!Enum.TryParse<ClaimStatus>(e.Value.ToString(), out var newStatus)) return;
-
-        var ok = await InvoiceService.UpdateClaimStatusAsync(_invoice.Id, newStatus);
-        if (ok)
-        {
-            ShowStatus("Claim status updated.", false);
-            await LoadAsync();
-        }
-        else
-        {
-            ShowStatus("Failed to update claim status.", true);
-        }
     }
 
     private class ReceiptAllocationRow

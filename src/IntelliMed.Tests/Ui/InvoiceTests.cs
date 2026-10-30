@@ -211,18 +211,22 @@ public class InvoiceTests : UiTestBase
     }
 
     [Fact]
-    public async Task ClaimStatus_ChangedByHand_IsSavedAndPersists()
+    public async Task ClaimStatus_IsShownReadOnly_AndCannotBeChangedByHand()
     {
+        // Claim status will follow the real claim once electronic claiming is built; until then it is not
+        // something staff type in, so the page shows it but offers no way to change it.
         var invoice = await CreateInvoiceAsync(("Playwright claim", 60m));
         var page = invoice.Page;
 
-        var claimStatus = Value(page, "Claim Status").Locator("select");
-        await Assertions.Expect(claimStatus).ToHaveValueAsync("NotSubmitted");
-        await claimStatus.SelectOptionAsync("Submitted");
-        await Assertions.Expect(page.GetByText("Claim status updated.")).ToBeVisibleAsync();
+        var claimStatus = Value(page, "Claim Status");
+        await Assertions.Expect(claimStatus).ToHaveTextAsync("NotSubmitted");
+        await Assertions.Expect(claimStatus.Locator("select, input, button")).ToHaveCountAsync(0);
+        await Assertions.Expect(page.GetByRole(AriaRole.Combobox)).ToHaveCountAsync(0);
+        // The invoice's own Status is likewise display-only.
+        await Assertions.Expect(Value(page, "Status").Locator("select, input, button")).ToHaveCountAsync(0);
 
         await page.ReloadAsync();
-        await Assertions.Expect(Value(page, "Claim Status").Locator("select")).ToHaveValueAsync("Submitted");
+        await Assertions.Expect(Value(page, "Claim Status")).ToHaveTextAsync("NotSubmitted");
     }
 
     // ---- Split ---------------------------------------------------------------------------------

@@ -51,7 +51,8 @@ accumulated fixture-database state rather than one interaction. Not root-caused.
 ## Waiting on a decision
 
 ### `ClaimStatus` needs more values before electronic claiming starts
-The six-value `Invoice.ClaimStatus` works while staff set it by hand, but it has no safe value for
+The six-value `Invoice.ClaimStatus` is read-only today (shown on the invoice, no endpoint to change it,
+so it stays `NotSubmitted`) and will be driven by the claim itself. It has no safe value for
 a transmit that fails partway through (the request may already have reached Medicare). Legacy hit
 exactly this as a duplicate re-claim (PRACNET-3019). Proposed: append `TransmitFailed` (or
 `OutcomeUnknown`) and `ExceptionsToReview`, add a transmit-attempt log, and port legacy's
@@ -78,6 +79,9 @@ Still open, deliberately:
 - Controllers on `AuthorizationCoverageTests.InlinePageCheck` still check inline; converting them to
   `[RequirePage]` would remove that allow-list.
 - Nothing enforces dependencies between keys (e.g. Create without View).
+- `invoices/edit` no longer gates any change (the manual invoice-status and claim-status endpoints were
+  removed — both statuses follow reality, not staff input). It still opens invoice pricing and reads.
+  Keep it for a future edit-invoice feature or retire it.
 
 ## Deployment
 
@@ -86,8 +90,12 @@ Development. Supply it as an environment variable or in an untracked
 `appsettings.Production.json` beside the binary. Full rationale in `ARCHITECTURE.md`
 ("Configuration and secrets").
 
-The generated production settings file already sits in `publish-freeasp/` (gitignored) — it must be
-uploaded alongside the binaries or the deployed app will not boot.
+**Self-contained IIS upload:** run `scripts/publish-selfcontained.ps1`. It builds `publish/` (gitignored),
+writes the JWT key into the published `appsettings.json` (reusing the previous key so nobody is logged
+out), turns on stdout logging to `logs/`, and boots the result the way IIS would before it finishes.
+Upload the **whole folder**. The only file to leave out on later deploys is `intellimed.db` (it replaces
+the live data). A missing key is what produces IIS's "HTTP 500.30 - ASP.NET Core app failed to start":
+the app throws `Jwt:Key is not configured` at startup, so check `logs/stdout_*.log` first.
 
 **The old `/dbadmin` password should be rotated.** Its PBKDF2 hash was previously committed and is
 still in git history.

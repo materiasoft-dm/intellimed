@@ -149,38 +149,9 @@ public class InvoicesController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Update an invoice's status (e.g. Sent, Cancelled).
-    /// </summary>
-    [RequirePage("invoices/edit")]
-    [HttpPut("{id:int}/status")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateInvoiceStatusRequest request)
-    {
-        var existing = await _invoiceRepository.GetByIdAsync(id);
-        if (existing == null) return NotFound();
-
-        await _invoiceRepository.UpdateStatusAsync(id, request.Status);
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Update an invoice's Medicare/DVA/fund claim-lodgement status — manual for now, since no
-    /// electronic claiming pipeline exists yet to drive it automatically.
-    /// </summary>
-    [RequirePage("invoices/edit")]
-    [HttpPut("{id:int}/claim-status")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateClaimStatus(int id, [FromBody] UpdateInvoiceClaimStatusRequest request)
-    {
-        var existing = await _invoiceRepository.GetByIdAsync(id);
-        if (existing == null) return NotFound();
-
-        await _invoiceRepository.UpdateClaimStatusAsync(id, request.ClaimStatus);
-        return NoContent();
-    }
+    // There is deliberately no endpoint to set an invoice's status or claim status by hand. Invoice status
+    // follows payments, write-offs and cancellation, and claim status will follow the claim itself once
+    // electronic claiming exists; letting staff type either in would let the record disagree with reality.
 
     /// <summary>
     /// Forgive part or all of an invoice's outstanding balance — no money moves.
@@ -256,12 +227,3 @@ public class InvoicesController : ControllerBase
     }
 }
 
-public class UpdateInvoiceStatusRequest
-{
-    public InvoiceStatus Status { get; set; }
-}
-
-public class UpdateInvoiceClaimStatusRequest
-{
-    public ClaimStatus ClaimStatus { get; set; }
-}

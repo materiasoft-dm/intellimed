@@ -153,7 +153,8 @@ public enum InvoiceStatus
 /// is an overloaded word in this domain). Append-only, like AllocationType — persisted as a plain
 /// int, never renumber. Deliberately collapsed from legacy's ~20-value eClaimStatus (which encodes
 /// per-channel/vendor history no code here needs yet) down to the essential lifecycle; nothing
-/// drives real transitions until real electronic claiming exists, so this is manually set for now.</summary>
+/// drives real transitions until real electronic claiming exists, so it stays NotSubmitted for now. It is
+/// never set by hand: the UI shows it read-only and there is no endpoint to change it.</summary>
 public enum ClaimStatus
 {
     NotSubmitted,

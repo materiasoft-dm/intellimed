@@ -205,7 +205,7 @@ None of this exists in IntelliMed yet — see 3.8.
 `Invoice.ClaimStatus` has six values today (`NotSubmitted`, `Submitted`, `Accepted`, `Rejected`,
 `PartiallyPaid`, `Paid`), deliberately collapsed from legacy's 21-value `eClaimStatus`
 (`SourceCode/Abaki.Common.Enums/MedicareOnlineEnums.cs` in the legacy repo). Six values are enough
-while staff set the status by hand. They are not enough once code transmits claims.
+while nothing drives the status. They are not enough once code transmits claims.
 
 Legacy's six transmit services (BBSW, DVA, DVA Allied, IMC, OVS, OEC) shared five failure paths
 where a forgotten status write left claims stuck in an ambiguous state (`HANDOFF.md` §8.7; the
@@ -349,7 +349,8 @@ name, per client (1.9). There's no fee-schedule-driven pricing difference beyond
 
 - **No electronic claim transmission of any kind.** `Invoice` does carry a `ClaimStatus`
   (`NotSubmitted`/`Submitted`/`Accepted`/`Rejected`/`PartiallyPaid`/`Paid`) and the consent flags,
-  but staff set it by hand from the invoice detail page — nothing transmits or drives transitions.
+  but nothing transmits or drives transitions, so it stays `NotSubmitted`; the invoice page shows it
+  read-only and there is no endpoint to set it (the claiming pipeline will be its single writer).
   There's no PRODA integration, no BBSW/DVA/IMC/OVS/OEC processors, nothing from Part 2. Everything
   described in Part 3 so far is **fee/rebate/gap calculation only** — it tells you what a line
   *should* cost and what Medicare/DVA *should* rebate, but doesn't send anything to Services

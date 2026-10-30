@@ -226,17 +226,6 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
         });
     }
 
-    public async Task UpdateStatusAsync(int id, InvoiceStatus status)
-    {
-        var invoice = await _dbSet.FindAsync(id);
-        if (invoice == null)
-            throw new InvalidOperationException($"Invoice with ID {id} not found");
-
-        invoice.Status = status;
-        invoice.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-    }
-
     public async Task UpdateClaimStatusAsync(int id, ClaimStatus claimStatus)
     {
         var invoice = await _dbSet.FindAsync(id);

@@ -15,7 +15,8 @@ public interface IInvoiceRepository : IRepository<Invoice>
     Task<int> CreateAsync(CreateInvoiceDto dto);
     Task<ResolveLineResult> ResolveLineAsync(ResolveLineRequest request);
     Task AddPaymentAsync(int invoiceId, CreatePaymentDto dto);
-    Task UpdateStatusAsync(int id, InvoiceStatus status);
+    /// <summary>Records where the claim has got to. Not exposed over the API on purpose — it is for the
+    /// electronic claiming pipeline to call when a claim actually changes state, never for staff to type in.</summary>
     Task UpdateClaimStatusAsync(int id, ClaimStatus claimStatus);
     Task<(IEnumerable<PaymentDto> Items, int TotalCount)> GetAllPaymentsAsync(PaymentSearchDto search);
     Task WriteOffAsync(int invoiceId, CreateWriteOffDto dto);

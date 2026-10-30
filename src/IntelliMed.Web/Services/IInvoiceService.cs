@@ -9,8 +9,6 @@ public interface IInvoiceService
     Task<InvoiceDto?> GetInvoiceByIdAsync(int id);
     Task<int?> CreateInvoiceAsync(CreateInvoiceDto dto);
     Task<bool> AddPaymentAsync(int invoiceId, CreatePaymentDto dto);
-    Task<bool> UpdateInvoiceStatusAsync(int id, InvoiceStatus status);
-    Task<bool> UpdateClaimStatusAsync(int id, ClaimStatus claimStatus);
     Task<PagedResult<PaymentDto>> GetAllPaymentsAsync(PaymentSearchDto search);
     Task<ResolveLineResult?> ResolveLineAsync(ResolveLineRequest request);
     Task<List<AccountTypeFeeScheduleMappingDto>> GetFeeScheduleMappingsAsync();

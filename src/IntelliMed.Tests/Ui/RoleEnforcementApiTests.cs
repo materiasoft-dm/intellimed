@@ -89,8 +89,6 @@ public class RoleEnforcementApiTests : UiTestBase
 
         Forbidden(await Delete(api, $"/api/clients/{Missing}"), "archive a client");
         Forbidden(await Delete(api, $"/api/appointments/{Missing}"), "delete an appointment");
-        Forbidden(await Put(api, $"/api/invoices/{Missing}/claim-status", "{\"status\":1}"), "change a claim status");
-        Forbidden(await Put(api, $"/api/invoices/{Missing}/status", "{\"status\":1}"), "change an invoice status");
         Forbidden(await Post(api, "/api/fee-schedules"), "create a fee schedule");
         Forbidden(await Put(api, $"/api/fee-schedules/{Missing}"), "edit a fee schedule");
         Forbidden(await Delete(api, $"/api/fee-schedules/{Missing}"), "delete a fee schedule");
@@ -153,9 +151,25 @@ public class RoleEnforcementApiTests : UiTestBase
         Allowed(await Delete(api, $"/api/appointments/{Missing}"), "delete an appointment");
         Allowed(await Post(api, "/api/fee-schedules"), "create a fee schedule");
         Allowed(await Get(api, "/api/derived-item-configs"), "read derived item rules");
-        Allowed(await Put(api, $"/api/invoices/{Missing}/claim-status", "{\"status\":1}"), "change a claim status");
         Allowed(await Post(api, $"/api/invoices/{Missing}/write-off"), "write off an invoice");
         Allowed(await Post(api, "/api/udf-definitions"), "define a user-defined field");
+    }
+
+    // ---- statuses that follow reality are not editable at all ----
+
+    [Fact]
+    public async Task InvoiceStatusAndClaimStatus_CannotBeSetThroughTheApi_ByAnyone()
+    {
+        // Invoice status follows payments/write-offs/cancellation and claim status will follow the claim
+        // itself, so there is no endpoint to type either in — not even for Admin.
+        var api = await Fixture.NewApiClientForRoleAsync("Admin");
+
+        foreach (var url in new[] { $"/api/invoices/{Missing}/status", $"/api/invoices/{Missing}/claim-status" })
+        {
+            var status = await Put(api, url, "{\"status\":1,\"claimStatus\":1}");
+            Assert.True(status is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed,
+                $"PUT {url}: expected the endpoint to be gone (404/405) but got {(int)status} {status}");
+        }
     }
 
     // ---- the key, not the role name, is what decides ----
