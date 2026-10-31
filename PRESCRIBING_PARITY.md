@@ -16,7 +16,7 @@ Related: `MEDICINE_DATA_ENRICHMENT.md` (why several gaps below exist, and how to
 
 | Legacy | IntelliMed |
 |---|---|
-| §1 Wizard sequence: search → dose → qty → authority → S8 → reason → issue | Same 7 steps in `PrescribeNew.razor`, skipping non-applicable ones |
+| §1 Wizard sequence: search → dose → qty → authority → S8 → reason → issue | Same 7 steps in `PrescribeNew.tsx`, skipping non-applicable ones |
 | §3 Authority vs Restricted Benefit routing | `RestrictionLevel == AuthorityRequired` → Authority step; `Restricted` → RB acknowledgement |
 | §4 Schedule 8 mandatory state authority | Gated on `Schedule == S8`, code required to advance — mirrors legacy's "MANDATORY … add is aborted" |
 | §5 Quantity/repeats only for Limited scripts | `IsLimitedDuration`, mirrors legacy's `Limited` |

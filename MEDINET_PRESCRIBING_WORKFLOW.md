@@ -1,7 +1,7 @@
 # Medinet Prescribing Workflow — Business Rules & Integration Points
 
 **Source:** `medinet/docs/PRESCRIBING-BUSINESS-RULES.md` (external repo, `F:\OneDrive - MSFT\GlobalHealth\Source\PrimaryClinic\medinet`)
-**Assessed:** 2026-08-18 against IntelliMed's current prescribing wizard (`PrescribeNew.razor`)
+**Assessed:** 2026-08-18 against IntelliMed's current prescribing wizard (`PrescribeNew.tsx`)
 
 ---
 
@@ -23,7 +23,7 @@ At a linked site, the two products run over their own SQL Server databases and a
 ```
 Search → Dose → Qty → Authority → S8 → Reason → Issue
 ```
-- IntelliMed mirrors this in `PrescribeNew.razor`, skipping non-applicable steps
+- IntelliMed mirrors this in `PrescribeNew.tsx`, skipping non-applicable steps
 - **Ported faithfully**
 
 ### §2 Script Code Derivation (PBS/DVA State Machine)
@@ -145,7 +145,7 @@ Search → Dose → Qty → Authority → S8 → Reason → Issue
 - `IPrescriptionTransmissionService` — seam for eRx (currently `NotConfiguredPrescriptionTransmissionService`)
 - `MedicationInteractionChecker` — drug↔drug, drug↔allergy, duplicate therapy (PBS therapeutic group)
 
-### Wizard (`PrescribeNew.razor`)
+### Wizard (`PrescribeNew.tsx`)
 **7 Steps:**
 1. **Search** — medicine lookup (PBS/Wikidata/ARTG catalogue)
 2. **Dose** — `Dose`, `Frequency`, `Instruction`, `Route`, `Purpose`, `StartDate`
@@ -231,7 +231,7 @@ When porting Medinet prescribing to IntelliMed, consider:
 | `PRESCRIBING_PARITY.md` | IntelliMed vs Medinet feature parity |
 | `MEDICINE_DATA_ENRICHMENT.md` | Data gap analysis & roadmap |
 | `HANDOFF.md` §12 | Medinet integration architecture |
-| `src/IntelliMed.Web/Pages/PrescribeNew.razor` | 7-step wizard implementation |
+| `src/IntelliMed.Client/src/pages/PrescribeNew.tsx` | 7-step wizard implementation |
 | `src/IntelliMed.Infrastructure/Services/MedicationInteractionChecker.cs` | Safety checks |
 | `src/IntelliMed.Infrastructure/Services/ArtgEnrichmentService.cs` | S8 gate fix |
 | `src/IntelliMed.Core/Interfaces/IPrescriptionTransmissionService.cs` | eRx seam |

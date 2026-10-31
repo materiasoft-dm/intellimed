@@ -128,10 +128,10 @@ Entry points (exact node names; ones marked † also exist as a doc concept, so 
 | Area | Start from |
 |---|---|
 | Permissions | `RequirePageAttribute`, `PageAccess`, `RolePermissionsController`, `PermissionTree`, `RoleEnforcementApiTests`, `AuthorizationCoverageTests`†, `RolePermissions`† |
-| Results inbox | `ResultsController`, `ResultIngestController`, `ResultIngestService`, `ResultRepository`, `ResultReport`, `Results.razor`, `Hl7ResultParser`† |
-| Billing | `BillingCalculator`, `InvoiceRepository`, `InvoicesController`, `ReceiptRepository`, `FeeSchedulesController`, `InvoiceDetail.razor`, `DerivedFeeCalculator`† |
-| Prescribing | `PrescribeNew.razor`, `PrescriptionsController`, `PrescriptionRepository`, `MedicationInteractionChecker`†, `MedicineCsvAssemblyService`†, `ArtgEnrichmentService`† |
-| Clients & appointments | `AddClient.razor`, `ClientsController`, `ClientRepository`, `AppointmentsController`, `AppointmentRepository`, `AppointmentCalendar.razor` |
+| Results inbox | `ResultsController`, `ResultIngestController`, `ResultIngestService`, `ResultRepository`, `ResultReport`, `Results.tsx`, `Hl7ResultParser`† |
+| Billing | `BillingCalculator`, `InvoiceRepository`, `InvoicesController`, `ReceiptRepository`, `FeeSchedulesController`, `InvoiceDetail.tsx`, `DerivedFeeCalculator`† |
+| Prescribing | `PrescribeNew.tsx`, `PrescriptionsController`, `PrescriptionRepository`, `MedicationInteractionChecker`†, `MedicineCsvAssemblyService`†, `ArtgEnrichmentService`† |
+| Clients & appointments | `AddClient.tsx`, `ClientsController`, `ClientRepository`, `AppointmentsController`, `AppointmentRepository`, `AppointmentCalendar.tsx` |
 | Data | `AppDbContext`, `EntityMapper`, `ServiceExtensions` |
 
 ## graphify

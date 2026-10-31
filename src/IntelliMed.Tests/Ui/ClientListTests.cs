@@ -9,7 +9,7 @@ namespace IntelliMed.Tests.Ui;
 // deliberately check *relative* counts (before/after creating one client) rather than absolute
 // counts, since the database is never actually empty once other test classes have run.
 //
-// Patients.razor (a separate list page) was consolidated into ClientSearch.razor — these tests
+// Patients.razor (a separate list page) was consolidated into ClientSearch.tsx — these tests
 // exercise the search page's results grid and toolbar instead of a standalone list page.
 [Collection("Playwright UI")]
 public class ClientListTests : UiTestBase

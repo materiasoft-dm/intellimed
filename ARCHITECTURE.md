@@ -367,17 +367,14 @@ public async Task<IActionResult> GetInvoices() { ... }
 
 #### Client-Side Role Checking
 
-The `MainLayout.razor` loads the current user's roles via `IAuthService.GetCurrentUserAsync()` and conditionally renders the **Admin** menu (visible only to SuperAdmin/Admin roles). The User Management page is at `/admin/users` and is protected both at the UI level (menu visibility) and API level (controller authorization).
+The web client's `MainLayout.tsx` (`src/IntelliMed.Client/src/layout/`) loads the signed-in user, their roles and the
+pages their roles may open (`/api/role-permissions/my-pages`), and shows each sidebar link only when `can(pageKey)`
+allows it. Pages are also protected at the API (`[RequirePage]` on the controllers) — the menu is a convenience, not
+the security boundary.
 
-```csharp
-// MainLayout.razor — role-based menu visibility
-@if (_currentUserRoles.Any(r => r == "SuperAdmin" || r == "Admin"))
-{
-    <MudMenu Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Error" Label="Admin">
-        <MudMenuItem OnClick="NavigateToUserManagement">User Management</MudMenuItem>
-        ...
-    </MudMenu>
-}
+```tsx
+// MainLayout.tsx — permission-gated sidebar links
+{can('admin/users') && <NavLink to="/admin/users" className="nav-link mdi-nav-link">User Management</NavLink>}
 ```
 
 ### 3.2 ASP.NET Identity + TopShelf Compatibility ✅

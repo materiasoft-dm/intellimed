@@ -278,7 +278,7 @@ public class ClientCreateTests : UiTestBase
         }
 
         // Before the client is saved, a non-Details tab renders only the "save first" message — the
-        // tab's own controls aren't rendered at all (AddClient.razor's `else if (!Id.HasValue)`
+        // tab's own controls aren't rendered at all (AddClient.tsx's `else if (!Id.HasValue)`
         // branch). So there is no add button to be disabled; asserting it's absent is the accurate
         // check. This previously looked for a "New Family" button, which has since been renamed
         // "+ New" and moved inside RenderFamilyTab().

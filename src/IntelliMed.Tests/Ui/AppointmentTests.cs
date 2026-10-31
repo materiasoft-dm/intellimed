@@ -3,8 +3,8 @@ using Xunit;
 
 namespace IntelliMed.Tests.Ui;
 
-// Covers booking (NewAppointment.razor), the appointment details panel and its visit-status
-// workflow (AppointmentEdit.razor / AppointmentDetailsPanel.razor), the list, the waiting room, the
+// Covers booking (NewAppointment.tsx), the appointment details panel and its visit-status
+// workflow (AppointmentEdit.tsx / AppointmentDetails.tsx), the list, the waiting room, the
 // calendar and the printable day list. Each test seeds its own practitioner so bookings made by
 // different tests on the shared database never overlap.
 [Collection("Playwright UI")]
@@ -251,7 +251,7 @@ public class AppointmentTests : UiTestBase
     [Fact]
     public async Task Calendar_ShowsBookings_EvenWhenAppointmentsLoadBeforePractitioners()
     {
-        // Regression (fixed 2026-10-22): AppointmentCalendar.razor filters the week's appointments by the
+        // Regression (fixed 2026-10-22): AppointmentCalendar.tsx filters the week's appointments by the
         // selected practitioners in RebuildEvents(). If the appointment search returned before
         // /api/practitioners/active, that filter ran against an empty set and nothing rebuilt the events
         // once the practitioners arrived — the calendar stayed empty. On a warm server the search

@@ -53,7 +53,7 @@ if (code > 0 && !string.IsNullOrWhiteSpace(name))  // guard never passes
 
 - **Every PBS-synced medicine has `Schedule == null`** (~14,900 items on the current schedule).
 - The wizard's **mandatory Schedule 8 state-authority step never fires** for any real catalogue
-  drug. See `PrescribeNew.razor`'s `IsStepApplicable` — `WizardStep.StateAuthority` is gated on
+  drug. See `PrescribeNew.tsx`'s `IsStepApplicable` — `WizardStep.StateAuthority` is gated on
   `_selectedMedicine?.Schedule == MedicineSchedule.S8`.
 - The schedule badge never renders on drug search results or the Medicines admin list for synced rows.
 - Only medicines created by hand, where an admin picked S8 from the dropdown, trigger the gate.
@@ -169,7 +169,7 @@ Six fields now flow from PBS through to the wizard: `MaxRepeats`, `MaxQuantity`,
 `IsSection100`, `TherapeuticGroupId`, `TherapeuticGroupTitle` (migration
 `AddPbsPrescribingLimits`). What they drive:
 
-- **Overdose trigger** (legacy §3) — `PrescribeNew.razor`'s `ExceedsPbsLimits`. Exceeding the
+- **Overdose trigger** (legacy §3) — `PrescribeNew.tsx`'s `ExceedsPbsLimits`. Exceeding the
   listing's repeats or quantity routes the prescriber through the Authority step. Quantity is free
   text, so only a cleanly numeric value is compared; anything else is left alone rather than guessed.
 - **Section 100 routing** (legacy §3) — Authority applies regardless of benefit type.

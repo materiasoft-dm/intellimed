@@ -6,7 +6,7 @@ namespace IntelliMed.Tests.Ui;
 // Covers the global command palette (floating search button + Ctrl+K). Regression coverage for a
 // real bug found 2026-07-30: the search box placeholder rendered literal "&quot;" instead of a
 // quote character, and a failed action-list fetch looked identical to "no matching actions" with
-// no way to tell the difference — both fixed in CommandPalette.razor.
+// no way to tell the difference — both fixed in CommandPalette.tsx.
 [Collection("Playwright UI")]
 public class CommandPaletteTests : UiTestBase
 {

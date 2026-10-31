@@ -71,7 +71,7 @@ Still open, deliberately:
 - **Role-bound, not key-bound:** `admin/users`, `admin/roles`, `admin/database-backups` and invoice
   refund / write-off / cancel / split (`invoices/refund|write-off|void|split`) are enforced by a hard-coded
   SuperAdmin/Admin role attribute, so granting those keys to another role does nothing. Moving the four
-  invoice ones onto their keys is safe (and `InvoiceDetail.razor`'s `_isAdmin` should follow); the three
+  invoice ones onto their keys is safe (and `InvoiceDetail.tsx`'s `_isAdmin` should follow); the three
   admin ones are a privilege-escalation risk if delegated, so they likely stay role-bound.
 - `reports`, `reports/financial`, `reports/clinical` have no screens.
 - `invoices/delete` has no matching endpoint (invoices are cancelled, not deleted).

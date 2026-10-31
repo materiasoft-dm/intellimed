@@ -4,8 +4,8 @@ using Xunit;
 
 namespace IntelliMed.Tests.Ui;
 
-// Covers FeeSchedules.razor (schedule CRUD, the Items tab including its paged infinite scroll,
-// price history and derived-item overrides) and DerivedItemConfigs.razor. Billing items and
+// Covers FeeSchedules.tsx (schedule CRUD, the Items tab including its paged infinite scroll,
+// price history and derived-item overrides) and DerivedItemConfigs.tsx. Billing items and
 // large schedules are seeded straight into the fixture database: a fresh test database has no MBS
 // catalogue, and building 120 items through the picker one at a time would only test the picker.
 [Collection("Playwright UI")]

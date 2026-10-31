@@ -3,9 +3,9 @@ using Xunit;
 
 namespace IntelliMed.Tests.Ui;
 
-// Covers the invoice lifecycle end to end: AddInvoice.razor (validation, custom lines),
-// InvoiceDetail.razor (receipts, write-off, cancel, claim status), SplitInvoice.razor,
-// InvoiceSearch.razor, InvoicePayments.razor and the two print pages. Invoices use custom lines so
+// Covers the invoice lifecycle end to end: AddInvoice.tsx (validation, custom lines),
+// InvoiceDetail.tsx (receipts, write-off, cancel, claim status), SplitInvoice.tsx,
+// InvoiceSearch.tsx, InvoicePayments.tsx and the two print pages. Invoices use custom lines so
 // no fee schedule or MBS catalogue is needed. Amounts are matched without a currency symbol
 // because the symbol depends on the browser culture.
 [Collection("Playwright UI")]

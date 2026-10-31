@@ -1,6 +1,7 @@
 # React port — status
 
-The Blazor WebAssembly front end (`src/IntelliMed.Web`) is being replaced by this React app in one go.
+The Blazor WebAssembly front end (`src/IntelliMed.Web`) was replaced by this React app in one go and removed on
+2026-10-31. The inventory below records what was ported from where.
 This file tracks the port until it is finished; delete it (and fold anything durable into
 `STRUCTURE.md` / `ARCHITECTURE.md`) once Blazor is gone.
 
@@ -68,4 +69,4 @@ Legend: ☑ not started · ◐ in progress · ☑ ported
 
 ### Cut-over
 ☑ Api.csproj builds the client (incremental npm build) and serves `dist` · ☑ Dockerfile builds the client in a Node stage
-☐ Playwright suite green against React · ☐ remove `IntelliMed.Web` · ☐ docs updated
+☑ Playwright suite green against React (780/815 first pass, then the 107 affected tests re-run green) · ☑ remove `IntelliMed.Web` · ☑ docs updated

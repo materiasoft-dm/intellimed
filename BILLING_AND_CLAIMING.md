@@ -268,7 +268,7 @@ report), `ReadyToReceipt`, `TransmitFailed` and `PartlyTransmitted`. The rest ma
 
 ### 3.2 Setting it up: Account Type → Fee Schedule mapping
 
-In **Clinic Settings** (`IntelliMed.Web/Pages/ClinicSettings.razor`), an admin maps each
+In **Clinic Settings** (`IntelliMed.Client/src/pages/ClinicSettings.tsx`), an admin maps each
 `AccountType` to the `FeeSchedule` that should price its invoice lines — e.g. "PrivatePatient →
 our standard private schedule", "WorkCover → the WorkCover Qld schedule". This mapping is the
 clinic-wide default; a per-invoice-line override is still possible (an invoice can bulk-bill one
@@ -397,6 +397,6 @@ name, per client (1.9). There's no fee-schedule-driven pricing difference beyond
 - `src/IntelliMed.Infrastructure/Services/BillingCalculator.cs`,
   `MultipleOperationRuleCalculator.cs`, `DerivedFeeCalculator.cs`
 - `src/IntelliMed.Infrastructure/Repositories/FeeScheduleRepository.cs` (BBGP/BBO/BBI/VAGP/VASO/VASI/WCQLD seeding)
-- `src/IntelliMed.Web/Pages/ClinicSettings.razor` (Account Type → Fee Schedule mapping UI)
+- `src/IntelliMed.Client/src/pages/ClinicSettings.tsx` (Account Type → Fee Schedule mapping UI)
 - `HANDOFF.md` §7 (legacy billing engine deep-dive) and §8–9 (legacy Medicare Online claiming —
   reference for when electronic transmission gets built here)

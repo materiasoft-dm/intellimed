@@ -9,7 +9,7 @@ namespace IntelliMed.Core.Entities;
 /// even if the parent Prescription or the prescriber's details have since changed. Fields that are
 /// already frozen on Prescription itself at creation time (IsPbsListed/IsRpbsListed/RestrictionLevel/
 /// Schedule) are deliberately NOT duplicated here — reading them off the (already-frozen) parent row
-/// is equivalent, so PrescriptionPrint.razor joins to Prescription for those.</summary>
+/// is equivalent, so PrescriptionPrint.tsx joins to Prescription for those.</summary>
 public class PrescriptionIssue
 {
     public int Id { get; set; }

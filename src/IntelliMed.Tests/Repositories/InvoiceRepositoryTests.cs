@@ -93,7 +93,7 @@ public class InvoiceRepositoryTests : IDisposable
         // BulkBill is used because its Fee=Rebate resolution is authoritatively recomputed server-side
         // from the schedule in CreateAsync; UnitPrice itself is always trusted from what the client
         // submits (already resolved client-side via the same per-line override through the live
-        // /resolve-line preview — see AddInvoice.razor's ResolveLineAsync), so it isn't the field that
+        // /resolve-line preview — see AddInvoice.tsx's ResolveLineAsync), so it isn't the field that
         // proves server-side per-line schedule resolution.
         var dto = new CreateInvoiceDto
         {

@@ -3,7 +3,7 @@ using IntelliMed.Core.Entities;
 namespace IntelliMed.Core.DTOs;
 
 /// <summary>Deliberately flat/denormalized — includes client and script identity alongside the issue's
-/// own snapshot fields, so PrescriptionPrint.razor can render a complete script from a single
+/// own snapshot fields, so PrescriptionPrint.tsx can render a complete script from a single
 /// GET api/prescription-issues/{id} call rather than threading clientId/prescriptionId through the
 /// route to fetch each piece separately.</summary>
 public class PrescriptionIssueDto

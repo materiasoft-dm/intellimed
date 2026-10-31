@@ -14,21 +14,21 @@ ask whoever ran the last training session for the current copy, or regenerate it
 **Who:** Reception
 Book via **New Appointment** or the **Calendar View**, picking Client, Practitioner, date and
 time. The appointment starts in `Scheduled` status.
-*(`NewAppointment.razor` / `AppointmentCalendar.razor`)*
+*(`NewAppointment.tsx` / `AppointmentCalendar.tsx`)*
 
 ### 2. Confirm (optional)
 **Who:** Reception
 If the practice calls to confirm the booking ahead of time, open the appointment's **Details**
 panel and click **Confirm**. Status → `Confirmed`. This step is optional — skipping it doesn't
 block anything later.
-*(`AppointmentDetailsPanel.razor`)*
+*(`AppointmentDetails.tsx`)*
 
 ### 3. Check-in
 **Who:** Reception
 When the patient physically arrives, open the appointment **Details** panel and click
 **Mark Arrived**. Status → `Arrived`, and an arrival timestamp is recorded. The patient now
 appears in the **Waiting Room** list.
-*(`AppointmentDetailsPanel.razor` → `WaitingRoom.razor`)*
+*(`AppointmentDetails.tsx` → `WaitingRoom.tsx`)*
 
 ### 4. Doctor calls the patient in
 **Who:** Doctor / Nurse
@@ -36,7 +36,7 @@ From the Waiting Room, click either:
 - **Start** — flips status to `InProgress`, or
 - **Progress Note** — does the same status flip *and* opens a fresh clinical note for this visit,
   already linked to the appointment.
-*(`WaitingRoom.razor`)*
+*(`WaitingRoom.tsx`)*
 
 ### 5. The consult
 **Who:** Doctor / Nurse
@@ -46,26 +46,26 @@ tag the note to an Episode — pick an existing one or start a new one inline.
 
 If a prescription is written during this same visit, issuing it automatically adds a line to the
 still-open note (e.g. "Prescribed: Amoxil 500mg tds") — nothing needs to be re-typed.
-*(`ProgressNoteEditor.razor`, `PrescribeNew.razor`)*
+*(`ProgressNoteEditor.tsx`, `PrescribeNew.tsx`)*
 
 ### 6. Finalize the note
 **Who:** Doctor / Nurse
 Click **Finalize & Sign**. This locks the note's content — any correction after this point is
 added as a timestamped addendum, never an edit to the original — and offers a checkbox to also
 mark the appointment **Completed** in the same click.
-*(`ProgressNoteEditor.razor`)*
+*(`ProgressNoteEditor.tsx`)*
 
 ### 7. Checkout / billing
 **Who:** Reception
 Once the appointment is `Completed`, a **New Invoice** button appears on its Details panel,
 already linked to the client and the appointment — no need to re-search for either.
-*(`AppointmentDetailsPanel.razor` → `AddInvoice.razor`)*
+*(`AppointmentDetails.tsx` → `AddInvoice.tsx`)*
 
 ### 8. Payment
 **Who:** Reception
 The same invoice screen has a "record payment now" option (cash, EFTPOS, etc.), so payment can be
 taken immediately — or left open if the patient is claiming through a health fund.
-*(`AddInvoice.razor`)*
+*(`AddInvoice.tsx`)*
 
 ### 9. Patient leaves
 The full trail for the visit — arrival/start/completion timestamps, the signed note, any
@@ -100,7 +100,7 @@ right before the first save.
 use this same **+ New** path anyway — it creates a second, separate appointment just for the
 walk-in, distinct from their existing booking.
 
-*(`AddClient.razor` → `ProgressNoteEditor.razor`, `ResolveAppointmentIdForCreateAsync`)*
+*(`AddClient.tsx` → `ProgressNoteEditor.tsx`, `ResolveAppointmentIdForCreateAsync`)*
 
 ## Appointment status reference
 

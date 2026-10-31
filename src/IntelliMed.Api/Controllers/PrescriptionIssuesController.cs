@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace IntelliMed.Api.Controllers;
 
 /// <summary>
-/// Flat route (not nested under a client/prescription) so PrescriptionPrint.razor can fetch a
+/// Flat route (not nested under a client/prescription) so PrescriptionPrint.tsx can fetch a
 /// complete, ready-to-render script from just an issue id, without threading clientId/prescriptionId
 /// through its own route. Get only — see PrescriptionIssue.cs for why there's no Update/Delete.
 /// </summary>

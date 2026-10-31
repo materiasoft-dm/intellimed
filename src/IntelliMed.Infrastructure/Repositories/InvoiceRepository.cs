@@ -207,7 +207,7 @@ public class InvoiceRepository : Repository<Invoice>, IInvoiceRepository
             throw new InvalidOperationException($"Invoice with ID {invoiceId} not found");
 
         // A thin single-invoice/single-tender adapter over the general receipting model — this is
-        // what keeps AddInvoice.razor's "pay now" checkbox and any other simple caller working
+        // what keeps AddInvoice.tsx's "pay now" checkbox and any other simple caller working
         // unchanged while every payment, here or from the richer receipt UI, lands in the same place.
         await _receiptRepository.CreateAsync(new CreateReceiptDto
         {

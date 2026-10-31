@@ -7,7 +7,7 @@ using Xunit;
 
 namespace IntelliMed.Tests.Ui;
 
-// Covers PrescribeNew.razor's step wizard end to end: the step sequence and skip/gating logic
+// Covers PrescribeNew.tsx's step wizard end to end: the step sequence and skip/gating logic
 // mirror legacy Medinet's prescribing flow (see PRESCRIBING-BUSINESS-RULES.md and
 // [[project_legacy_medinet_prescribing]]) — Quantity/Repeats only for Limited scripts,
 // Authority/Restricted-Benefit only when the medicine's RestrictionLevel triggers it, State

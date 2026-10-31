@@ -8,10 +8,10 @@
       "port": 5284
     },
     {
-      "name": "intellimed-web",
-      "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "src/IntelliMed.Web/IntelliMed.Web.csproj", "--launch-profile", "http"],
-      "port": 5159
+      "name": "intellimed-client-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "src/IntelliMed.Client"],
+      "port": 5173
     }
   ]
 }

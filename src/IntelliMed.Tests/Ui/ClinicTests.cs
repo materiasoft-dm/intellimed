@@ -4,7 +4,7 @@ using Xunit;
 
 namespace IntelliMed.Tests.Ui;
 
-// Covers ClinicManager.razor (add, edit, assign users) and the parts of ClinicSettings.razor that
+// Covers ClinicManager.tsx (add, edit, assign users) and the parts of ClinicSettings.tsx that
 // EmailInfrastructureTests doesn't: practice details and the account-type → fee-schedule mapping.
 // Settings changes are restored before each test finishes, since the database is shared.
 // Not covered: "Update Fees & Bill Items", which downloads the live MBS catalogue.

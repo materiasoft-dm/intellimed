@@ -3,7 +3,7 @@ using Microsoft.Playwright;
 namespace IntelliMed.Tests.Ui;
 
 /// <summary>
-/// Locator helpers for AddClient.razor. Most text/select/date fields on that page use a plain
+/// Locator helpers for AddClient.tsx. Most text/select/date fields on that page use a plain
 /// &lt;label&gt; immediately followed by the input, without a for/id association, so they can't be
 /// found via Playwright's GetByLabel(). These helpers locate the input as the label's next
 /// sibling instead. Checkboxes on that page DO have proper for/id pairs, so use

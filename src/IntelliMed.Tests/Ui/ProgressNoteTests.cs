@@ -7,7 +7,7 @@ using Xunit;
 
 namespace IntelliMed.Tests.Ui;
 
-// Covers ProgressNoteEditor.razor: the draft -> finalize -> addendum lifecycle, the walk-in
+// Covers ProgressNoteEditor.tsx: the draft -> finalize -> addendum lifecycle, the walk-in
 // auto-appointment behaviour documented in PATIENT_VISIT_WORKFLOW.md, and the append-only rule that
 // a finalized note can never be edited in place.
 [Collection("Playwright UI")]

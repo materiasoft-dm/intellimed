@@ -4,7 +4,7 @@ using Xunit;
 
 namespace IntelliMed.Tests.Ui;
 
-// Covers DrugInteractionsAdmin.razor — the reference data behind the prescribing wizard's safety
+// Covers DrugInteractionsAdmin.tsx — the reference data behind the prescribing wizard's safety
 // check. Each test uses distinctively-named ingredients so rows can't collide with other tests
 // sharing this fixture's database.
 [Collection("Playwright UI")]

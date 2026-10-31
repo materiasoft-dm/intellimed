@@ -5,7 +5,7 @@ using Xunit;
 namespace IntelliMed.Tests.Ui;
 
 // Covers the last leg of prescribing that PrescriptionWizardTests stops short of: issuing a created
-// prescription ("Issue & Print Now") and the printable script it lands on (PrescriptionPrint.razor).
+// prescription ("Issue & Print Now") and the printable script it lands on (PrescriptionPrint.tsx).
 [Collection("Playwright UI")]
 public class PrescriptionPrintTests : UiTestBase
 {
