@@ -18,7 +18,7 @@ export default function InvoicePayments() {
   const filterRef = useRef(filter);
   filterRef.current = filter;
 
-  const grid = usePagedGrid<PaymentDto>((page, pageSize) => InvoiceApi.payments({ ...filterRef.current, page, pageSize }), 15);
+  const grid = usePagedGrid<PaymentDto>((page, pageSize) => InvoiceApi.payments({ ...filterRef.current, page, pageSize }), 25);
   useMountEffect(() => grid.load(1));
   const pageSum = grid.rows.reduce((sum, p) => sum + p.amount, 0);
 
@@ -82,8 +82,8 @@ export default function InvoicePayments() {
                 <i className={`bi bi-arrow-clockwise me-1 ${grid.loading ? 'imed-spin' : ''}`} /> Refresh
               </button>
             </div>
-            <DataGrid columns={columns} rows={grid.rows} rowKey={(p) => p.id} total={grid.total} page={grid.page} pageSize={grid.pageSize}
-                      loading={grid.loading} emptyText="No payments found." emptyIcon="bi-cash-coin" onPageChange={grid.load} />
+            <DataGrid columns={columns} rows={grid.rows} rowKey={(p) => p.id} total={grid.total} pageSize={grid.pageSize}
+                      loading={grid.loading} emptyText="No payments found." emptyIcon="bi-cash-coin" loadingMore={grid.loadingMore} onLoadMore={grid.loadMore} noun="payments" />
           </div>
         </div>
       </div>

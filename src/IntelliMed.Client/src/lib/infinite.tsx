@@ -91,9 +91,11 @@ export function LoadMoreSentinel({ onVisible, loading, hasMore, shown, total, no
 
   useEffect(() => {
     if (!hasMore || !ref.current) return;
+    // inside a scrolling list section, watch that box (so the margin pre-fetches before its bottom); else the window
+    const root = ref.current.closest<HTMLElement>('.imed-scroll-section');
     const io = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) cb.current();
-    }, { rootMargin: '200px' });
+    }, { root, rootMargin: '200px' });
     io.observe(ref.current);
     return () => io.disconnect();
   }, [hasMore, shown]);

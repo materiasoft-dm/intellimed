@@ -11,6 +11,7 @@ import { Modal } from '@/components/Modal';
 import { EmptyState, SkeletonRows } from '@/components/States';
 import { formatDate, formatUtc } from '@/lib/dates';
 import { downloadBlob } from '@/lib/format';
+import { LoadMoreSentinel } from '@/lib/infinite';
 import { useMountEffect, usePageTitle } from '@/lib/hooks';
 import { useSession } from '@/session';
 
@@ -45,6 +46,7 @@ export default function Results() {
   const [items, setItems] = useState<ResultSummaryDto[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [counts, setCounts] = useState<ResultCountsDto>({ inbox: 0, unmatched: 0, held: 0, inboxAbnormal: 0 });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; isError: boolean } | null>(null);
@@ -65,13 +67,18 @@ export default function Results() {
     const f = { ...live.current, ...patch };
     live.current = f;
     setFilters(f);
-    const mine = ++seq.current;
-    setLoading(true);
-    const result = await ResultApi.search({ status: f.status, query: f.query, abnormalOnly: f.abnormalOnly, mine: f.mine, page: f.page, pageSize: PAGE_SIZE });
-    if (mine !== seq.current) return;
-    setItems(result.items);
-    setTotal(result.totalCount);
-    setLoading(false);
+    // page 1 is a fresh search (replaces the list); a later page is appended as the list is scrolled
+    const append = f.page > 1;
+    const mine = append ? seq.current : ++seq.current;
+    if (append) setLoadingMore(true); else setLoading(true);
+    try {
+      const result = await ResultApi.search({ status: f.status, query: f.query, abnormalOnly: f.abnormalOnly, mine: f.mine, page: f.page, pageSize: PAGE_SIZE });
+      if (mine !== seq.current) return;
+      setItems((all) => (append ? [...all, ...result.items] : result.items));
+      setTotal(result.totalCount);
+    } finally {
+      if (mine === seq.current) { setLoading(false); setLoadingMore(false); }
+    }
   }, []);
 
   const reloadAll = useCallback(async (patch: Partial<Filters> = {}) => {
@@ -85,7 +92,6 @@ export default function Results() {
 
   const countFor = (s: ResultStatus) =>
     s === ResultStatus.Inbox ? counts.inbox : s === ResultStatus.Unmatched ? counts.unmatched : s === ResultStatus.Held ? counts.held : 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const say = (text: string, isError = false) => setNotice({ text, isError });
 
   const open = async (id: number) => {
@@ -241,7 +247,7 @@ export default function Results() {
         {!firstLoad && items.length === 0 ? (
           <div className="card-body"><EmptyState message={EMPTY_MESSAGES[filters.status]} icon="bi-inbox" /></div>
         ) : (
-          <div className={`table-responsive imed-grid-body ${loading && !firstLoad ? 'is-refreshing' : ''}`} aria-busy={loading}>
+          <div className={`imed-grid-body imed-scroll-section ${loading && !firstLoad ? 'is-refreshing' : ''}`} aria-busy={loading}>
             <table className="table table-hover mb-0" id="resultsTable">
               <thead>
                 <tr>
@@ -278,17 +284,10 @@ export default function Results() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-        {total > PAGE_SIZE && (
-          <div className="card-footer d-flex align-items-center justify-content-between py-2">
-            <button className="btn btn-sm btn-outline-secondary" disabled={filters.page <= 1 || loading} onClick={() => void load({ page: filters.page - 1 })}>
-              <i className="bi bi-chevron-left" /> Previous
-            </button>
-            <span className="small text-muted">Page {filters.page} of {totalPages}</span>
-            <button className="btn btn-sm btn-outline-secondary" disabled={filters.page >= totalPages || loading} onClick={() => void load({ page: filters.page + 1 })}>
-              Next <i className="bi bi-chevron-right" />
-            </button>
+            {total > 0 && (
+              <LoadMoreSentinel onVisible={() => { if (!loading && !loadingMore && items.length < total) void load({ page: filters.page + 1 }); }}
+                                loading={loadingMore} hasMore={items.length < total} shown={items.length} total={total} noun="reports" />
+            )}
           </div>
         )}
       </div>

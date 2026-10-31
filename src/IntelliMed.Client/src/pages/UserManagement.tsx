@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { AdminApi, ClinicApi } from '@/api/admin';
 import { PractitionerApi } from '@/api/appointments';
 import type { MyClinicDto, PractitionerDto, RoleDto, UserDto } from '@/api/types.gen';
-import { Pager } from '@/components/DataGrid';
+import { LoadMoreSentinel } from '@/lib/infinite';
 import { Modal } from '@/components/Modal';
 import { EmptyState, LoadingState, SkeletonRows } from '@/components/States';
 import { useToast } from '@/components/Toast';
@@ -11,7 +11,7 @@ import { useMountEffect, usePageTitle } from '@/lib/hooks';
 import { FieldMessage, hasErrors, rules, validate, ValidationSummary } from '@/lib/validation';
 
 type SortKey = 'fullName' | 'email' | 'roles' | 'isActive' | 'lastLoginAt';
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 25;
 
 interface UserForm extends Record<string, unknown> {
   firstName: string;
@@ -134,9 +134,8 @@ export default function UserManagement() {
     return list;
   }, [users, filter, sort]);
 
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pages);
-  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  // the whole list is loaded already, so "infinite scroll" here just reveals PAGE_SIZE more rows at a time
+  const paged = filtered.slice(0, page * PAGE_SIZE);
 
   const toggleSort = (key: SortKey) => {
     setSort((s) => (s?.key === key ? { key, asc: !s.asc } : { key, asc: true }));
@@ -299,7 +298,7 @@ export default function UserManagement() {
                      onChange={(e) => { setFilter(e.target.value); setPage(1); }} />
             </div>
           </div>
-          <div className="table-responsive">
+          <div className="imed-scroll-section">
             <table className="table table-hover table-striped table-sm mb-0">
               <thead className="table-light">
                 <tr>
@@ -339,17 +338,13 @@ export default function UserManagement() {
                 ))}
               </tbody>
             </table>
+            {filtered.length > 0 && (
+              <LoadMoreSentinel onVisible={() => setPage((p) => p + 1)} loading={false} hasMore={paged.length < filtered.length}
+                                shown={paged.length} total={filtered.length} noun="users" />
+            )}
           </div>
           {!loading && filtered.length === 0 && (
             <div className="card-body"><EmptyState message="No users found matching your search." icon="bi-search" compact={false} /></div>
-          )}
-          {filtered.length > PAGE_SIZE && (
-            <div className="card-footer d-flex justify-content-between align-items-center">
-              <span className="text-muted small">
-                Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
-              </span>
-              <Pager page={currentPage} pages={pages} onPageChange={setPage} />
-            </div>
           )}
         </div>
       )}

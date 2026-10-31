@@ -25,7 +25,7 @@ export default function AppointmentList() {
   // Like the Blazor grid's LoadData, every load (Find, Refresh, paging) uses the filter as it stands now.
   const filterRef = useRef(filter);
   filterRef.current = filter;
-  const grid = usePagedGrid<AppointmentDto>((page, pageSize) => AppointmentApi.search({ ...filterRef.current, page, pageSize }), 10);
+  const grid = usePagedGrid<AppointmentDto>((page, pageSize) => AppointmentApi.search({ ...filterRef.current, page, pageSize }), 25);
 
   useMountEffect(async () => {
     setPractitioners(await PractitionerApi.active());
@@ -112,8 +112,8 @@ export default function AppointmentList() {
                 <i className={`bi bi-arrow-clockwise me-1 ${grid.loading ? 'imed-spin' : ''}`} /> Refresh
               </button>
             </div>
-            <DataGrid columns={columns} rows={grid.rows} rowKey={(a) => a.id} total={grid.total} page={grid.page} pageSize={grid.pageSize}
-                      loading={grid.loading} emptyText="No appointments found." emptyIcon="bi-calendar-x" onPageChange={grid.load} />
+            <DataGrid columns={columns} rows={grid.rows} rowKey={(a) => a.id} total={grid.total} pageSize={grid.pageSize}
+                      loading={grid.loading} emptyText="No appointments found." emptyIcon="bi-calendar-x" loadingMore={grid.loadingMore} onLoadMore={grid.loadMore} noun="appointments" />
           </div>
           <div className="d-flex justify-content-end gap-2 mt-3">
             <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('/appointments/calendar')}><i className="bi bi-calendar3" /> Calendar View</button>

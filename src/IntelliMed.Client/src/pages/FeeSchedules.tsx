@@ -41,7 +41,7 @@ export default function FeeSchedules() {
   const [filter, setFilter] = useState<Filter>({ code: null, description: null, includeArchived: false });
   const filterRef = useRef(filter);
   filterRef.current = filter;
-  const grid = usePagedGrid<FeeScheduleDto>((page, pageSize) => FeeScheduleApi.search({ ...filterRef.current, page, pageSize }), 10);
+  const grid = usePagedGrid<FeeScheduleDto>((page, pageSize) => FeeScheduleApi.search({ ...filterRef.current, page, pageSize }), 25);
   const [selected, setSelected] = useState<FeeScheduleDto | null>(null);
   const [healthFunds, setHealthFunds] = useState<HealthFundDto[]>([]);
   const [seeding, setSeeding] = useState<'bb' | 'dva' | 'wc' | null>(null);
@@ -369,8 +369,8 @@ export default function FeeSchedules() {
                 <i className={`bi bi-arrow-clockwise me-1 ${grid.loading ? 'imed-spin' : ''}`} /> Refresh
               </button>
             </div>
-            <DataGrid columns={columns} rows={grid.rows} rowKey={(s) => s.id} total={grid.total} page={grid.page} pageSize={grid.pageSize}
-                      loading={grid.loading} emptyText="No fee schedules found." emptyIcon="bi-cash-stack" onPageChange={grid.load}
+            <DataGrid columns={columns} rows={grid.rows} rowKey={(s) => s.id} total={grid.total} pageSize={grid.pageSize}
+                      loading={grid.loading} emptyText="No fee schedules found." emptyIcon="bi-cash-stack" loadingMore={grid.loadingMore} onLoadMore={grid.loadMore} noun="fee schedules"
                       onRowClick={(s) => setSelected(s)} rowClassName={(s) => (s.id === selected?.id ? 'table-active imed-row-selected' : '')} />
           </div>
           <div className="d-flex flex-wrap gap-2 mt-3">

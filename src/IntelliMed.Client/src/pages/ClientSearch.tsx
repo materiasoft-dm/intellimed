@@ -11,10 +11,11 @@ import { EmptyState, LoadingState } from '@/components/States';
 import { storage } from '@/api/storage';
 import { formatDate } from '@/lib/dates';
 import { downloadBlob, padNumber } from '@/lib/format';
+import { LoadMoreSentinel } from '@/lib/infinite';
 import { useMountEffect, usePageTitle, usePagedGrid } from '@/lib/hooks';
 
 type Filter = Partial<ClientSearchDto>;
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 25;
 const COLUMNS_KEY = 'intellimed_client_search_columns';
 
 const ALL_COLUMNS: (Column<ClientDto> & { key: string; label: string })[] = [
@@ -324,8 +325,8 @@ export default function ClientSearch() {
               </div>
             </div>
             <div className="d-none d-md-block">
-              <DataGrid columns={columns} rows={grid.rows} rowKey={(c) => c.id} total={grid.total} page={grid.page} pageSize={grid.pageSize}
-                        loading={grid.loading} emptyText="No clients found." emptyIcon="bi-people" onPageChange={grid.load}
+              <DataGrid columns={columns} rows={grid.rows} rowKey={(c) => c.id} total={grid.total} pageSize={grid.pageSize}
+                        loading={grid.loading} emptyText="No clients found." emptyIcon="bi-people" loadingMore={grid.loadingMore} onLoadMore={grid.loadMore} noun="clients"
                         onRowClick={setSelected} rowClassName={(c) => (c.id === selected?.id ? 'table-active imed-row-selected' : '')} />
             </div>
             <div className="d-md-none p-2">
@@ -347,11 +348,8 @@ export default function ClientSearch() {
                       </div>
                     </div>
                   ))}
-                  <div className="d-flex justify-content-between align-items-center mt-2 mb-1">
-                    <button className="btn btn-sm btn-outline-secondary" disabled={grid.page <= 1} onClick={() => grid.load(grid.page - 1)}><i className="bi bi-chevron-left" /> Prev</button>
-                    <span className="small text-muted">Page {grid.page} of {Math.max(1, Math.ceil(grid.total / PAGE_SIZE))}</span>
-                    <button className="btn btn-sm btn-outline-secondary" disabled={grid.page >= Math.ceil(grid.total / PAGE_SIZE)} onClick={() => grid.load(grid.page + 1)}>Next <i className="bi bi-chevron-right" /></button>
-                  </div>
+                  <LoadMoreSentinel onVisible={grid.loadMore} loading={grid.loadingMore} hasMore={grid.hasMore}
+                                    shown={grid.rows.length} total={grid.total} noun="clients" />
                 </>
               )}
             </div>

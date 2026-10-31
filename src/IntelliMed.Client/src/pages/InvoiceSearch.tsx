@@ -22,7 +22,7 @@ export default function InvoiceSearch() {
   const filterRef = useRef(filter);
   filterRef.current = filter;
 
-  const grid = usePagedGrid<InvoiceDto>((page, pageSize) => InvoiceApi.search({ ...filterRef.current, page, pageSize }), 10);
+  const grid = usePagedGrid<InvoiceDto>((page, pageSize) => InvoiceApi.search({ ...filterRef.current, page, pageSize }), 25);
   useMountEffect(() => grid.load(1));
 
   const columns: Column<InvoiceDto>[] = [
@@ -94,8 +94,8 @@ export default function InvoiceSearch() {
                 <i className={`bi bi-arrow-clockwise me-1 ${grid.loading ? 'imed-spin' : ''}`} /> Refresh
               </button>
             </div>
-            <DataGrid columns={columns} rows={grid.rows} rowKey={(i) => i.id} total={grid.total} page={grid.page} pageSize={grid.pageSize}
-                      loading={grid.loading} emptyText="No invoices found." emptyIcon="bi-receipt" onPageChange={grid.load} />
+            <DataGrid columns={columns} rows={grid.rows} rowKey={(i) => i.id} total={grid.total} pageSize={grid.pageSize}
+                      loading={grid.loading} emptyText="No invoices found." emptyIcon="bi-receipt" loadingMore={grid.loadingMore} onLoadMore={grid.loadMore} noun="invoices" />
           </div>
           <div className="d-flex justify-content-end mt-3">
             <button className="btn btn-sm btn-primary" onClick={() => navigate('/invoices/new')}><i className="bi bi-plus-lg" /> New Invoice</button>

@@ -9,8 +9,17 @@ import { Splash } from './components/Splash';
  * route's own `lazy`) so the URL changes the moment a link is clicked, as it did in the Blazor app — a route
  * `lazy` holds the URL back until the chunk arrives, which reads as a dead click on a slow connection.
  */
+// One lazy component per module: routes that share a page (clients/add and clients/edit/:id) must share it, or
+// moving between them (saving a new client) unmounts the page and flashes the loading bar while it re-resolves.
+const lazyPages = new Map<string, ComponentType>();
+
 const page = (load: () => Promise<{ default: ComponentType }>): Pick<RouteObject, 'element'> => {
-  const Page = lazy(load);
+  const key = load.toString();
+  let Page = lazyPages.get(key);
+  if (!Page) {
+    Page = lazy(load);
+    lazyPages.set(key, Page);
+  }
   return {
     element: (
       <Suspense fallback={<div className="imed-route-progress" role="progressbar" aria-label="Loading page" />}>
