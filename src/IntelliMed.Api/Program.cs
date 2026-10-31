@@ -12,235 +12,251 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.Swagger;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// ============================================================================
-// DATABASE CONFIGURATION
-// ============================================================================
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Data Source=intellimed.db";
-
-builder.Services.AddInfrastructure(connectionString, builder.Configuration);
-
-// ============================================================================
-// ASP.NET IDENTITY CONFIGURATION
-// ============================================================================
-// The password/lockout policy is stored in SystemSettings and read here, straight from its own
-// short-lived DbContext rather than through DI.
-//
-// Deliberately NOT an IConfigureOptions<IdentityOptions>: that resolves lazily while the host is
-// being built, and reading the database from inside it (sync-over-async) deadlocked — `dotnet ef`
-// hung indefinitely on any command that builds the host. Reading here, before AddIdentity, keeps it
-// a plain sequential call with nothing to deadlock against.
-//
-// Consequence: a policy change takes effect on the next restart, which the System Settings screen
-// states plainly. On a brand-new database the table doesn't exist yet, so failures fall back to the
-// same defaults that used to be hardcoded — the policy is never silently weakened.
-var identityPolicy = SystemSettingsBootstrap.Read(connectionString,
-    LoggerFactory.Create(c => c.AddConsole()).CreateLogger("SystemSettingsBootstrap"));
-
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+// A fatal startup failure normally shows only IIS's bare "500.30". With ASPNETCORE_DETAILEDERRORS=true
+// (a test host) the reason is served instead - see StartupDiagnostics.
+try
 {
-    options.Password.RequireDigit = identityPolicy.PasswordRequireDigit;
-    options.Password.RequireLowercase = identityPolicy.PasswordRequireLowercase;
-    options.Password.RequireUppercase = identityPolicy.PasswordRequireUppercase;
-    options.Password.RequireNonAlphanumeric = identityPolicy.PasswordRequireNonAlphanumeric;
-    options.Password.RequiredLength = identityPolicy.PasswordMinLength;
+    var builder = WebApplication.CreateBuilder(args);
 
-    // User requirements
-    options.User.RequireUniqueEmail = true;
+    // ============================================================================
+    // DATABASE CONFIGURATION
+    // ============================================================================
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "Data Source=intellimed.db";
 
-    // Lockout settings
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(identityPolicy.LockoutDurationMinutes);
-    options.Lockout.MaxFailedAccessAttempts = identityPolicy.LockoutMaxFailedAttempts;
-    options.Lockout.AllowedForNewUsers = true;
-})
-.AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders();
+    builder.Services.AddInfrastructure(connectionString, builder.Configuration);
 
-// ============================================================================
-// JWT AUTHENTICATION CONFIGURATION
-// ============================================================================
-// Resolved once and shared — see JwtSettings for why there is no hardcoded fallback key.
-var jwtSettings = JwtSettings.Resolve(
-    builder.Configuration,
-    builder.Environment,
-    LoggerFactory.Create(c => c.AddConsole()).CreateLogger<JwtSettings>());
-builder.Services.AddSingleton(jwtSettings);
+    // ============================================================================
+    // ASP.NET IDENTITY CONFIGURATION
+    // ============================================================================
+    // The password/lockout policy is stored in SystemSettings and read here, straight from its own
+    // short-lived DbContext rather than through DI.
+    //
+    // Deliberately NOT an IConfigureOptions<IdentityOptions>: that resolves lazily while the host is
+    // being built, and reading the database from inside it (sync-over-async) deadlocked — `dotnet ef`
+    // hung indefinitely on any command that builds the host. Reading here, before AddIdentity, keeps it
+    // a plain sequential call with nothing to deadlock against.
+    //
+    // Consequence: a policy change takes effect on the next restart, which the System Settings screen
+    // states plainly. On a brand-new database the table doesn't exist yet, so failures fall back to the
+    // same defaults that used to be hardcoded — the policy is never silently weakened.
+    var identityPolicy = SystemSettingsBootstrap.Read(connectionString,
+        LoggerFactory.Create(c => c.AddConsole()).CreateLogger("SystemSettingsBootstrap"));
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
+    builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings.Issuer,
-        ValidAudience = jwtSettings.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
-        ClockSkew = TimeSpan.Zero
-    };
-    options.Events = new JwtBearerEvents
+        options.Password.RequireDigit = identityPolicy.PasswordRequireDigit;
+        options.Password.RequireLowercase = identityPolicy.PasswordRequireLowercase;
+        options.Password.RequireUppercase = identityPolicy.PasswordRequireUppercase;
+        options.Password.RequireNonAlphanumeric = identityPolicy.PasswordRequireNonAlphanumeric;
+        options.Password.RequiredLength = identityPolicy.PasswordMinLength;
+
+        // User requirements
+        options.User.RequireUniqueEmail = true;
+
+        // Lockout settings
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(identityPolicy.LockoutDurationMinutes);
+        options.Lockout.MaxFailedAccessAttempts = identityPolicy.LockoutMaxFailedAttempts;
+        options.Lockout.AllowedForNewUsers = true;
+    })
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
+
+    // ============================================================================
+    // JWT AUTHENTICATION CONFIGURATION
+    // ============================================================================
+    // Resolved once and shared — see JwtSettings for why there is no hardcoded fallback key.
+    var jwtSettings = JwtSettings.Resolve(
+        builder.Configuration,
+        builder.Environment,
+        LoggerFactory.Create(c => c.AddConsole()).CreateLogger<JwtSettings>());
+    builder.Services.AddSingleton(jwtSettings);
+
+    builder.Services.AddAuthentication(options =>
     {
-        // context.Token is NOT populated from the Authorization header by this point — the header
-        // is only read as a fallback AFTER this event returns, and only if it's still empty. So we
-        // must check the header ourselves rather than context.Token, or this cookie would silently
-        // win over a real Bearer header on every request in the app. Scoped to /dbadmin so a stray
-        // dbadmin_token cookie can never affect authentication on any other route, even in theory.
-        OnMessageReceived = context =>
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            var isDbAdminPath = context.Request.Path.StartsWithSegments("/dbadmin");
-            if (isDbAdminPath && !context.Request.Headers.ContainsKey("Authorization")
-                && context.Request.Cookies.TryGetValue("dbadmin_token", out var cookieToken))
-            {
-                context.Token = cookieToken;
-            }
-            return Task.CompletedTask;
-        }
-    };
-});
-
-builder.Services.AddAuthorization(options =>
-{
-    // Every endpoint requires an authenticated user by default — new controllers are protected
-    // automatically instead of relying on remembering to stamp [Authorize] on each one.
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
-
-    // Satisfied only by the separate token DbAdminController.Login issues, never by a regular
-    // staff JWT (even SuperAdmin) — that token type is never given this claim at all.
-    options.AddPolicy("DbAdminOnly", policy => policy.RequireClaim("scope", "dbadmin"));
-});
-
-// Backs the /dbadmin login IP lockout — deliberately not using ASP.NET Identity's own lockout,
-// which is tied to an ApplicationUser row that this separate credential doesn't have.
-builder.Services.AddMemoryCache();
-
-// ============================================================================
-// CONTROLLERS & API CONFIGURATION
-// ============================================================================
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-
-// Swagger with JWT support
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "IntelliMed API",
-        Version = "v1",
-        Description = "Medical Practice Management API"
-    });
-
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token.",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
-    });
-
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+            ClockSkew = TimeSpan.Zero
+        };
+        options.Events = new JwtBearerEvents
         {
-            new OpenApiSecurityScheme
+            // context.Token is NOT populated from the Authorization header by this point — the header
+            // is only read as a fallback AFTER this event returns, and only if it's still empty. So we
+            // must check the header ourselves rather than context.Token, or this cookie would silently
+            // win over a real Bearer header on every request in the app. Scoped to /dbadmin so a stray
+            // dbadmin_token cookie can never affect authentication on any other route, even in theory.
+            OnMessageReceived = context =>
             {
-                Reference = new OpenApiReference
+                var isDbAdminPath = context.Request.Path.StartsWithSegments("/dbadmin");
+                if (isDbAdminPath && !context.Request.Headers.ContainsKey("Authorization")
+                    && context.Request.Cookies.TryGetValue("dbadmin_token", out var cookieToken))
                 {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    context.Token = cookieToken;
                 }
-            },
-            Array.Empty<string>()
-        }
+                return Task.CompletedTask;
+            }
+        };
     });
-});
 
-var app = builder.Build();
-
-// ============================================================================
-// DATABASE INITIALIZATION & SEEDING
-// ============================================================================
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
+    builder.Services.AddAuthorization(options =>
     {
-        var context = services.GetRequiredService<AppDbContext>();
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        // Every endpoint requires an authenticated user by default — new controllers are protected
+        // automatically instead of relying on remembering to stamp [Authorize] on each one.
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
 
-        // Apply pending EF Core migrations
-        await context.Database.MigrateAsync();
+        // Satisfied only by the separate token DbAdminController.Login issues, never by a regular
+        // staff JWT (even SuperAdmin) — that token type is never given this claim at all.
+        options.AddPolicy("DbAdminOnly", policy => policy.RequireClaim("scope", "dbadmin"));
+    });
 
-        // Seed roles
-        await SeedRolesAsync(roleManager);
+    // Backs the /dbadmin login IP lockout — deliberately not using ASP.NET Identity's own lockout,
+    // which is tied to an ApplicationUser row that this separate credential doesn't have.
+    builder.Services.AddMemoryCache();
 
-        // Seed default admin user
-        await SeedDefaultUserAsync(userManager);
+    // ============================================================================
+    // CONTROLLERS & API CONFIGURATION
+    // ============================================================================
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
 
-        // Seed default role permissions
-        await SeedRolePermissionsAsync(context);
-    }
-    catch (Exception ex)
+    // Swagger with JWT support
+    builder.Services.AddSwaggerGen(options =>
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while initializing the database.");
-    }
-}
-
-// ============================================================================
-// HTTP REQUEST PIPELINE CONFIGURATION
-// ============================================================================
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-    app.UseWebAssemblyDebugging();
-
-    // In Development mode, the project wwwroot doesn't have _framework files.
-    // They're in bin/Debug/net10.0/wwwroot from the CopyBlazorWasmOutput target.
-    // Add a static file provider that serves from the build output directory
-    // so _framework/* files resolve correctly (fixes SRI integrity failures).
-    var buildOutputWwwRoot = Path.Combine(app.Environment.ContentRootPath, "bin", "Debug", "net10.0", "wwwroot");
-    if (Directory.Exists(buildOutputWwwRoot))
-    {
-        app.UseStaticFiles(new StaticFileOptions
+        options.SwaggerDoc("v1", new OpenApiInfo
         {
-            FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(buildOutputWwwRoot),
-            // Serve before the default static files so _framework takes priority
+            Title = "IntelliMed API",
+            Version = "v1",
+            Description = "Medical Practice Management API"
         });
+
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token.",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer"
+        });
+
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
+    });
+
+    var app = builder.Build();
+
+    // ============================================================================
+    // DATABASE INITIALIZATION & SEEDING
+    // ============================================================================
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<AppDbContext>();
+            var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+            // Apply pending EF Core migrations
+            await context.Database.MigrateAsync();
+
+            // Seed roles
+            await SeedRolesAsync(roleManager);
+
+            // Seed default admin user
+            await SeedDefaultUserAsync(userManager);
+
+            // Seed default role permissions
+            await SeedRolePermissionsAsync(context);
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while initializing the database.");
+        }
     }
+
+    // ============================================================================
+    // HTTP REQUEST PIPELINE CONFIGURATION
+    // ============================================================================
+    // Test hosts only: ASPNETCORE_DETAILEDERRORS=true shows exception details in the browser.
+    // (Development already does this by default.)
+    if (StartupDiagnostics.Enabled && !app.Environment.IsDevelopment())
+    {
+        app.UseDeveloperExceptionPage();
+    }
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+        app.UseWebAssemblyDebugging();
+
+        // In Development mode, the project wwwroot doesn't have _framework files.
+        // They're in bin/Debug/net10.0/wwwroot from the CopyBlazorWasmOutput target.
+        // Add a static file provider that serves from the build output directory
+        // so _framework/* files resolve correctly (fixes SRI integrity failures).
+        var buildOutputWwwRoot = Path.Combine(app.Environment.ContentRootPath, "bin", "Debug", "net10.0", "wwwroot");
+        if (Directory.Exists(buildOutputWwwRoot))
+        {
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(buildOutputWwwRoot),
+                // Serve before the default static files so _framework takes priority
+            });
+        }
+    }
+    else
+    {
+        app.UseHttpsRedirection();
+    }
+
+    // Serve Blazor WASM static files from the IntelliMed.Web project
+    app.UseBlazorFrameworkFiles();
+    app.UseStaticFiles();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    // Fallback to index.html for client-side routing — must stay anonymous: every client-side route
+    // (including /login itself) is served through this, so the global auth fallback policy would
+    // otherwise 401 the SPA shell before the Blazor router ever gets a chance to redirect.
+    app.MapFallbackToFile("index.html").AllowAnonymous();
+
+    app.Run();
 }
-else
+catch (Exception ex) when (StartupDiagnostics.Enabled)
 {
-    app.UseHttpsRedirection();
+    StartupDiagnostics.Serve(args, ex);
 }
-
-// Serve Blazor WASM static files from the IntelliMed.Web project
-app.UseBlazorFrameworkFiles();
-app.UseStaticFiles();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-// Fallback to index.html for client-side routing — must stay anonymous: every client-side route
-// (including /login itself) is served through this, so the global auth fallback policy would
-// otherwise 401 the SPA shell before the Blazor router ever gets a chance to redirect.
-app.MapFallbackToFile("index.html").AllowAnonymous();
-
-app.Run();
 
 // ============================================================================
 // SEEDING METHODS

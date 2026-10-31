@@ -12,6 +12,10 @@
         generated once otherwise. It never touches git: publish\ is ignored.
       * stdout logging is switched on (logs\), so a startup failure leaves a readable reason on the server.
         Turn it off in web.config (stdoutLogEnabled="false") once the site is healthy.
+      * Detailed errors are ON by default (-DetailedErrors:$false to turn off): web.config sets
+        ASPNETCORE_DETAILEDERRORS=true, so a fatal startup failure serves the reason in the browser (what failed,
+        plus environment checks) instead of IIS's bare "HTTP 500.30", and request errors show exception details.
+        This is for a test host only - it shows stack traces and paths. Never leave it on for real use.
       * Entity Framework's per-query logging is turned down so those logs stay small.
       * The development settings file and debug symbols are left out.
       * Finally the folder is copied and started the way IIS would start it (no overrides, run from its own
@@ -25,6 +29,7 @@
 #>
 param(
     [string]$Output = 'publish',
+    [bool]$DetailedErrors = $true,
     [switch]$SkipVerify
 )
 
@@ -78,6 +83,17 @@ $cfg.Logging.LogLevel | Add-Member -NotePropertyName 'Microsoft.EntityFrameworkC
 $webConfig = Join-Path $out 'web.config'
 (Get-Content $webConfig -Raw) -replace 'stdoutLogEnabled="false"', 'stdoutLogEnabled="true"' |
     ForEach-Object { [System.IO.File]::WriteAllText($webConfig, $_, $utf8) }
+if ($DetailedErrors) {
+    [xml]$xml = Get-Content $webConfig -Raw
+    $aspNetCore = $xml.configuration.location.'system.webServer'.aspNetCore
+    $vars = $xml.CreateElement('environmentVariables')
+    $var = $xml.CreateElement('environmentVariable')
+    $var.SetAttribute('name', 'ASPNETCORE_DETAILEDERRORS')
+    $var.SetAttribute('value', 'true')
+    [void]$vars.AppendChild($var)
+    [void]$aspNetCore.AppendChild($vars)
+    $xml.Save($webConfig)
+}
 New-Item -ItemType Directory -Path (Join-Path $out 'logs') -Force | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $out 'logs\README.txt'),
     "IIS writes the app's startup/console output here (stdout_*.log). If the site shows HTTP 500.30, open the newest file.`r`n" +
