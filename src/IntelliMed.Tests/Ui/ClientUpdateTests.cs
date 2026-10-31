@@ -259,7 +259,7 @@ public class ClientUpdateTests : UiTestBase
         // value over the wire (default System.Text.Json behavior, no string converter
         // configured), so fieldType: 0 here means UdfFieldTypeEnum.Text.
         // page.Context.APIRequest is a separate context from the browser page — it doesn't carry
-        // the JWT Blazor attached in-memory to its own HttpClient, so the token has to be pulled
+        // the JWT the web client attaches to its own fetch calls, so the token has to be pulled
         // from localStorage and attached explicitly or this 401s.
         var token = await page.EvaluateAsync<string>("localStorage.getItem('intellimed_token')");
         var api = page.Context.APIRequest;

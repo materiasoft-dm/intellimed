@@ -7,11 +7,13 @@
     <!-- Bumped by hand before every `dotnet publish` — surfaced in the UI (login page + sidebar) via
          GET api/version, so a stale deploy is visible at a glance instead of needing nav archaeology. -->
     <Version>1.0.3</Version>
+    <!-- The web client is copied in as plain files (see the targets below), so the static web assets pipeline is
+         unused; left on, a manifest from an older build can overlay its own (stale) index.html in Development. -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.6" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.6" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.6">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -27,24 +29,44 @@
   <ItemGroup>
     <ProjectReference Include="..\IntelliMed.Core\IntelliMed.Core.csproj" />
     <ProjectReference Include="..\IntelliMed.Infrastructure\IntelliMed.Infrastructure.csproj" />
-    <ProjectReference Include="..\IntelliMed.Web\IntelliMed.Web.csproj" />
   </ItemGroup>
 
-  <!-- Copy Blazor WASM output (_framework etc.) and source static files to API wwwroot for hosting -->
-  <Target Name="CopyBlazorWasmOutput" AfterTargets="Build">
-    <!-- Clean stale _framework files from previous builds to prevent SRI integrity mismatches -->
-    <RemoveDir Directories="$(OutputPath)wwwroot\_framework" Condition="Exists('$(OutputPath)wwwroot\_framework')" />
+  <!-- The web client is the React app in ..\IntelliMed.Client. Building the API builds it (when its sources
+       changed — Inputs/Outputs make it incremental) and serves its dist\ folder as wwwroot: copied into the build
+       output for `dotnet run` and the UI tests, and into the publish folder for deploys. Needs Node/npm on the
+       build machine; pass -p:SkipClientBuild=true when dist\ is built separately (the Dockerfile does). -->
+  <PropertyGroup>
+    <ClientDir>$(MSBuildProjectDirectory)\..\IntelliMed.Client\</ClientDir>
+    <ClientDist>$(ClientDir)dist\</ClientDist>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ClientSource Include="$(ClientDir)src\**\*;$(ClientDir)public\**\*;$(ClientDir)index.html;$(ClientDir)package.json;$(ClientDir)package-lock.json;$(ClientDir)vite.config.ts;$(ClientDir)tsconfig.json" />
+  </ItemGroup>
+
+  <Target Name="BuildClient" BeforeTargets="Build" Condition="'$(SkipClientBuild)' != 'true'"
+          Inputs="@(ClientSource)" Outputs="$(ClientDist)index.html">
+    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(ClientDir)" Condition="!Exists('$(ClientDir)node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="$(ClientDir)" />
+  </Target>
+
+  <Target Name="CopyClientToOutput" AfterTargets="Build">
+    <Error Condition="!Exists('$(ClientDist)index.html')" Text="The React client has not been built: $(ClientDist)index.html is missing. Run `npm ci; npm run build` in src/IntelliMed.Client." />
+    <!-- Clear the previous build's hashed bundles so stale files don't pile up -->
+    <RemoveDir Directories="$(OutputPath)wwwroot" Condition="Exists('$(OutputPath)wwwroot')" />
     <ItemGroup>
-      <!-- Framework files from Web build output -->
-      <BlazorWasmFiles Include="..\IntelliMed.Web\bin\$(Configuration)\net10.0\wwwroot\**\*" />
-      <!-- Source static files from Web project wwwroot (css, lib, favicon, etc.) -->
-      <BlazorStaticFiles Include="..\IntelliMed.Web\wwwroot\**\*" Exclude="..\IntelliMed.Web\wwwroot\index.html" />
-      <!-- API's own wwwroot files (index.html) -->
-      <ApiWwwRootFiles Include="wwwroot\**\*" />
+      <ClientDistFiles Include="$(ClientDist)**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(BlazorWasmFiles)" DestinationFolder="$(OutputPath)wwwroot\%(RecursiveDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(BlazorStaticFiles)" DestinationFolder="$(OutputPath)wwwroot\%(RecursiveDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(ApiWwwRootFiles)" DestinationFolder="$(OutputPath)wwwroot\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ClientDistFiles)" DestinationFolder="$(OutputPath)wwwroot\%(RecursiveDir)" />
+  </Target>
+
+  <Target Name="CopyClientToPublish" AfterTargets="Publish">
+    <RemoveDir Directories="$(PublishDir)wwwroot" Condition="Exists('$(PublishDir)wwwroot')" />
+    <ItemGroup>
+      <!-- source maps stay out of deploys -->
+      <ClientPublishFiles Include="$(ClientDist)**\*" Exclude="$(ClientDist)**\*.map" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ClientPublishFiles)" DestinationFolder="$(PublishDir)wwwroot\%(RecursiveDir)" />
   </Target>
 
 </Project>

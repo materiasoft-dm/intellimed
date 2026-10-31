@@ -30,7 +30,7 @@ public class PrescriptionPrintTests : UiTestBase
         await page.GotoAsync($"/clients/{clientId}/prescriptions/new");
         await page.WaitForSelectorAsync("text=New Prescription");
         await page.GetByPlaceholder("Search by name...").FillAsync(medicine);
-        await page.Locator("ul.list-group li", new() { HasTextString = medicine }).First.ClickAsync();
+        await page.Locator(".imed-medicine-results tbody tr", new() { HasTextString = medicine }).First.ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Continue" }).ClickAsync();
 
         // Long-term (default) unrestricted script: Dosage → Reason → Review.

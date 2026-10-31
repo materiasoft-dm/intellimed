@@ -86,7 +86,7 @@ public static class StartupDiagnostics
         Append(sb, "appsettings.Production.json present", () => File.Exists(Path.Combine(AppContext.BaseDirectory, "appsettings.Production.json")).ToString());
         Append(sb, "signing key (Jwt:Key) configured", () => HasSigningKey().ToString());
         Append(sb, "wwwroot/index.html present", () => File.Exists(Path.Combine(AppContext.BaseDirectory, "wwwroot", "index.html")).ToString());
-        Append(sb, "wwwroot/_framework present", () => Directory.Exists(Path.Combine(AppContext.BaseDirectory, "wwwroot", "_framework")).ToString());
+        Append(sb, "wwwroot/index.html present", () => File.Exists(Path.Combine(AppContext.BaseDirectory, "wwwroot", "index.html")).ToString());
         Append(sb, "database file", DescribeDatabase);
         Append(sb, "app folder writable", () => IsWritable(AppContext.BaseDirectory).ToString());
         sb.AppendLine();

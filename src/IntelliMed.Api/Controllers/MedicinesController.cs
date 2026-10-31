@@ -51,9 +51,11 @@ public class MedicinesController : ControllerBase
 
     [HttpGet("search")]
     [ProducesResponseType(typeof(IEnumerable<MedicineDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Search([FromQuery] string? query, [FromQuery] MedicineSource? source)
+    public async Task<IActionResult> Search([FromQuery] string? query, [FromQuery] MedicineSource? source,
+        [FromQuery] int skip = 0, [FromQuery] int take = 20)
     {
-        var items = await _repository.SearchAsync(query ?? string.Empty, source);
+        // skip/take page the admin catalogue list; the prescribing search keeps the default first 20.
+        var items = await _repository.SearchAsync(query ?? string.Empty, source, Math.Clamp(take, 1, 200), Math.Max(0, skip));
         return Ok(items);
     }
 

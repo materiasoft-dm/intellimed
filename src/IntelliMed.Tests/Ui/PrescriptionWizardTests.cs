@@ -84,7 +84,7 @@ public class PrescriptionWizardTests : UiTestBase
     private static async Task SelectMedicineInWizardAsync(IPage page, string medicineName)
     {
         await page.GetByPlaceholder("Search by name...").FillAsync(medicineName);
-        var result = page.Locator("ul.list-group li", new PageLocatorOptions { HasTextString = medicineName }).First;
+        var result = page.Locator(".imed-medicine-results tbody tr", new PageLocatorOptions { HasTextString = medicineName }).First;
         await result.ClickAsync();
     }
 
@@ -212,7 +212,7 @@ public class PrescriptionWizardTests : UiTestBase
         await page.WaitForSelectorAsync("text=New Prescription");
 
         await page.GetByPlaceholder("Search by name...").FillAsync("Playwright Wizard Info Drug");
-        var result = page.Locator("ul.list-group li", new PageLocatorOptions { HasTextString = "Playwright Wizard Info Drug" }).First;
+        var result = page.Locator(".imed-medicine-results tbody tr", new PageLocatorOptions { HasTextString = "Playwright Wizard Info Drug" }).First;
         await Assertions.Expect(result.GetByText("S4")).ToBeVisibleAsync();
         await Assertions.Expect(result.GetByText("Authority Required")).ToBeVisibleAsync();
     }
@@ -389,8 +389,8 @@ public class PrescriptionWizardTests : UiTestBase
             await page.WaitForSelectorAsync("text=Medicine Catalog");
             await page.Locator("#artgEnrichFile").SetInputFilesAsync(csv);
 
-            // The button is disabled until _artgFile is set, and that only happens once Blazor has
-            // processed InputFile's OnChange — which is asynchronous and does not complete with
+            // The button is disabled until the selected file is in the page's state, and that only
+            // happens once the input's change event has been handled — which does not complete with
             // SetInputFilesAsync. Clicking straight away races it: the click lands on a disabled
             // button, does nothing, and the result assertion below then times out. Waiting for the
             // enabled state is the actual synchronisation point. (SlowMo's 250ms was hiding this;

@@ -93,7 +93,7 @@ public class PlaywrightServerFixture : IAsyncLifetime
 
     /// <summary>
     /// Loads the login page once, with a generous timeout, before any test runs. The first browser load
-    /// after a fresh build downloads and starts the whole Blazor WebAssembly client against a cold
+    /// after a fresh build downloads and starts the whole web client against a cold
     /// server and can take longer than a test's 30 s login wait — which used to fail whichever test
     /// happened to run first, in an otherwise green suite. Best effort: a failure here must not fail
     /// the run, the tests will surface any real problem themselves.

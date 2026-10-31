@@ -1,7 +1,13 @@
-# Stage 1: Build
-# IntelliMed.Api references IntelliMed.Web (Blazor WASM), IntelliMed.Core, and IntelliMed.Infrastructure.
-# `dotnet publish` on the API project automatically builds the Blazor client and copies its
-# wwwroot/_framework output into the API's publish folder.
+# Stage 1: build the React web client (src/IntelliMed.Client) — the API serves its dist/ as wwwroot.
+FROM node:22 AS client
+WORKDIR /client
+COPY src/IntelliMed.Client/package.json src/IntelliMed.Client/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY src/IntelliMed.Client/ ./
+RUN npm run build
+
+# Stage 2: build the API. SkipClientBuild stops IntelliMed.Api.csproj running npm itself (this image
+# has no Node) — the dist/ from stage 1 is copied in instead, and the publish step copies it to wwwroot.
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
@@ -9,15 +15,13 @@ COPY IntelliMed.sln .
 COPY src/IntelliMed.Core/IntelliMed.Core.csproj src/IntelliMed.Core/
 COPY src/IntelliMed.Infrastructure/IntelliMed.Infrastructure.csproj src/IntelliMed.Infrastructure/
 COPY src/IntelliMed.Api/IntelliMed.Api.csproj src/IntelliMed.Api/
-COPY src/IntelliMed.Web/IntelliMed.Web.csproj src/IntelliMed.Web/
-COPY src/IntelliMed.Desktop/IntelliMed.Desktop.csproj src/IntelliMed.Desktop/
-COPY src/IntelliMed.Tests/IntelliMed.Tests.csproj src/IntelliMed.Tests/
 RUN dotnet restore src/IntelliMed.Api/IntelliMed.Api.csproj
 
 COPY . .
-RUN dotnet publish src/IntelliMed.Api/IntelliMed.Api.csproj -c Release -o /app/publish
+COPY --from=client /client/dist src/IntelliMed.Client/dist
+RUN dotnet publish src/IntelliMed.Api/IntelliMed.Api.csproj -c Release -o /app/publish -p:SkipClientBuild=true
 
-# Stage 2: Runtime
+# Stage 3: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app/publish .

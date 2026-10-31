@@ -22,9 +22,9 @@ namespace IntelliMed.Api.Controllers;
 /// the RolePermissions catalog, and no staff role (not even SuperAdmin) can reach it. It reuses the
 /// app's existing JwtBearer scheme (see Program.cs) rather than a parallel auth system: Login issues
 /// a JWT carrying a "scope"="dbadmin" claim that a regular staff token never has, stored in an
-/// HttpOnly cookie (this is a plain server-rendered mini-app, not the Blazor SPA, so there's no
+/// HttpOnly cookie (this is a plain server-rendered mini-app, not the React SPA, so there's no
 /// client-side code to attach an Authorization header). Deliberately renders raw HTML directly —
-/// no Razor views, nothing shipped in the public Blazor WASM bundle — so this tool's existence and
+/// no Razor views, nothing shipped in the public web client bundle — so this tool's existence and
 /// feature set aren't discoverable by inspecting the public app at all.
 /// </summary>
 [Route("dbadmin")]

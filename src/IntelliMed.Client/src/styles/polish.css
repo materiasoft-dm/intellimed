@@ -1,0 +1,438 @@
+/* ==========================================================================
+   Polish layer — loaded after app.css (the look carried over from Blazor).
+   Nothing here changes the design language; it refines it: motion, focus, depth,
+   numerals, loading feedback. Styles that used to live in Blazor components'
+   own <style> blocks (command palette, error card) are collected here too.
+   ========================================================================== */
+
+:root {
+    --imed-font: 'Inter Variable', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --imed-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --imed-focus-ring: 0 0 0 3px rgba(16, 185, 129, 0.28);
+    --imed-shadow-lg: 0 18px 48px -12px rgba(12, 10, 9, 0.28), 0 4px 12px rgba(12, 10, 9, 0.08);
+    --imed-shadow-pop: 0 10px 30px -8px rgba(12, 10, 9, 0.22), 0 2px 6px rgba(12, 10, 9, 0.06);
+}
+
+html, body {
+    font-family: var(--imed-font);
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+::selection { background: rgba(16, 185, 129, 0.22); }
+
+/* Figures in tables, money and dates line up column to column */
+.table, .imed-num, .badge, .mdi-avatar, input[type=number] { font-variant-numeric: tabular-nums; }
+
+/* ---------- Focus: visible for keyboard users, invisible for mouse clicks ---------- */
+.btn:focus-visible, .nav-link:focus-visible, .dropdown-item:focus-visible, .list-group-item-action:focus-visible,
+a:focus-visible, .mdi-icon-btn:focus-visible, .mdi-user-chip:focus-visible, .cp-trigger-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--imed-focus-ring);
+}
+.btn:focus:not(:focus-visible) { box-shadow: none; }
+
+/* ---------- Buttons: quick feedback on hover and press ---------- */
+.btn {
+    transition: background-color var(--imed-transition), border-color var(--imed-transition), color var(--imed-transition),
+                box-shadow var(--imed-transition), transform 0.08s ease;
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled, .btn.disabled { cursor: not-allowed; }
+
+/* ---------- Links in grids ---------- */
+.table a.link-primary { text-decoration: none; font-weight: 500; }
+.table a.link-primary:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---------- Tables ---------- */
+.table-hover > tbody > tr > * { transition: background-color 0.12s ease; }
+.imed-table-scroll { overflow: auto; }
+.imed-table-scroll > .table > thead > tr > th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--imed-card);
+    box-shadow: inset 0 -1px 0 var(--imed-border);
+}
+.table tr.imed-row-clickable { cursor: pointer; }
+
+/* Skeleton rows: hold a table's shape while its first page loads */
+.imed-skeleton-row > td { border-bottom-color: transparent; }
+.imed-skeleton-bar {
+    display: block;
+    height: 0.7rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--imed-neutral-100) 0%, #ecebe9 40%, var(--imed-neutral-100) 80%);
+    background-size: 300% 100%;
+    animation: imed-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes imed-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+/* Infinite-scroll footer */
+.imed-load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    color: var(--imed-text-muted);
+    font-size: 0.8rem;
+}
+
+/* ---------- Cards ---------- */
+.card { transition: box-shadow var(--imed-transition), border-color var(--imed-transition); }
+a.card:hover, .card.imed-card-link:hover { box-shadow: var(--imed-shadow-md); border-color: var(--imed-border-hover); }
+
+/* Dashboard */
+.imed-chart-placeholder {
+    border-radius: var(--imed-radius-sm);
+    background: linear-gradient(90deg, var(--imed-neutral-100) 0%, #f0efed 40%, var(--imed-neutral-100) 80%);
+    background-size: 300% 100%;
+    animation: imed-shimmer 1.4s ease-in-out infinite;
+}
+.imed-quick-link-chevron { opacity: 0; transform: translateX(-4px); transition: opacity var(--imed-transition), transform var(--imed-transition); }
+.imed-card-link:hover .imed-quick-link-chevron { opacity: 1; transform: none; }
+.imed-recent-client:hover { color: var(--imed-primary-text) !important; text-decoration: underline !important; text-underline-offset: 2px; }
+
+/* ---------- Dropdowns ---------- */
+.dropdown-menu {
+    border: 1px solid var(--imed-border);
+    border-radius: var(--imed-radius-sm);
+    box-shadow: var(--imed-shadow-pop);
+    padding: 0.35rem;
+}
+.dropdown-menu.show { animation: imed-pop-in 0.14s var(--imed-ease-out); transform-origin: top right; }
+.dropdown-menu-end[data-bs-popper] { right: 0; left: auto; }
+.dropdown-item { border-radius: 6px; transition: background-color 0.1s ease; }
+.dropdown-item.active, .dropdown-item:active { background-color: var(--imed-primary-light); color: var(--imed-primary-text); }
+.imed-notification { white-space: normal; }
+.imed-notification--unread { position: relative; padding-left: 1.4rem; }
+.imed-notification--unread::before {
+    content: '';
+    position: absolute;
+    left: 0.6rem;
+    top: 0.85rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--imed-primary);
+}
+
+@keyframes imed-pop-in {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
+
+/* ---------- Modals: dimmed, slightly blurred backdrop; dialog eases in ---------- */
+.imed-dialog {
+    background: rgba(12, 10, 9, 0.42);
+    backdrop-filter: blur(2px);
+    animation: imed-fade-in 0.16s ease-out;
+    overflow-y: auto;
+}
+.imed-dialog .modal-content {
+    border: none;
+    border-radius: var(--imed-radius);
+    box-shadow: var(--imed-shadow-lg);
+    animation: imed-dialog-in 0.2s var(--imed-ease-out);
+    outline: none;
+}
+.imed-dialog .modal-header { border-bottom-color: var(--imed-border); }
+.imed-dialog .modal-footer { border-top-color: var(--imed-border); background: #fcfcfb; border-radius: 0 0 var(--imed-radius) var(--imed-radius); }
+@keyframes imed-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes imed-dialog-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+}
+
+/* ---------- Toasts ---------- */
+.imed-toast-stack {
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+.imed-toast {
+    pointer-events: auto;
+    border-radius: var(--imed-radius-sm);
+    box-shadow: var(--imed-shadow-pop);
+    animation: imed-toast-in 0.22s var(--imed-ease-out);
+}
+.imed-toast--leaving { animation: imed-toast-out 0.2s ease-in forwards; }
+@keyframes imed-toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes imed-toast-out { to { opacity: 0; transform: translateX(16px); } }
+
+/* ---------- Route change: a thin progress bar while a page's code loads ---------- */
+.imed-route-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    width: 100%;
+    z-index: 2000;
+    background: linear-gradient(90deg, transparent, var(--imed-primary), var(--imed-primary-dark));
+    transform-origin: left;
+    animation: imed-progress 1.2s ease-in-out infinite;
+}
+@keyframes imed-progress {
+    0% { transform: scaleX(0); opacity: 1; }
+    70% { transform: scaleX(0.85); opacity: 1; }
+    100% { transform: scaleX(1); opacity: 0; }
+}
+
+/* Pages fade up into place */
+.imed-page { animation: imed-page-in 0.22s var(--imed-ease-out); }
+@keyframes imed-page-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Sidebar refinements ---------- */
+.mdi-nav-link { transition: background-color var(--imed-transition), color var(--imed-transition); position: relative; }
+.mdi-nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: -0.5rem;
+    top: 22%;
+    bottom: 22%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--imed-primary);
+}
+.mdi-sidebar-collapsed .mdi-nav-link.active::before { left: -0.25rem; }
+.imed-clinic-switcher { max-width: 260px; }
+.imed-clinic-switcher span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Scrollbars: thin and quiet ---------- */
+* { scrollbar-width: thin; scrollbar-color: #d6d3d1 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background-color: #a8a29e; }
+
+/* ---------- Forms ---------- */
+.form-control, .form-select { transition: border-color var(--imed-transition), box-shadow var(--imed-transition); }
+.form-check-input { cursor: pointer; }
+.form-check-label { cursor: pointer; }
+.is-invalid ~ .invalid-feedback { display: block; }
+
+/* ---------- Command palette (from CommandPalette.razor) ---------- */
+.cp-trigger-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, var(--imed-primary), var(--imed-primary-dark));
+    color: #fff;
+    font-size: 1.25rem;
+    box-shadow: 0 8px 22px -6px rgba(5, 150, 105, 0.55), 0 2px 6px rgba(12, 10, 9, 0.12);
+    z-index: 1045;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s var(--imed-ease-out), box-shadow 0.15s ease;
+}
+.cp-trigger-btn:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 12px 28px -8px rgba(5, 150, 105, 0.6), 0 2px 6px rgba(12, 10, 9, 0.12); }
+.cp-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(12, 10, 9, 0.42);
+    backdrop-filter: blur(2px);
+    z-index: 1090;
+    animation: imed-fade-in 0.14s ease-out;
+}
+.cp-panel {
+    position: fixed;
+    top: 12vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 580px;
+    max-height: 64vh;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--imed-shadow-lg);
+    z-index: 1091;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: imed-palette-in 0.18s var(--imed-ease-out);
+}
+@keyframes imed-palette-in { from { opacity: 0; transform: translate(-50%, -6px) scale(0.985); } to { opacity: 1; transform: translateX(-50%); } }
+.cp-search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--imed-border);
+    flex-shrink: 0;
+}
+.cp-search-icon { color: var(--imed-text-muted); }
+.cp-search-input { flex: 1; border: none; outline: none; font-size: 1rem; background: transparent; }
+.cp-results { list-style: none; margin: 0; padding: 8px; overflow-y: auto; }
+.cp-result {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.cp-result-active { background: var(--imed-primary-light); }
+.cp-result-title { font-weight: 600; color: var(--imed-text); }
+.cp-result-desc { color: var(--imed-text-muted); font-size: 0.85rem; }
+.cp-result-category {
+    margin-left: auto;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--imed-text-muted);
+    background: var(--imed-neutral-100);
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+}
+.cp-empty, .cp-info-banner { padding: 24px 16px; text-align: center; color: var(--imed-text-muted); }
+.cp-footer {
+    gap: 1rem;
+    padding: 8px 16px;
+    border-top: 1px solid var(--imed-border);
+    background: #fcfcfb;
+    color: var(--imed-text-muted);
+    font-size: 0.72rem;
+}
+.cp-panel kbd, .cp-kbd {
+    display: inline-block;
+    min-width: 1.4em;
+    padding: 0.05rem 0.35rem;
+    margin: 0 0.1rem;
+    font-family: var(--imed-font);
+    font-size: 0.7rem;
+    color: var(--imed-text-secondary);
+    background: #fff;
+    border: 1px solid var(--imed-border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+/* ---------- Error card (from ErrorDisplay.razor) ---------- */
+.error-boundary-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(12, 10, 9, 0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: imed-fade-in 0.16s ease-out;
+}
+.error-boundary-card {
+    max-width: 700px;
+    width: 90%;
+    border-radius: var(--imed-radius) !important;
+    box-shadow: var(--imed-shadow-lg) !important;
+}
+.error-stacktrace { background: var(--imed-neutral-100); border-color: #fca5a5 !important; }
+.error-stacktrace-text {
+    white-space: pre-wrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    max-height: 200px;
+    overflow-y: auto;
+    color: var(--imed-text-secondary);
+    margin: 0;
+}
+
+/* ---------- Splash (also rendered by React while the first page's code loads) ---------- */
+#app:has(.imed-splash) { height: 100vh; width: 100vw; }
+
+/* ---------- Respect "reduce motion" ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ---------- Print: the shell's floating controls never print ---------- */
+@media print {
+    .cp-trigger-btn, .imed-toast-stack, .imed-route-progress { display: none !important; }
+}
+
+/* ---------- Rich-text editor (email templates; replaces RadzenHtmlEditor) ---------- */
+.imed-rte { border: 1px solid var(--imed-border); border-radius: var(--imed-radius-sm); background: #fff; overflow: hidden; }
+.imed-rte:focus-within { border-color: var(--imed-primary); box-shadow: var(--imed-focus-ring); }
+.imed-rte.is-busy { opacity: 0.7; pointer-events: none; }
+.imed-rte-toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 6px;
+    border-bottom: 1px solid var(--imed-border); background: #fcfcfb;
+}
+.imed-rte-btn {
+    width: 30px; height: 30px; border: none; border-radius: 6px; background: transparent; color: var(--imed-text-secondary);
+    display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.1s ease, color 0.1s ease;
+}
+.imed-rte-btn:hover:not(:disabled) { background: var(--imed-neutral-100); color: var(--imed-text); }
+.imed-rte-btn.is-active { background: var(--imed-primary-light); color: var(--imed-primary-text); }
+.imed-rte-btn:disabled { opacity: 0.35; }
+.imed-rte-sep { width: 1px; height: 20px; background: var(--imed-border); margin: 0 4px; }
+.imed-rte-body { overflow-y: auto; cursor: text; }
+.imed-rte-content { min-height: 100%; padding: 12px 14px; outline: none; font-size: 0.9rem; line-height: 1.55; }
+.imed-rte-content p { margin: 0 0 0.6em; }
+.imed-rte-content img { max-width: 100%; height: auto; border-radius: 4px; }
+.imed-rte-content img.ProseMirror-selectednode { outline: 2px solid var(--imed-primary); }
+.imed-rte-content blockquote { border-left: 3px solid var(--imed-border); padding-left: 0.8rem; color: var(--imed-text-secondary); }
+.imed-rte-source {
+    display: block; width: 100%; border: none; outline: none; resize: vertical; padding: 12px 14px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.78rem; background: #fcfcfb;
+}
+.imed-token-list li { padding: 2px 0; }
+
+/* Small colour square (appointment types, calendar legend) */
+.imed-color-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); vertical-align: middle; }
+
+.imed-spin { display: inline-block; animation: imed-spin-icon 0.8s linear infinite; }
+@keyframes imed-spin-icon { to { transform: rotate(360deg); } }
+
+/* Print pages: only the document prints */
+@media print {
+    .no-print { display: none !important; }
+}
+
+.imed-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; transition: opacity var(--imed-transition); }
+.imed-fieldset.is-muted { opacity: 0.6; }
+
+.imed-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.imed-sortable:hover { color: var(--imed-primary-text); }
+.imed-sort-indicator { font-size: 0.65rem; color: var(--imed-primary); }
+
+/* ---- Wizard stepper (prescribing) ---- */
+.imed-stepper { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; list-style: none; padding: 0; margin: 0 0 1.5rem; font-size: .8125rem; }
+.imed-stepper li { display: flex; align-items: center; gap: .4rem; color: var(--bs-secondary-color); }
+.imed-stepper li + li::before { content: ''; width: 1.25rem; height: 1px; background: var(--bs-border-color); margin-right: .1rem; margin-left: -1rem; }
+.imed-stepper-dot { width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 2px solid var(--bs-border-color); display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; background: var(--bs-body-bg); }
+.imed-stepper li.is-done { color: var(--bs-body-color); }
+.imed-stepper li.is-done .imed-stepper-dot { background: var(--bs-success); border-color: var(--bs-success); color: #fff; }
+.imed-stepper li.is-current { color: var(--bs-primary); font-weight: 600; }
+.imed-stepper li.is-current .imed-stepper-dot { border-color: var(--bs-primary); box-shadow: inset 0 0 0 3px var(--bs-body-bg); background: var(--bs-primary); }
+
+/* ---- Suggest dropdown (pick from a list or type) ---- */
+.imed-suggest { position: relative; }
+.imed-suggest > input { padding-right: 2rem; }
+.imed-suggest-toggle { position: absolute; top: 0; right: 0; bottom: 0; width: 2rem; border: 0; background: none; color: var(--bs-secondary-color); font-size: .75rem; }
+.imed-suggest-toggle:hover { color: var(--bs-body-color); }
+.imed-suggest-menu { width: 100%; min-width: 14rem; max-height: 260px; overflow-y: auto; margin-top: 2px; font-size: .875rem; }
+.imed-suggest-menu .dropdown-item { display: flex; justify-content: space-between; gap: 1rem; }
+.imed-suggest-hint { color: var(--bs-secondary-color); font-size: .8125rem; }
+.imed-suggest-menu .dropdown-item.active .imed-suggest-hint { color: inherit; opacity: .85; }
+
+/* ---- Prescribing: medicine search grid (Medinet layout, one row per listing) ---- */
+.imed-medicine-results-wrap { max-height: 360px; overflow: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); }
+.imed-medicine-results-wrap > :not(table) { padding: .5rem .75rem; }
+.imed-medicine-results { font-size: .8125rem; table-layout: fixed; min-width: 760px; }
+.imed-medicine-results td { overflow-wrap: anywhere; }
+.imed-medicine-results thead th { position: sticky; top: 0; z-index: 1; background: var(--bs-tertiary-bg); white-space: nowrap; }
+.imed-medicine-results tbody tr:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }

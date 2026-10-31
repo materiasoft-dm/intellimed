@@ -1,0 +1,1415 @@
+html, body {
+    font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 0.875rem;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--imed-bg);
+    color: var(--imed-text);
+}
+
+/* Design tokens. The neutral/primary names predate the green refresh and are still referenced
+   from pages, so they are kept and re-pointed rather than renamed. */
+:root {
+    --imed-primary: #10b981;
+    --imed-primary-dark: #059669;
+    --imed-primary-hover: #059669;
+    --imed-primary-light: #e6f8f0;
+    --imed-primary-text: #047857;
+    --imed-accent: #064e3b;
+
+    --imed-bg: #f9f9f8;
+    --imed-card: #ffffff;
+    --imed-border: #e7e5e4;
+    --imed-border-hover: #d6d3d1;
+    --imed-text: #0c0a09;
+    --imed-text-secondary: #44403c;
+    --imed-text-muted: #78716c;
+    --imed-text-inverse: #ffffff;
+
+    --imed-neutral-900: #0c0a09;
+    --imed-neutral-700: #44403c;
+    --imed-neutral-500: #78716c;
+    --imed-neutral-300: #e7e5e4;
+    --imed-neutral-100: #f5f5f4;
+
+    --imed-success: #16a34a;
+    --imed-warning: #d97706;
+    --imed-danger: #dc2626;
+    --imed-info: #2563eb;
+
+    --imed-xs: 0.25rem;
+    --imed-sm: 0.5rem;
+    --imed-md: 1rem;
+    --imed-lg: 1.5rem;
+    --imed-xl: 2rem;
+    --imed-radius: 12px;
+    --imed-radius-sm: 8px;
+    --imed-card-radius: 12px;
+    --imed-shadow: 0 1px 2px rgba(12, 10, 9, 0.05);
+    --imed-card-shadow: 0 1px 2px rgba(12, 10, 9, 0.05);
+    --imed-shadow-md: 0 4px 12px rgba(12, 10, 9, 0.10);
+    --imed-transition: 0.18s ease;
+
+    --imed-sidebar-bg: #ffffff;
+    --imed-sidebar-text: #44403c;
+    --imed-sidebar-text-active: var(--imed-primary-text);
+    --imed-sidebar-hover: #f5f5f4;
+    --imed-sidebar-active-bg: #e6f8f0;
+
+    /* Bootstrap hooks, so utilities like text-primary and form focus rings follow the theme */
+    --bs-primary: #10b981;
+    --bs-primary-rgb: 16, 185, 129;
+    --bs-link-color: #059669;
+    --bs-link-color-rgb: 5, 150, 105;
+    --bs-link-hover-color: #047857;
+    --bs-link-hover-color-rgb: 4, 120, 87;
+    --bs-border-color: #e7e5e4;
+    --bs-body-bg: #f9f9f8;
+    --bs-body-color: #0c0a09;
+    --bs-secondary-color: #78716c;
+    --bs-border-radius: 8px;
+    --bs-focus-ring-color: rgba(16, 185, 129, 0.25);
+}
+
+h1:focus {
+    outline: none;
+}
+
+.content {
+    padding-top: 1.1rem;
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid #26b050;
+}
+
+.invalid {
+    outline: 1px solid red;
+}
+
+.validation-message {
+    color: red;
+}
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: white;
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }
+
+.loading-progress {
+    position: absolute;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    inset: 20vh 0 auto 0;
+    margin: 0 auto 0 auto;
+}
+
+    .loading-progress circle {
+        fill: none;
+        stroke: #e0e0e0;
+        stroke-width: 0.6rem;
+        transform-origin: 50% 50%;
+        transform: rotate(-90deg);
+    }
+
+        .loading-progress circle:last-child {
+            stroke: var(--imed-primary);
+            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+            transition: stroke-dasharray 0.05s ease-in-out;
+        }
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+    .loading-progress-text:after {
+        content: var(--blazor-load-percentage-text, "Loading");
+    }
+
+code {
+    color: #c02d76;
+}
+
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+    color: var(--bs-secondary-color);
+    text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+    text-align: start;
+}
+
+/* Cards and tables: white surface, hairline border, soft radius. Applied to Bootstrap's own
+   classes so every existing page picks it up with no markup changes. */
+.card {
+    border: 1px solid var(--imed-border);
+    border-radius: var(--imed-card-radius);
+    box-shadow: var(--imed-card-shadow);
+    background: var(--imed-card);
+}
+
+.card-header {
+    background: var(--imed-card);
+    border-bottom: 1px solid var(--imed-border);
+    font-weight: 600;
+}
+
+.card-header:first-child {
+    border-radius: var(--imed-card-radius) var(--imed-card-radius) 0 0;
+}
+
+.card-footer {
+    background: var(--imed-card);
+    border-top: 1px solid var(--imed-border);
+}
+
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--imed-border);
+    color: var(--imed-text);
+    margin-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+}
+
+.table thead,
+.table thead th {
+    background-color: transparent;
+}
+
+.table thead th {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--imed-text-muted);
+    border-bottom: 1px solid var(--imed-border);
+}
+
+.table-hover > tbody > tr:hover > * {
+    background-color: var(--imed-neutral-100);
+    --bs-table-bg-state: var(--imed-neutral-100);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-bg-type: var(--imed-neutral-100);
+}
+
+/* Soft-tinted icon badges used on dashboard stat tiles / quick-link cards */
+.stat-icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.stat-icon-badge--blue { background: #e8f0fe; color: #2563eb; }
+.stat-icon-badge--green { background: var(--imed-primary-light); color: var(--imed-primary-text); }
+.stat-icon-badge--amber { background: #fef3c7; color: #b45309; }
+.stat-icon-badge--purple { background: #f1ebfb; color: #6f42c1; }
+
+.stat-tile-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--imed-neutral-900);
+}
+
+/* Page titles: every page opens with an h3/h4 + muted subtitle, so style them as the page header */
+.mdi-main-content .container-fluid > h3:first-child,
+.mdi-main-content .container-fluid > h4:first-child {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* App shell: the sidebar owns the full left edge (brand at its top); the right column holds the
+   top bar and the scrolling content below it. */
+.mdi-layout {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+}
+
+.mdi-column {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.mdi-menu-bar {
+    background-color: var(--imed-card) !important;
+    color: var(--imed-text) !important;
+    border-bottom: 1px solid var(--imed-border);
+    flex-shrink: 0;
+    height: 64px;
+    padding: 0 1.25rem;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mdi-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: var(--imed-radius-sm);
+    background: transparent;
+    color: var(--imed-text-secondary);
+    font-size: 1.15rem;
+    cursor: pointer;
+    transition: background-color var(--imed-transition), color var(--imed-transition);
+}
+
+.mdi-icon-btn:hover {
+    background: var(--imed-neutral-100);
+    color: var(--imed-text);
+}
+
+/* Top-bar buttons that predate the refresh (clinic switcher, notification bell) */
+.mdi-menu-bar .btn-outline-secondary {
+    color: var(--imed-text-secondary);
+    border-radius: var(--imed-radius-sm);
+}
+
+.mdi-menu-bar .btn-outline-secondary:hover {
+    background: var(--imed-neutral-100);
+    color: var(--imed-text);
+}
+
+.mdi-user-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+    border: none;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--imed-text);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--imed-transition);
+}
+
+.mdi-user-chip:hover,
+.mdi-user-chip[aria-expanded="true"] {
+    background: var(--imed-neutral-100);
+}
+
+.mdi-user-chip::after {
+    display: none;
+}
+
+.mdi-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--imed-primary-light);
+    color: var(--imed-primary-text);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.mdi-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+}
+
+.mdi-main-content {
+    background-color: var(--imed-bg);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    /* Room for the fixed command-palette button (52px at bottom: 24px, CommandPalette.razor) so a
+       page's last row — usually its Save/Cancel actions — can always scroll clear of it. */
+    padding-bottom: 96px;
+}
+
+/* Sidebar: docked flex column on desktop, slide-over overlay below the lg breakpoint */
+.mdi-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--imed-sidebar-bg);
+    border-right: 1px solid var(--imed-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    transition: width 0.2s ease;
+}
+
+@media (min-width: 992px) {
+    /* Collapsed = icon rail: nav icons stay visible and clickable, labels/section headers hide */
+    .mdi-sidebar.mdi-sidebar-collapsed {
+        width: 68px;
+        overflow: hidden;
+    }
+
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-sidebar-header {
+        justify-content: center;
+        padding: 0;
+    }
+
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-sidebar-header h6,
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-nav-label,
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-nav-section,
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-sidebar-footer {
+        display: none;
+    }
+
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-nav-menu {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-nav-link {
+        justify-content: center;
+        padding: 10px 0 !important;
+    }
+
+    .mdi-sidebar.mdi-sidebar-collapsed .mdi-nav-link i {
+        font-size: 1.1rem;
+    }
+}
+
+.mdi-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 1rem;
+    height: 64px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--imed-border);
+}
+
+.mdi-logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: var(--imed-primary);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.mdi-sidebar-header h6 {
+    color: var(--imed-text);
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.mdi-nav-menu {
+    flex: 1;
+    padding: 0.75rem;
+    gap: 2px;
+}
+
+.mdi-nav-section {
+    display: block;
+    padding: 1rem 0.75rem 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--imed-text-muted);
+}
+
+.mdi-nav-section:first-child {
+    padding-top: 0.25rem;
+}
+
+.mdi-sidebar-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--imed-border);
+    font-size: 0.75rem;
+    color: var(--imed-text-muted);
+}
+
+
+/* Fixed-width label used so filter-panel fields line up with the label to the left of the input */
+.filter-label {
+    width: 92px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+}
+
+/* Narrower label variant for two-column filter rows (e.g. Family/Org + First side by side) */
+.filter-label-sm {
+    width: 68px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Clickable header that toggles a collapsible filter-panel section */
+.filter-section-header {
+    cursor: pointer;
+    padding: 4px 0;
+    user-select: none;
+}
+
+.filter-section-header:hover {
+    color: var(--imed-primary);
+}
+
+/* Mobile card-list rows (Client Search etc.) — tap target with a subtle selected/hover state */
+.client-mobile-card {
+    cursor: pointer;
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.client-mobile-card:hover {
+    box-shadow: var(--imed-card-shadow);
+}
+
+/* Client Search filter panel: stretches to match the results column's height on desktop/tablet
+   (the parent .row is a flex container with the default align-items: stretch) so the Find/Clear
+   footer stays pinned to the bottom of the panel instead of trailing after the filter fields. */
+@media (min-width: 768px) {
+    .filter-panel-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .filter-panel-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        min-height: 0;
+    }
+
+    .filter-panel-footer {
+        flex-shrink: 0;
+    }
+}
+
+/* Edit/Add Client page: labels sit to the left of their textbox/select/textarea on desktop and
+   tablet, instead of stacked above it. Targets every "<label class=form-label> + <input/select>"
+   pair on the page generically (via :has), so it applies uniformly across all field sections and
+   the bottom tab-strip forms without needing a class on each individual field wrapper. */
+@media (min-width: 768px) {
+    .client-edit-page div:has(> label.form-label + .form-control),
+    .client-edit-page div:has(> label.form-label + .form-select) {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .client-edit-page label.form-label {
+        flex-shrink: 0;
+        /* Narrow columns (e.g. col-3 Postcode/State) can't spare a fixed 110px for the label
+           without squeezing the input to nothing, so cap it at a share of the wrapper's width
+           instead of a flat pixel value. */
+        width: min(110px, 45%);
+        padding-top: 0.25rem;
+        margin-bottom: 0 !important;
+    }
+
+    .client-edit-page .form-control,
+    .client-edit-page .form-select {
+        flex: 1 1 auto;
+        min-width: 40px;
+    }
+}
+
+.mdi-nav-link {
+    color: var(--imed-sidebar-text) !important;
+    padding: 9px 12px !important;
+    display: flex !important;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: var(--imed-radius-sm);
+    font-weight: 500;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.mdi-nav-link i {
+    width: 1.1rem;
+    text-align: center;
+    color: var(--imed-text-muted);
+    transition: color 0.15s ease;
+}
+
+.mdi-nav-link:hover {
+    background-color: var(--imed-sidebar-hover);
+    color: var(--imed-text) !important;
+}
+
+.mdi-nav-link.active {
+    background-color: var(--imed-sidebar-active-bg);
+    color: var(--imed-sidebar-text-active) !important;
+}
+
+.mdi-nav-link.active i {
+    color: var(--imed-primary-text);
+}
+
+.mdi-overlay-backdrop {
+    display: none;
+}
+
+@media (max-width: 991.98px) {
+    .mdi-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        max-width: 85vw;
+        z-index: 1201;
+        box-shadow: 2px 0 12px rgba(12, 10, 9, 0.18);
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+    }
+
+    .mdi-sidebar.mdi-sidebar-open {
+        transform: translateX(0);
+    }
+
+    .mdi-overlay-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(12, 10, 9, 0.32);
+        z-index: 1200;
+        animation: mdi-fade-in 0.2s ease;
+    }
+}
+
+@keyframes mdi-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Print: hide the app shell (top bar, sidebar, mobile backdrop) and undo the fixed-viewport
+   height/overflow the shell relies on for its internal scrolling panes — without this, printed
+   documents longer than one screen get clipped instead of flowing onto additional pages. */
+@media print {
+    .mdi-menu-bar,
+    .mdi-sidebar,
+    .mdi-overlay-backdrop {
+        display: none !important;
+    }
+
+    html, body,
+    .mdi-layout,
+    .mdi-body,
+    .mdi-main-content {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .mdi-main-content {
+        background-color: #fff;
+    }
+}
+
+
+/* ==========================================================================
+   IMedCard
+   ========================================================================== */
+.imed-card {
+  background: var(--imed-card);
+  border: 1px solid var(--imed-border);
+  border-radius: var(--imed-radius);
+  box-shadow: var(--imed-shadow);
+  overflow: hidden;
+}
+.imed-card-header {
+  padding: var(--imed-md) var(--imed-lg);
+  border-bottom: 1px solid var(--imed-border);
+  background: var(--imed-card);
+}
+.imed-card-body {
+  padding: var(--imed-lg);
+}
+.imed-card-footer {
+  padding: var(--imed-md) var(--imed-lg);
+  border-top: 1px solid var(--imed-border);
+  background: var(--imed-card);
+}
+
+/* ==========================================================================
+   IMedButton
+   ========================================================================== */
+.imed-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--imed-radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all var(--imed-transition);
+  text-decoration: none;
+}
+.imed-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.imed-btn--primary { background: var(--imed-primary); color: var(--imed-text-inverse); }
+.imed-btn--primary:hover:not(:disabled) { background: var(--imed-primary-hover); box-shadow: 0 4px 6px -1px rgb(16 185 129 / 0.3); }
+.imed-btn--secondary { background: var(--imed-card); color: var(--imed-text); border: 1px solid var(--imed-border); }
+.imed-btn--secondary:hover:not(:disabled) { background: #f1f5f9; border-color: var(--imed-border-hover); }
+.imed-btn--danger { background: var(--imed-danger); color: var(--imed-text-inverse); }
+.imed-btn--danger:hover:not(:disabled) { background: #dc2626; }
+.imed-btn--outline { background: transparent; color: var(--imed-text-secondary); border: 1px solid var(--imed-border); }
+.imed-btn--outline:hover:not(:disabled) { background: #f1f5f9; border-color: var(--imed-border-hover); }
+.imed-btn--icon { width: 32px; height: 32px; padding: 0; background: transparent; color: var(--imed-text-muted); }
+.imed-btn--icon:hover:not(:disabled) { background: #f1f5f9; color: var(--imed-text); }
+.imed-btn--loading { position: relative; color: transparent !important; pointer-events: none; }
+.imed-btn--loading::after {
+  content: ""; position: absolute; width: 16px; height: 16px;
+  border: 2px solid currentColor;
+  border-color: transparent var(--imed-text-inverse) var(--imed-text-inverse) var(--imed-text-inverse);
+  border-radius: 50%; animation: imed-spin 0.75s linear infinite;
+}
+@keyframes imed-spin { to { transform: rotate(360deg); } }
+/* ==========================================================================
+   IMedTable
+   ========================================================================== */
+.imed-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.imed-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--imed-text-muted);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--imed-border);
+  background: #f8fafc;
+}
+.imed-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--imed-border);
+  color: var(--imed-text);
+  vertical-align: middle;
+}
+.imed-table tr:hover { background: #f8fafc; }
+.imed-table tr:last-child td { border-bottom: none; }
+
+/* ==========================================================================
+   IMedBadge
+   ========================================================================== */
+.imed-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+.imed-badge--primary { background: var(--imed-primary-light); color: var(--imed-primary-text); }
+.imed-badge--secondary { background: #f1f5f9; color: var(--imed-text-secondary); }
+.imed-badge--success { background: #dcfce7; color: #166534; }
+.imed-badge--warning { background: #fef3c7; color: #92400e; }
+.imed-badge--danger { background: #fee2e2; color: #991b1b; }
+.imed-badge--info { background: #dbeafe; color: #1e40af; }
+
+/* ==========================================================================
+   IMedFormField
+   ========================================================================== */
+.imed-form-field { margin-bottom: var(--imed-md); }
+.imed-form-field label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--imed-text-secondary);
+  margin-bottom: var(--imed-xs);
+}
+.imed-form-field input,
+.imed-form-field select,
+.imed-form-field textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--imed-border);
+  border-radius: var(--imed-radius-sm);
+  background: var(--imed-card);
+  color: var(--imed-text);
+  transition: border-color var(--imed-transition), box-shadow var(--imed-transition);
+}
+.imed-form-field input:focus,
+.imed-form-field select:focus,
+.imed-form-field textarea:focus {
+  outline: none;
+  border-color: var(--imed-primary);
+  box-shadow: 0 0 0 3px rgb(16 185 129 / 0.1);
+}
+.imed-form-field input.is-invalid,
+.imed-form-field select.is-invalid,
+.imed-form-field textarea.is-invalid { border-color: var(--imed-danger); }
+.imed-form-field .field-error {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--imed-danger);
+  margin-top: var(--imed-xs);
+}
+.imed-form-field .field-helper {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--imed-text-muted);
+  margin-top: var(--imed-xs);
+}
+/* ==========================================================================
+   IMedModal
+   ========================================================================== */
+.imed-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+.imed-modal {
+  background: var(--imed-card);
+  border-radius: var(--imed-radius);
+  box-shadow: var(--imed-shadow-md);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: imed-modal-in var(--imed-transition);
+}
+@keyframes imed-modal-in {
+  from { opacity: 0; transform: translateY(-1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.imed-modal-header {
+  padding: var(--imed-md) var(--imed-lg);
+  border-bottom: 1px solid var(--imed-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.imed-modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--imed-text);
+  margin: 0;
+}
+.imed-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--imed-text-muted);
+  padding: var(--imed-xs);
+  line-height: 1;
+}
+.imed-modal-close:hover { color: var(--imed-text); }
+.imed-modal-body { padding: var(--imed-lg); }
+.imed-modal-footer {
+  padding: var(--imed-md) var(--imed-lg);
+  border-top: 1px solid var(--imed-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--imed-sm);
+}
+
+/* ==========================================================================
+   IMedPageHeader
+   ========================================================================== */
+.imed-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--imed-lg);
+}
+.imed-page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--imed-text);
+  margin: 0;
+}
+.imed-page-subtitle {
+  font-size: 0.875rem;
+  color: var(--imed-text-muted);
+  margin: 0;
+}
+
+/* ==========================================================================
+   IMedSearchBar
+   ========================================================================== */
+.imed-search-bar { position: relative; max-width: 400px; }
+.imed-search-bar input { padding-left: 2.5rem; }
+.imed-search-bar::before {
+  content: ""; position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+  width: 1rem; height: 1rem; background: var(--imed-text-muted);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+  mask-size: contain; pointer-events: none;
+}
+
+/* ==========================================================================
+   IMedEmptyState
+   ========================================================================== */
+.imed-empty-state {
+  text-align: center;
+  padding: var(--imed-xl) var(--imed-lg);
+  color: var(--imed-text-muted);
+}
+.imed-empty-state i {
+  font-size: 3rem;
+  margin-bottom: var(--imed-md);
+  opacity: 0.3;
+}
+
+/* Compact variants of the empty/loading states: inline, for inside a card, tab or modal.
+   (The default .imed-empty-state above is the big centred one for a whole empty page.) */
+.imed-empty-state--compact {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 0.6rem 0.25rem;
+  text-align: left;
+  font-size: 0.85rem;
+}
+.imed-empty-state--compact i {
+  font-size: 1rem;
+  margin: 0;
+  opacity: 0.6;
+}
+
+.imed-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 2rem 1rem;
+  color: var(--imed-text-muted);
+  font-size: 0.9rem;
+}
+.imed-loading--compact {
+  justify-content: flex-start;
+  padding: 0.6rem 0.25rem;
+  font-size: 0.85rem;
+}
+.imed-loading .spinner-border {
+  color: var(--imed-primary);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   IMedSkeleton
+   ========================================================================== */
+.imed-skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: imed-shimmer 1.5s infinite;
+  border-radius: var(--imed-radius-sm);
+}
+@keyframes imed-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.imed-skeleton-text { height: 0.875rem; margin-bottom: var(--imed-sm); }
+.imed-skeleton-text:last-child { margin-bottom: 0; }
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+.imed-text-muted { color: var(--imed-text-muted); }
+.imed-text-secondary { color: var(--imed-text-secondary); }
+.imed-fw-semibold { font-weight: 600; }
+.imed-d-flex { display: flex; }
+.imed-align-center { align-items: center; }
+.imed-justify-between { justify-content: space-between; }
+.imed-gap-sm { gap: var(--imed-sm); }
+.imed-mb-md { margin-bottom: var(--imed-md); }
+.imed-mb-lg { margin-bottom: var(--imed-lg); }
+
+/* ==========================================================================
+   Permission tree (Role Configuration): category > group > permission
+   ========================================================================== */
+.perm-tree,
+.perm-children {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.perm-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+    padding-right: 0.75rem;
+    border-bottom: 1px solid var(--imed-border);
+    min-width: 0;
+}
+
+.perm-row:hover {
+    background: var(--imed-neutral-100);
+}
+
+.perm-depth-0 {
+    background: var(--imed-card);
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-top: 1px solid var(--imed-border);
+}
+
+.perm-depth-1 {
+    font-weight: 600;
+}
+
+.perm-tree > .perm-node:first-child > .perm-depth-0 {
+    border-top: none;
+}
+
+.perm-label {
+    margin: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.perm-leaf .perm-label {
+    font-weight: 500;
+}
+
+.perm-desc {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--imed-text-muted);
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.perm-count {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--imed-text-muted);
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+
+.perm-chevron,
+.perm-chevron-spacer {
+    width: 1.5rem;
+    flex-shrink: 0;
+}
+
+.perm-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.5rem;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--imed-text-muted);
+}
+
+.perm-chevron:hover {
+    background: var(--imed-border);
+    color: var(--imed-text);
+}
+
+/* ==========================================================================
+   IMedButton sizes
+   ========================================================================== */
+.imed-btn--sm { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
+.imed-btn--lg { padding: 0.65rem 1.25rem; font-size: 1rem; }
+
+/* ==========================================================================
+   IMedDrawer — right-hand slide-over for create/edit forms
+   ========================================================================== */
+.imed-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgb(12 10 9 / 0.4);
+    /* Above the floating command-palette button (1045) so it can't cover the drawer's actions, below
+       Bootstrap modals (1055) so a picker opened from a drawer still appears on top of it. */
+    z-index: 1050;
+    animation: mdi-fade-in 0.2s ease;
+}
+
+.imed-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 380px;
+    background: var(--imed-card);
+    box-shadow: -4px 0 24px rgb(12 10 9 / 0.12);
+    display: flex;
+    flex-direction: column;
+    animation: imed-drawer-in 0.22s ease;
+}
+
+.imed-drawer--wide { max-width: 560px; }
+
+@keyframes imed-drawer-in {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+.imed-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--imed-md) var(--imed-lg);
+    flex-shrink: 0;
+}
+
+.imed-drawer-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.imed-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 var(--imed-lg) var(--imed-lg);
+}
+
+.imed-drawer-footer {
+    display: flex;
+    gap: var(--imed-sm);
+    padding: var(--imed-md) var(--imed-lg);
+    border-top: 1px solid var(--imed-border);
+    flex-shrink: 0;
+}
+
+/* Selectable option cards (radio list with a title + description), as in "How it's awarded" */
+.imed-option {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--imed-border);
+    border-radius: var(--imed-radius-sm);
+    cursor: pointer;
+    transition: border-color var(--imed-transition), background-color var(--imed-transition);
+}
+
+.imed-option:hover { border-color: var(--imed-border-hover); }
+
+.imed-option:has(input:checked) {
+    border-color: var(--imed-primary);
+    background: var(--imed-primary-light);
+}
+
+.imed-option-title { font-weight: 600; }
+.imed-option-desc { font-size: 0.8rem; color: var(--imed-text-muted); }
+
+/* Definition-style detail grid used in read-only profile modals */
+.imed-section-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--imed-text-muted);
+    margin: 1rem 0 0.5rem;
+}
+
+.imed-field-label { font-size: 0.75rem; color: var(--imed-text-muted); }
+.imed-field-value { font-size: 0.9rem; margin-bottom: 0.75rem; }
+
+/* ==========================================================================
+   Bootstrap theme overrides
+   --------------------------------------------------------------------------
+   index.html loads this file after Bootstrap, so these win on equal specificity. Bootstrap 5.3
+   buttons read their colours from --bs-btn-* variables, so those are re-pointed rather than
+   setting background-color directly.
+   ========================================================================== */
+.btn {
+    --bs-btn-border-radius: var(--imed-radius-sm);
+    --bs-btn-font-weight: 500;
+    --bs-btn-focus-shadow-rgb: 16, 185, 129;
+}
+
+.btn-primary {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--imed-primary);
+    --bs-btn-border-color: var(--imed-primary);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--imed-primary-dark);
+    --bs-btn-hover-border-color: var(--imed-primary-dark);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--imed-primary-text);
+    --bs-btn-active-border-color: var(--imed-primary-text);
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-bg: var(--imed-primary);
+    --bs-btn-disabled-border-color: var(--imed-primary);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--imed-primary-dark);
+    --bs-btn-border-color: var(--imed-primary);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--imed-primary);
+    --bs-btn-hover-border-color: var(--imed-primary);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--imed-primary-dark);
+    --bs-btn-active-border-color: var(--imed-primary-dark);
+    --bs-btn-disabled-color: var(--imed-primary);
+    --bs-btn-disabled-border-color: var(--imed-primary);
+}
+
+.btn-outline-secondary,
+.btn-secondary {
+    --bs-btn-color: var(--imed-text-secondary);
+    --bs-btn-bg: var(--imed-card);
+    --bs-btn-border-color: var(--imed-border);
+    --bs-btn-hover-color: var(--imed-text);
+    --bs-btn-hover-bg: var(--imed-neutral-100);
+    --bs-btn-hover-border-color: var(--imed-border-hover);
+    --bs-btn-active-color: var(--imed-text);
+    --bs-btn-active-bg: var(--imed-neutral-100);
+    --bs-btn-active-border-color: var(--imed-border-hover);
+    --bs-btn-disabled-color: var(--imed-text-muted);
+    --bs-btn-disabled-bg: var(--imed-card);
+    --bs-btn-disabled-border-color: var(--imed-border);
+}
+
+.btn-link {
+    --bs-btn-color: var(--imed-primary-dark);
+    --bs-btn-hover-color: var(--imed-primary-text);
+}
+
+a {
+    color: var(--imed-primary-dark);
+}
+
+a:hover {
+    color: var(--imed-primary-text);
+}
+
+.text-primary { color: var(--imed-primary-dark) !important; }
+.bg-primary { background-color: var(--imed-primary) !important; }
+.border-primary { border-color: var(--imed-primary) !important; }
+.bg-light { background-color: var(--imed-neutral-100) !important; }
+.text-muted { color: var(--imed-text-muted) !important; }
+
+.btn:focus-visible,
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.form-control,
+.form-select {
+    border-color: var(--imed-border);
+    border-radius: var(--imed-radius-sm);
+    color: var(--imed-text);
+    background-color: var(--imed-card);
+}
+
+.form-control::placeholder {
+    color: var(--imed-text-muted);
+    opacity: 0.8;
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    border-color: var(--imed-primary);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.form-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--imed-text-secondary);
+}
+
+.form-check-input:checked,
+.form-check-input:indeterminate,
+.form-check-input[type=checkbox]:indeterminate {
+    /* The attribute-selector form is needed: Bootstrap styles :indeterminate that way, and would
+       otherwise win with its own blue. */
+    background-color: var(--imed-primary);
+    border-color: var(--imed-primary);
+}
+
+.input-group-text {
+    border-color: var(--imed-border);
+    border-radius: var(--imed-radius-sm);
+    color: var(--imed-text-muted);
+}
+
+.badge.bg-primary { background-color: var(--imed-primary) !important; }
+.badge.bg-secondary { background-color: var(--imed-neutral-100) !important; color: var(--imed-text-secondary); }
+
+.nav-tabs {
+    border-bottom: 1px solid var(--imed-border);
+}
+
+.nav-tabs .nav-link {
+    color: var(--imed-text-muted);
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--imed-text);
+    border-bottom-color: var(--imed-border-hover);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--imed-primary-text);
+    background: transparent;
+    border-bottom-color: var(--imed-primary);
+}
+
+.nav-pills .nav-link.active {
+    background-color: var(--imed-primary-light);
+    color: var(--imed-primary-text);
+}
+
+/* Patient-record section switcher: pill buttons that wrap to a second line when the window is
+   narrow. The twelve sections used to sit in one non-wrapping row with a horizontal scrollbar. */
+.client-tabs-bar {
+    padding: 0.5rem 0.75rem;
+}
+
+.client-tabs {
+    gap: 0.25rem;
+}
+
+.client-tabs .nav-link {
+    padding: 0.35rem 0.8rem;
+    border: none;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    color: var(--imed-text-secondary);
+    background: transparent;
+    transition: background-color var(--imed-transition), color var(--imed-transition);
+}
+
+.client-tabs .nav-link:hover {
+    background: var(--imed-neutral-100);
+    color: var(--imed-text);
+}
+
+.client-tabs .nav-link.active {
+    background: var(--imed-primary-light);
+    color: var(--imed-primary-text);
+    font-weight: 600;
+}
+
+.page-link { color: var(--imed-primary-dark); border-color: var(--imed-border); }
+.page-item.active .page-link { background-color: var(--imed-primary); border-color: var(--imed-primary); color: #fff; }
+
+.list-group-item.active { background-color: var(--imed-primary); border-color: var(--imed-primary); }
+.progress-bar { background-color: var(--imed-primary); }
+.spinner-border.text-primary { color: var(--imed-primary) !important; }
+
+.dropdown-menu {
+    border: 1px solid var(--imed-border);
+    border-radius: var(--imed-radius);
+    box-shadow: var(--imed-shadow-md);
+    padding: 0.35rem;
+}
+
+.dropdown-item {
+    border-radius: 6px;
+    padding: 0.45rem 0.75rem;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background: var(--imed-neutral-100);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+    background: var(--imed-primary-light);
+    color: var(--imed-primary-text);
+}
+
+.modal-content {
+    border: none;
+    border-radius: var(--imed-radius);
+    box-shadow: 0 10px 40px rgba(12, 10, 9, 0.18);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--imed-border);
+}
+
+.modal-header .modal-title {
+    font-weight: 600;
+}
+
+.alert {
+    border-radius: var(--imed-radius-sm);
+}

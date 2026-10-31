@@ -102,6 +102,20 @@ still in git history.
 
 ---
 
+## React front end (2026-10-31)
+
+The Blazor WASM client (`IntelliMed.Web`) was replaced by the React client in `src/IntelliMed.Client`,
+page for page, same URLs and the same Playwright suite as the parity check. Tracker:
+`src/IntelliMed.Client/PORT_STATUS.md`. Things to know:
+- The API build runs `npm run build`; build machines (and the self-contained publish script) need Node/npm.
+  The Dockerfile builds the client in a `node:22` stage.
+- `src/IntelliMed.UI` / `src/IntelliMed.Desktop` (the MAUI skeleton) are untouched and still Blazor — a
+  native shell for the React client (WebView2/MAUI WebView, Tauri, Capacitor) is an open decision.
+- The medicine search API now takes optional `skip`/`take`; the Medicines admin list scrolls instead of
+  stopping silently at 20 rows.
+
+---
+
 ## Repository state
 
 ~227 changed or untracked paths. A large uncommitted feature set is in the working tree —

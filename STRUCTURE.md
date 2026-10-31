@@ -12,8 +12,29 @@ IntelliMed.sln
 │   ├── IntelliMed.Infrastructure.SqlServer/  # SQL Server implementation (future)
 │   ├── IntelliMed.Infrastructure.MongoDB/    # MongoDB implementation (future)
 │   ├── IntelliMed.Shared/           # Shared DTOs and Request/Response models
+│   ├── IntelliMed.Client/           # React web client (Vite + TypeScript) — served by the Api
 │   └── IntelliMed.Maui/             # .NET MAUI Blazor Hybrid App (Frontend)
 ```
+
+## Web client (src/IntelliMed.Client)
+```
+IntelliMed.Client/
+├── index.html                   # shell + startup splash
+├── vite.config.ts               # dev server :5173, proxies /api → :5284
+├── src/
+│   ├── main.tsx / router.tsx    # entry point; every route (same URLs the Blazor app had), lazy-loaded
+│   ├── session.tsx              # signed-in user, roles, page permissions (`can()`), clinics
+│   ├── api/                     # typed fetch wrappers per area (clients, billing, clinical, ...)
+│   │   └── types.gen.ts         # GENERATED from Core DTOs/entities: scripts/generate-client-types.py
+│   ├── layout/MainLayout.tsx    # auth guard, sidebar, top bar, clinic switcher
+│   ├── components/              # DataGrid, Modal, Drawer, pickers, inputs, States (loading/empty), ...
+│   ├── lib/                     # dates (.NET format patterns), validation, hooks, infinite scroll
+│   ├── pages/                   # one file per screen; pages/client/ holds the client-record tabs
+│   └── styles/                  # app.css (inherited look) + polish.css (tokens, motion, focus)
+```
+DTOs reach the client as camelCase JSON with numeric enums; each generated interface has a
+`defaultX()` factory mirroring the C# initialisers — spread it when building a request body so new
+DTO fields don't silently go missing. `npm run build` type-checks (`tsc -b`) before bundling.
 
 ## Data Layer Architecture
 
@@ -167,17 +188,16 @@ To switch from SQLite to SQL Server:
 ### Grid and list states
 Every grid or list shows one of three things, in this order — never a bare table:
 
-1. **Loading** — `<LoadingState Text="Loading prescriptions..." />` (`Web/Components/LoadingState.razor`)
-   while a request is in flight. Search pickers use `Text="Searching..."`.
-2. **Empty** — `<EmptyState Message="No prescriptions recorded." Icon="bi-capsule" />`
-   (`Web/Components/EmptyState.razor`) once loading has finished with no rows. When rows are only
+1. **Loading** — `<LoadingState text="Loading prescriptions..." />` (`components/States.tsx`) while a
+   request is in flight (or skeleton rows inside a table). Search pickers use `text="Searching..."`.
+2. **Empty** — `<EmptyState message="No prescriptions recorded." icon="bi-capsule" />`
+   (`components/States.tsx`) once loading has finished with no rows. When rows are only
    hidden by an "include archived" filter, say so (`AddClient.NoneMessage`).
 3. **The grid itself.**
 
-Radzen grids use their own `IsLoading` + `EmptyText` instead. Keep the loading flag *true by default* on
-pages that fetch in `OnInitializedAsync`, otherwise the empty message flashes before the data arrives.
-Search handlers follow the `_searching` + `_searchSeq` pattern (see `AddressBookPicker`): the latest
-request wins, so a slow earlier response cannot overwrite newer results. `EmptyAndLoadingStateTests`
+`DataGrid` takes `loading` + `emptyText` and does this itself. Keep the loading flag *true by default* on
+pages that fetch on mount, otherwise the empty message flashes before the data arrives. Searches use
+`useLatestSearch` (`lib/hooks.ts`) or a sequence ref: the latest request wins, so a slow earlier response cannot overwrite newer results. `EmptyAndLoadingStateTests`
 holds API responses back with a Playwright route to prove each state.
 
 ## IntelliMed.Maui Project Structure (Standard Template)

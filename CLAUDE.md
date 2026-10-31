@@ -1,10 +1,11 @@
 # IntelliMed — Notes for Claude Code
 
 IntelliMed is a from-scratch rebuild of a legacy Australian practice-management system
-("Pracnet"), targeting ASP.NET Core Web API + Blazor (WASM web today, MAUI Blazor Hybrid for
-native later). Clean Architecture: `Core` (entities/DTOs/interfaces, no EF) → `Infrastructure`
-(EF Core/SQLite, repositories, business-logic services) → `Api` (controllers) / `Web` (Blazor
-WASM UI).
+("Pracnet"), targeting ASP.NET Core Web API + a React web client (native clients later). Clean
+Architecture: `Core` (entities/DTOs/interfaces, no EF) → `Infrastructure` (EF Core/SQLite, repositories,
+business-logic services) → `Api` (controllers, and it serves the web client) / `Client` (React 19 + Vite +
+TypeScript SPA in `src/IntelliMed.Client`, Bootstrap 5 styling). The client replaced the original Blazor WASM
+UI (`IntelliMed.Web`, removed 2026-10-31) page for page — see `src/IntelliMed.Client/PORT_STATUS.md`.
 
 **Start here if you're picking up work:** `OPEN_THREADS.md` — known defects, decisions waiting on
 the user, and what's agreed but unbuilt. It is the current-state file; the rest below is reference.
@@ -33,7 +34,12 @@ up to date independently:
 
 ## Build / run
 
-- API + Blazor WASM client: `dotnet run` from `src/IntelliMed.Api` (client is served at `/`).
+- API + web client: `dotnet run` from `src/IntelliMed.Api` (client is served at `/`). Building the API also
+  builds the React client (`npm run build` in `src/IntelliMed.Client`, skipped when its sources are unchanged)
+  and copies `dist/` to the output `wwwroot`, so Node/npm must be installed. For client work with hot reload,
+  run `npm run dev` in `src/IntelliMed.Client` (Vite on :5173, proxies `/api` to :5284) alongside the API.
+- Client types: `src/IntelliMed.Client/src/api/types.gen.ts` is generated from the C# DTOs/entities —
+  regenerate with `python -I scripts/generate-client-types.py` after changing a DTO. Never hand-edit it.
   Local API: `http://localhost:5284`. DB migrations run automatically on startup (SQLite,
   `intellimed.db`).
 - Docker: `docker build` from the repo root, see `Dockerfile` — `dotnet publish src/IntelliMed.Api
@@ -50,7 +56,7 @@ up to date independently:
 
 - **IntelliSearch** — a global-search button planned for the bottom-right of the screen that pops
   up a general search overlay. Not built yet (no floating search button/modal exists in
-  `IntelliMed.Web` as of 2026-07-31) — this is just the agreed name for when it gets built.
+  the web client as of 2026-10-31) — this is just the agreed name for when it gets built.
 
 ## Medicine catalog data sources & licensing
 

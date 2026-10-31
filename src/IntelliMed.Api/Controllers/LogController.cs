@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace IntelliMed.Api.Controllers;
 
 /// <summary>
-/// Receives error logs from the Blazor WASM front-end.
+/// Receives error logs from the web client.
 /// Logs them server-side for debugging and monitoring.
 /// </summary>
 [ApiController]

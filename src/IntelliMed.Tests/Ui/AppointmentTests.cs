@@ -186,7 +186,7 @@ public class AppointmentTests : UiTestBase
         await page.Locator(".list-group-item", new() { HasTextString = surname }).ClickAsync();
         await page.Locator("button.btn-primary", new() { HasTextString = "Find" }).ClickAsync();
 
-        var row = page.Locator(".rz-data-row", new() { HasTextString = booking.ClientName });
+        var row = page.Locator(".imed-data-row", new() { HasTextString = booking.ClientName });
         await Assertions.Expect(row).ToHaveCountAsync(1);
         await Assertions.Expect(row).ToContainTextAsync("Scheduled");
 
@@ -229,7 +229,7 @@ public class AppointmentTests : UiTestBase
         await page.Locator(".list-group-item", new() { HasTextString = surname }).ClickAsync();
         await page.Locator("button.btn-primary", new() { HasTextString = "Find" }).ClickAsync();
 
-        await Assertions.Expect(page.Locator(".rz-data-row", new() { HasTextString = $"Repeat {surname}" })).ToHaveCountAsync(3);
+        await Assertions.Expect(page.Locator(".imed-data-row", new() { HasTextString = $"Repeat {surname}" })).ToHaveCountAsync(3);
     }
 
     [Fact]

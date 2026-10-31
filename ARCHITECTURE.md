@@ -555,9 +555,12 @@ disabled entirely rather than falling back to anything.
 | Interfaces | `src/IntelliMed.Core/Interfaces/` |
 | Repositories | `src/IntelliMed.Infrastructure/Repositories/` |
 | DbContext | `src/IntelliMed.Infrastructure/Data/AppDbContext.cs` |
-| Auth Service | `src/IntelliMed.Web/Services/AuthService.cs` |
-| Login Page | `src/IntelliMed.Web/Pages/Login.razor` |
-| UI Components | `src/IntelliMed.UI/` |
+| Auth (client) | `src/IntelliMed.Client/src/api/auth.ts`, `src/IntelliMed.Client/src/session.tsx` |
+| Login Page | `src/IntelliMed.Client/src/pages/Login.tsx` |
+| UI Components | `src/IntelliMed.Client/src/components/` |
+
+> The web client is React (`src/IntelliMed.Client`); it replaced the Blazor WASM client on 2026-10-31.
+> Diagrams above that say "Blazor" describe the original plan — the API, roles and data flow are unchanged.
 
 ## Next Steps
 

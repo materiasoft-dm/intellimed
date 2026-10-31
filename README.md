@@ -6,7 +6,7 @@ frontier.
 
 Pracnet, the legacy system this replaces, is a mature Windows desktop application handling patient
 records, scheduling, and Medicare/DVA/health-fund billing for Australian practices. IntelliMed
-rebuilds it as a modern web application first — Clean Architecture, ASP.NET Core API, Blazor WASM
+rebuilds it as a modern web application first — Clean Architecture, ASP.NET Core API, React web
 client — with native MAUI clients and offline/on-premise deployment planned for later phases rather
 than built up front.
 
@@ -22,7 +22,8 @@ Medicare, DVA, a health fund, or a compensation insurer.
 dotnet run --project src/IntelliMed.Api
 ```
 
-API + Blazor WASM client are served together at `http://localhost:5284`. SQLite database migrations
+API + React web client are served together at `http://localhost:5284` (the API build runs the client's
+`npm run build`, so Node/npm is required). SQLite database migrations
 run automatically on startup. See [CLAUDE.md](CLAUDE.md) for Docker/staging deployment notes, and its
 documentation map for deeper reference: [ARCHITECTURE.md](ARCHITECTURE.md) (system architecture,
 roles/permissions), [STRUCTURE.md](STRUCTURE.md) (code layout and patterns),
@@ -58,7 +59,7 @@ Six working domains, all live in the current codebase:
 ## Architecture & access
 
 ```
-Core → Infrastructure → Api → Web (Blazor WASM)  →  MAUI (planned)
+Core → Infrastructure → Api → Client (React, src/IntelliMed.Client)  →  native clients (planned)
 ```
 
 Deployed today from `main` to a Docker container on Render.com (staging) alongside plain `dotnet run`

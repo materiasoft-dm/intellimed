@@ -19,7 +19,7 @@ public class ClientListTests : UiTestBase
     private async Task<int> GetTotalClientCountAsync(IPage page)
     {
         // page.APIRequest is a separate context from the browser page — it doesn't carry the JWT
-        // Blazor attached in-memory to its own HttpClient, so the bearer token has to be pulled
+        // the web client attaches to its own fetch calls, so the bearer token has to be pulled
         // from localStorage and attached explicitly or the API 401s with an empty body.
         var token = await page.EvaluateAsync<string>("localStorage.getItem('intellimed_token')");
         var response = await page.APIRequest.GetAsync(

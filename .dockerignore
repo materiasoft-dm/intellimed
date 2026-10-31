@@ -1,0 +1,9 @@
+# Build outputs and local dependencies: the images restore/build their own.
+**/bin/
+**/obj/
+**/node_modules/
+src/IntelliMed.Client/dist/
+publish/
+publish-freeasp/
+graphify-out/
+.git/

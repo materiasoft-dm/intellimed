@@ -1,0 +1,93 @@
+/* Appointment Calendar (from AppointmentCalendar.razor's <style>, re-targeted from RadzenScheduler to FullCalendar). */
+
+.imed-calendar-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+.imed-calendar-header h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    color: var(--imed-neutral-900);
+    margin: 0;
+}
+.imed-calendar-header h4 i { color: var(--imed-primary); }
+
+.imed-practitioner-bar {
+    border: none;
+    border-radius: var(--imed-card-radius);
+    background: linear-gradient(135deg, var(--imed-primary-light) 0%, #fff 65%);
+    box-shadow: var(--imed-card-shadow);
+}
+.imed-practitioner-bar .form-check-input:checked { background-color: var(--imed-primary); border-color: var(--imed-primary); }
+.imed-practitioner-bar .form-check-label { font-weight: 500; }
+
+.imed-calendar-card {
+    border: none;
+    border-radius: var(--imed-card-radius);
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+
+    /* FullCalendar theme hooks, in the app's palette */
+    --fc-border-color: #eef0ee;
+    --fc-page-bg-color: #fff;
+    --fc-neutral-bg-color: var(--imed-neutral-100);
+    --fc-today-bg-color: rgba(16, 185, 129, 0.06);
+    --fc-now-indicator-color: var(--imed-danger);
+    --fc-highlight-color: rgba(16, 185, 129, 0.14);
+    --fc-button-bg-color: #fff;
+    --fc-button-text-color: var(--imed-text-secondary);
+    --fc-button-border-color: var(--imed-border);
+    --fc-button-hover-bg-color: var(--imed-neutral-100);
+    --fc-button-hover-border-color: var(--imed-border-hover);
+    --fc-button-active-bg-color: var(--imed-primary);
+    --fc-button-active-border-color: var(--imed-primary);
+    --fc-event-border-color: transparent;
+}
+.imed-calendar-card .fc { font-size: 0.8rem; }
+.imed-calendar-card .fc .fc-toolbar { padding: 0.75rem 1rem 0; margin-bottom: 0.75rem; }
+.imed-calendar-card .fc .fc-toolbar-title { font-size: 1.15rem; font-weight: 700; color: var(--imed-neutral-900); }
+.imed-calendar-card .fc .fc-button { font-size: 0.8rem; font-weight: 500; padding: 0.35rem 0.75rem; box-shadow: none !important; text-transform: none; }
+.imed-calendar-card .fc .fc-button-primary:not(:disabled).fc-button-active { color: #fff; }
+.imed-calendar-card .fc .fc-today-button { background: var(--imed-primary); border-color: var(--imed-primary); color: #fff; font-weight: 600; }
+.imed-calendar-card .fc .fc-today-button:disabled { opacity: 0.55; }
+.imed-calendar-card .fc .fc-prev-button, .imed-calendar-card .fc .fc-next-button { color: var(--imed-primary-dark); }
+.imed-calendar-card .fc .fc-col-header-cell { background: var(--imed-neutral-100); padding: 0.4rem 0; }
+.imed-calendar-card .fc .fc-col-header-cell-cushion { color: var(--imed-neutral-700); font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; text-decoration: none; }
+.imed-calendar-card .fc .fc-timegrid-slot-label-cushion { font-size: 0.72rem; color: var(--imed-text-muted); }
+.imed-calendar-card .fc .fc-timegrid-slot-minor { border-top-style: dotted; }
+.imed-calendar-card .fc .fc-daygrid-day-number { color: var(--imed-text-secondary); text-decoration: none; }
+
+/* Appointment chips: rounded, gently shadowed, lift a little on hover to feel clickable */
+.imed-calendar-card .fc-event {
+    border-radius: 7px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.imed-calendar-card .fc-event:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(15, 23, 42, 0.28); }
+.imed-cal-event { padding: 2px 5px; line-height: 1.25; overflow: hidden; height: 100%; }
+.imed-cal-event-text { display: block; font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; }
+.fc-daygrid-event .imed-cal-event { white-space: nowrap; }
+
+/* Floats over the calendar while a day/week/month of appointments is fetched, so the grid does not jump */
+.imed-calendar-loading {
+    position: absolute;
+    top: 0.6rem;
+    right: 50%;
+    transform: translateX(50%);
+    z-index: 5;
+    background: #fff;
+    border-radius: 999px;
+    box-shadow: 0 1px 6px rgba(15, 23, 42, 0.18);
+    padding: 0 0.75rem;
+}
+
+.imed-context-menu { min-width: 210px; }

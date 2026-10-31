@@ -28,4 +28,15 @@
     <ProjectReference Include="..\IntelliMed.Infrastructure\IntelliMed.Infrastructure.csproj" />
   </ItemGroup>
 
+  <!-- The UI tests start IntelliMed.Api.dll from this output folder (PlaywrightServerFixture), so it needs the
+       web client next to it, the same way the Api's own output gets it (CopyClientToOutput). The Api build has
+       already produced dist\ by the time this runs. -->
+  <Target Name="CopyClientForUiTests" AfterTargets="Build">
+    <RemoveDir Directories="$(OutputPath)wwwroot" Condition="Exists('$(OutputPath)wwwroot')" />
+    <ItemGroup>
+      <ClientDistFiles Include="..\IntelliMed.Client\dist\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ClientDistFiles)" DestinationFolder="$(OutputPath)wwwroot\%(RecursiveDir)" />
+  </Target>
+
 </Project>

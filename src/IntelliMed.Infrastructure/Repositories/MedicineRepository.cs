@@ -22,7 +22,7 @@ public class MedicineRepository : Repository<Medicine>, IMedicineRepository
         return item == null ? null : EntityMapper.ToDto(item);
     }
 
-    public async Task<IEnumerable<MedicineDto>> SearchAsync(string query, MedicineSource? source = null, int take = 20)
+    public async Task<IEnumerable<MedicineDto>> SearchAsync(string query, MedicineSource? source = null, int take = 20, int skip = 0)
     {
         var baseQuery = _dbSet
             .Include(m => m.Ingredients).ThenInclude(mi => mi.ActiveIngredient)
@@ -35,7 +35,7 @@ public class MedicineRepository : Repository<Medicine>, IMedicineRepository
 
         if (string.IsNullOrWhiteSpace(query))
         {
-            var recent = await baseQuery.OrderBy(m => m.Name).Take(take).ToListAsync();
+            var recent = await baseQuery.OrderBy(m => m.Name).ThenBy(m => m.Id).Skip(skip).Take(take).ToListAsync();
             return recent.Select(EntityMapper.ToDto);
         }
 
@@ -44,7 +44,8 @@ public class MedicineRepository : Repository<Medicine>, IMedicineRepository
             .Where(m =>
                 m.Name.ToLower().StartsWith(searchTerm) ||
                 (m.GenericName != null && m.GenericName.ToLower().Contains(searchTerm)))
-            .OrderBy(m => m.Name)
+            .OrderBy(m => m.Name).ThenBy(m => m.Id)
+            .Skip(skip)
             .Take(take)
             .ToListAsync();
         return items.Select(EntityMapper.ToDto);

@@ -275,7 +275,7 @@ public class InvoiceTests : UiTestBase
         await page.Locator(".list-group-item", new() { HasTextString = invoice.Surname }).ClickAsync();
         await page.Locator("button.btn-primary", new() { HasTextString = "Find" }).ClickAsync();
 
-        var row = page.Locator(".rz-data-row", new() { HasTextString = invoice.ClientName });
+        var row = page.Locator(".imed-data-row", new() { HasTextString = invoice.ClientName });
         await Assertions.Expect(row).ToHaveCountAsync(1);
         await Assertions.Expect(row).ToContainTextAsync("45.00");
 
@@ -294,7 +294,7 @@ public class InvoiceTests : UiTestBase
         await page.GotoAsync("/invoices/payments");
         await page.GetByRole(AriaRole.Heading, new() { Name = "Payments" }).WaitForAsync();
 
-        var row = page.Locator(".rz-data-row", new() { HasTextString = reference });
+        var row = page.Locator(".imed-data-row", new() { HasTextString = reference });
         await Assertions.Expect(row).ToContainTextAsync(invoice.ClientName);
         await Assertions.Expect(row).ToContainTextAsync("55.00");
 

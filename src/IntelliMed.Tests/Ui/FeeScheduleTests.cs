@@ -50,7 +50,7 @@ public class FeeScheduleTests : UiTestBase
         page.Locator("button", new() { HasTextRegex = new System.Text.RegularExpressions.Regex(@"^\s*New\s*$") });
 
     private static ILocator GridRow(IPage page, string code) =>
-        page.Locator(".rz-data-row", new() { HasTextString = code });
+        page.Locator(".imed-data-row", new() { HasTextString = code });
 
     private static async Task<IPage> OpenFeeSchedulesFilteredAsync(PlaywrightServerFixture fixture, string code, bool includeArchived = false)
     {

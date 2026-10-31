@@ -5,6 +5,9 @@
 ## 1. Project Goal
 Modernize the IntelliMed practice-management system from legacy architecture to .NET MAUI Blazor Hybrid.
 
+> **2026-10-31:** the web front end is now React (`src/IntelliMed.Client`), replacing Blazor WASM. The
+> MAUI/Blazor Hybrid notes below are the original plan and no longer describe the web client.
+
 ## 2. Modernization Stack
 - **Backend:** ASP.NET Core Web API (.NET 8/9)
 - **Frontend:** .NET MAUI Blazor Hybrid
@@ -123,7 +126,7 @@ src/
 - **Database:** SQLite (`intellimed.db` in project root)
 - **Notes:**
   - Run via `dotnet run` in `IntelliMed.Api` project
-  - Blazor WASM client available at `/`
+  - React web client available at `/` (built by the API build; needs Node/npm)
   - Database migrations run automatically on startup
 
 ### Production (Future)

@@ -212,24 +212,18 @@ try
         app.UseDeveloperExceptionPage();
     }
 
+    Microsoft.Extensions.FileProviders.IFileProvider? clientFiles = null;   // null = the content root's wwwroot
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
         app.UseSwaggerUI();
-        app.UseWebAssemblyDebugging();
 
-        // In Development mode, the project wwwroot doesn't have _framework files.
-        // They're in bin/Debug/net10.0/wwwroot from the CopyBlazorWasmOutput target.
-        // Add a static file provider that serves from the build output directory
-        // so _framework/* files resolve correctly (fixes SRI integrity failures).
+        // `dotnet run` uses the project folder as content root, which has no wwwroot — the React client is
+        // copied into bin/Debug/net10.0/wwwroot by the CopyClientToOutput target, so serve it from there.
         var buildOutputWwwRoot = Path.Combine(app.Environment.ContentRootPath, "bin", "Debug", "net10.0", "wwwroot");
         if (Directory.Exists(buildOutputWwwRoot))
         {
-            app.UseStaticFiles(new StaticFileOptions
-            {
-                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(buildOutputWwwRoot),
-                // Serve before the default static files so _framework takes priority
-            });
+            clientFiles = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(buildOutputWwwRoot);
         }
     }
     else
@@ -237,9 +231,19 @@ try
         app.UseHttpsRedirection();
     }
 
-    // Serve Blazor WASM static files from the IntelliMed.Web project
-    app.UseBlazorFrameworkFiles();
-    app.UseStaticFiles();
+    // The React client (IntelliMed.Client's dist folder). Vite fingerprints everything under /assets, so those
+    // can be cached for good; index.html must always be revalidated or a deploy keeps serving the old bundle.
+    var staticFileOptions = new StaticFileOptions
+    {
+        FileProvider = clientFiles,
+        OnPrepareResponse = ctx =>
+        {
+            ctx.Context.Response.Headers.CacheControl = ctx.Context.Request.Path.StartsWithSegments("/assets")
+                ? "public, max-age=31536000, immutable"
+                : "no-cache";
+        }
+    };
+    app.UseStaticFiles(staticFileOptions);
 
     app.UseAuthentication();
     app.UseAuthorization();
@@ -248,8 +252,8 @@ try
 
     // Fallback to index.html for client-side routing — must stay anonymous: every client-side route
     // (including /login itself) is served through this, so the global auth fallback policy would
-    // otherwise 401 the SPA shell before the Blazor router ever gets a chance to redirect.
-    app.MapFallbackToFile("index.html").AllowAnonymous();
+    // otherwise 401 the SPA shell before the client-side router ever gets a chance to redirect.
+    app.MapFallbackToFile("index.html", staticFileOptions).AllowAnonymous();
 
     app.Run();
 }
