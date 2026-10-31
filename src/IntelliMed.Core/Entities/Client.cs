@@ -101,6 +101,57 @@ public class Client
     // Lifecard
     public string? LifeCardNum { get; set; }
 
+    // Brought across from Medinet's patient record (TPatients)
+    /// <summary>DVA card colour: GOLD, WHITE or ORANGE — decides what DVA covers.</summary>
+    public string? DvaCardType { get; set; }
+    /// <summary>Concession card held, e.g. CPC (Pensioner Concession), HCC (Health Care), CCSH (Commonwealth Seniors).</summary>
+    public string? ConcessionCardType { get; set; }
+    /// <summary>Health care card date (Medinet DATE_HCC).</summary>
+    public DateTime? HealthCareCardDate { get; set; }
+    /// <summary>Medicare safety net card type (e.g. MSAFENET).</summary>
+    public string? SafetyNetCardType { get; set; }
+    public DateTime? SafetyNetExpiryDate { get; set; }
+    /// <summary>PBS safety net / entitlement card number.</summary>
+    public string? PbsEntitlementNumber { get; set; }
+    /// <summary>PBS entitlement card colour/type.</summary>
+    public string? PbsEntitlementCardType { get; set; }
+    public DateTime? PbsEntitlementExpiryDate { get; set; }
+    public string? AtsiAccreditation { get; set; }
+    /// <summary>Level of health fund cover.</summary>
+    public string? HealthFundCoverLevel { get; set; }
+    public string? CountryOfBirth { get; set; }
+    public string? CulturalBackground { get; set; }
+    /// <summary>Language they prefer to use — separate from the interpreter language.</summary>
+    public string? PreferredLanguage { get; set; }
+    /// <summary>How letters open ("Dear ...").</summary>
+    public string? Salutation { get; set; }
+    public DateTime? DateOfDeath { get; set; }
+    public string? NextOfKinRelationship { get; set; }
+    public string? EmergencyContactRelationship { get; set; }
+    /// <summary>e.g. "Private Property".</summary>
+    public string? ResidentialAddressType { get; set; }
+    /// <summary>Post correspondence to the postal address rather than the residential one.</summary>
+    public bool SendToPostalAddress { get; set; }
+    /// <summary>How they heard about the practice.</summary>
+    public string? HowDidYouHear { get; set; }
+    /// <summary>Bill this patient on one invoice per visit rather than combining with family.</summary>
+    public bool OneInvoicePerPatient { get; set; }
+    public bool PaysByEft { get; set; }
+    /// <summary>Account statements are held (not sent) until this date.</summary>
+    public DateTime? StatementHoldUntil { get; set; }
+    /// <summary>Sub-number under the file number (Medinet MinorFileNum).</summary>
+    public string? MinorFileNumber { get; set; }
+    /// <summary>Id in an external system.</summary>
+    public string? ExternalId { get; set; }
+    public string? PatientPortalId { get; set; }
+    /// <summary>Consented to their de-identified data being used for research.</summary>
+    public bool ResearchConsent { get; set; }
+    public string? PreferredPharmacyCode1 { get; set; }
+    public string? PreferredPharmacyCode2 { get; set; }
+    /// <summary>Do not send this patient electronic prescriptions.</summary>
+    public bool DisableEPrescribing { get; set; }
+    public bool ShowEPrescriptionMessage { get; set; }
+
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

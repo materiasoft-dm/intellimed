@@ -112,6 +112,38 @@ public class ClientDto
     // Lifecard
     public string? LifeCardNum { get; set; }
 
+    public string? DvaCardType { get; set; }
+    public string? ConcessionCardType { get; set; }
+    public DateTime? HealthCareCardDate { get; set; }
+    public string? SafetyNetCardType { get; set; }
+    public DateTime? SafetyNetExpiryDate { get; set; }
+    public string? PbsEntitlementNumber { get; set; }
+    public string? PbsEntitlementCardType { get; set; }
+    public DateTime? PbsEntitlementExpiryDate { get; set; }
+    public string? AtsiAccreditation { get; set; }
+    public string? HealthFundCoverLevel { get; set; }
+    public string? CountryOfBirth { get; set; }
+    public string? CulturalBackground { get; set; }
+    public string? PreferredLanguage { get; set; }
+    public string? Salutation { get; set; }
+    public DateTime? DateOfDeath { get; set; }
+    public string? NextOfKinRelationship { get; set; }
+    public string? EmergencyContactRelationship { get; set; }
+    public string? ResidentialAddressType { get; set; }
+    public bool SendToPostalAddress { get; set; }
+    public string? HowDidYouHear { get; set; }
+    public bool OneInvoicePerPatient { get; set; }
+    public bool PaysByEft { get; set; }
+    public DateTime? StatementHoldUntil { get; set; }
+    public string? MinorFileNumber { get; set; }
+    public string? ExternalId { get; set; }
+    public string? PatientPortalId { get; set; }
+    public bool ResearchConsent { get; set; }
+    public string? PreferredPharmacyCode1 { get; set; }
+    public string? PreferredPharmacyCode2 { get; set; }
+    public bool DisableEPrescribing { get; set; }
+    public bool ShowEPrescriptionMessage { get; set; }
+
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -242,6 +274,38 @@ public class CreateClientDto : IValidatableObject
 
     // Lifecard
     public string? LifeCardNum { get; set; }
+
+    public string? DvaCardType { get; set; }
+    public string? ConcessionCardType { get; set; }
+    public DateTime? HealthCareCardDate { get; set; }
+    public string? SafetyNetCardType { get; set; }
+    public DateTime? SafetyNetExpiryDate { get; set; }
+    public string? PbsEntitlementNumber { get; set; }
+    public string? PbsEntitlementCardType { get; set; }
+    public DateTime? PbsEntitlementExpiryDate { get; set; }
+    public string? AtsiAccreditation { get; set; }
+    public string? HealthFundCoverLevel { get; set; }
+    public string? CountryOfBirth { get; set; }
+    public string? CulturalBackground { get; set; }
+    public string? PreferredLanguage { get; set; }
+    public string? Salutation { get; set; }
+    public DateTime? DateOfDeath { get; set; }
+    public string? NextOfKinRelationship { get; set; }
+    public string? EmergencyContactRelationship { get; set; }
+    public string? ResidentialAddressType { get; set; }
+    public bool SendToPostalAddress { get; set; }
+    public string? HowDidYouHear { get; set; }
+    public bool OneInvoicePerPatient { get; set; }
+    public bool PaysByEft { get; set; }
+    public DateTime? StatementHoldUntil { get; set; }
+    public string? MinorFileNumber { get; set; }
+    public string? ExternalId { get; set; }
+    public string? PatientPortalId { get; set; }
+    public bool ResearchConsent { get; set; }
+    public string? PreferredPharmacyCode1 { get; set; }
+    public string? PreferredPharmacyCode2 { get; set; }
+    public bool DisableEPrescribing { get; set; }
+    public bool ShowEPrescriptionMessage { get; set; }
 }
 
 public class UpdateClientDto : IValidatableObject
@@ -351,6 +415,38 @@ public class UpdateClientDto : IValidatableObject
 
     // Lifecard
     public string? LifeCardNum { get; set; }
+
+    public string? DvaCardType { get; set; }
+    public string? ConcessionCardType { get; set; }
+    public DateTime? HealthCareCardDate { get; set; }
+    public string? SafetyNetCardType { get; set; }
+    public DateTime? SafetyNetExpiryDate { get; set; }
+    public string? PbsEntitlementNumber { get; set; }
+    public string? PbsEntitlementCardType { get; set; }
+    public DateTime? PbsEntitlementExpiryDate { get; set; }
+    public string? AtsiAccreditation { get; set; }
+    public string? HealthFundCoverLevel { get; set; }
+    public string? CountryOfBirth { get; set; }
+    public string? CulturalBackground { get; set; }
+    public string? PreferredLanguage { get; set; }
+    public string? Salutation { get; set; }
+    public DateTime? DateOfDeath { get; set; }
+    public string? NextOfKinRelationship { get; set; }
+    public string? EmergencyContactRelationship { get; set; }
+    public string? ResidentialAddressType { get; set; }
+    public bool SendToPostalAddress { get; set; }
+    public string? HowDidYouHear { get; set; }
+    public bool OneInvoicePerPatient { get; set; }
+    public bool PaysByEft { get; set; }
+    public DateTime? StatementHoldUntil { get; set; }
+    public string? MinorFileNumber { get; set; }
+    public string? ExternalId { get; set; }
+    public string? PatientPortalId { get; set; }
+    public bool ResearchConsent { get; set; }
+    public string? PreferredPharmacyCode1 { get; set; }
+    public string? PreferredPharmacyCode2 { get; set; }
+    public bool DisableEPrescribing { get; set; }
+    public bool ShowEPrescriptionMessage { get; set; }
 
     public bool IsActive { get; set; } = true;
 }

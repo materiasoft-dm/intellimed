@@ -1,16 +1,16 @@
 import { useCallback, useState } from 'react';
 import { AddressBookApi, ClientApi } from '@/api/clients';
-import { ClientTypeEnum, defaultCreateClientDto, type AddressBookContactDto, type ClientDto, type SaveAddressBookContactDto } from '@/api/types.gen';
+import {
+  ClientTypeEnum, defaultCreateClientDto, defaultSaveAddressBookContactDto, type AddressBookContactDto, type ClientDto,
+  type SaveAddressBookContactDto,
+} from '@/api/types.gen';
 import { joinNonBlank } from '@/lib/format';
 import { useLatestSearch } from '@/lib/hooks';
 import { TextInput } from './Inputs';
 import { Modal } from './Modal';
 import { LoadingState } from './States';
 
-const blankContact = (lastName = ''): SaveAddressBookContactDto => ({
-  title: null, firstName: null, lastName, profession: null, speciality: null, providerNumber: null, phone: null, mobile: null,
-  fax: null, email: null, address: null, suburb: null, postcode: null, state: null, clinicId: null, notes: null,
-});
+const blankContact = (lastName = ''): SaveAddressBookContactDto => ({ ...defaultSaveAddressBookContactDto(), lastName });
 
 /**
  * Search the address book and pick a person (e.g. a referring provider), with a quick-add so a missing
@@ -66,8 +66,16 @@ export function AddressBookPicker({ title = 'Find Contact', onSelect, onClose }:
                 {results.map((c) => (
                   <li key={c.id} className="list-group-item list-group-item-action address-book-result" style={{ cursor: 'pointer' }} role="button" tabIndex={0}
                       onClick={() => onSelect(c)} onKeyDown={(e) => { if (e.key === 'Enter') onSelect(c); }}>
-                    <div className="fw-semibold">{c.fullName}</div>
-                    <div className="small text-muted">{joinNonBlank(' · ', c.speciality ?? c.profession, c.providerNumber ? `Provider# ${c.providerNumber}` : null, c.clinicName)}</div>
+                    <div>
+                      <span className="fw-semibold">{c.fullName}</span>{' '}
+                      {/* the provider number is what a referral is claimed against, so it sits beside the name */}
+                      {c.providerNumber?.trim()
+                        ? <span className="imed-provider-no">({c.providerNumber})</span>
+                        : <span className="small text-muted fst-italic">(no provider #)</span>}
+                    </div>
+                    {joinNonBlank(' · ', c.speciality ?? c.profession, c.clinicName) && (
+                      <div className="small text-muted">{joinNonBlank(' · ', c.speciality ?? c.profession, c.clinicName)}</div>
+                    )}
                   </li>
                 ))}
               </ul>

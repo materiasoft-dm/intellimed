@@ -147,6 +147,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.IhiRecordStatus).HasMaxLength(50);
             entity.Property(e => e.IhiNumberStatus).HasMaxLength(50);
             entity.Property(e => e.LifeCardNum).HasMaxLength(50);
+            entity.Property(e => e.DvaCardType).HasMaxLength(20);
+            entity.Property(e => e.ConcessionCardType).HasMaxLength(20);
+            entity.Property(e => e.SafetyNetCardType).HasMaxLength(20);
+            entity.Property(e => e.PbsEntitlementNumber).HasMaxLength(20);
+            entity.Property(e => e.PbsEntitlementCardType).HasMaxLength(20);
+            entity.Property(e => e.AtsiAccreditation).HasMaxLength(50);
+            entity.Property(e => e.HealthFundCoverLevel).HasMaxLength(50);
+            entity.Property(e => e.CountryOfBirth).HasMaxLength(100);
+            entity.Property(e => e.CulturalBackground).HasMaxLength(100);
+            entity.Property(e => e.PreferredLanguage).HasMaxLength(100);
+            entity.Property(e => e.Salutation).HasMaxLength(100);
+            entity.Property(e => e.NextOfKinRelationship).HasMaxLength(50);
+            entity.Property(e => e.EmergencyContactRelationship).HasMaxLength(50);
+            entity.Property(e => e.ResidentialAddressType).HasMaxLength(50);
+            entity.Property(e => e.HowDidYouHear).HasMaxLength(200);
+            entity.Property(e => e.MinorFileNumber).HasMaxLength(20);
+            entity.Property(e => e.ExternalId).HasMaxLength(100);
+            entity.Property(e => e.PatientPortalId).HasMaxLength(50);
+            entity.Property(e => e.PreferredPharmacyCode1).HasMaxLength(20);
+            entity.Property(e => e.PreferredPharmacyCode2).HasMaxLength(20);
             entity.HasIndex(e => e.MedicareNumber);
             entity.HasIndex(e => new { e.LastName, e.FirstName });
             // Explicit DB-level default (not just the C# initializer) so the migration backfills
@@ -371,6 +391,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Suburb).HasMaxLength(100);
             entity.Property(e => e.Postcode).HasMaxLength(10);
             entity.Property(e => e.State).HasMaxLength(10);
+            entity.Property(e => e.PreferredName).HasMaxLength(100);
+            entity.Property(e => e.Hpii).HasMaxLength(20);
+            entity.Property(e => e.ProviderTypeCode).HasMaxLength(20);
+            entity.Property(e => e.Abn).HasMaxLength(20);
+            entity.Property(e => e.Acn).HasMaxLength(20);
+            entity.Property(e => e.AddressLine2).HasMaxLength(200);
+            entity.Property(e => e.Attention).HasMaxLength(200);
+            entity.Property(e => e.MessagingId).HasMaxLength(100);
+            entity.Property(e => e.MessagingNetwork).HasMaxLength(100);
+            entity.Property(e => e.ExternalId).HasMaxLength(100);
             entity.HasOne(e => e.Clinic)
                 .WithMany()
                 .HasForeignKey(e => e.ClinicId)

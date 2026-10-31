@@ -88,6 +88,37 @@ public static class EntityMapper
         IhiNumberStatus = entity.IhiNumberStatus,
         IhiUnresolvedDate = entity.IhiUnresolvedDate,
         LifeCardNum = entity.LifeCardNum,
+        DvaCardType = entity.DvaCardType,
+        ConcessionCardType = entity.ConcessionCardType,
+        HealthCareCardDate = entity.HealthCareCardDate,
+        SafetyNetCardType = entity.SafetyNetCardType,
+        SafetyNetExpiryDate = entity.SafetyNetExpiryDate,
+        PbsEntitlementNumber = entity.PbsEntitlementNumber,
+        PbsEntitlementCardType = entity.PbsEntitlementCardType,
+        PbsEntitlementExpiryDate = entity.PbsEntitlementExpiryDate,
+        AtsiAccreditation = entity.AtsiAccreditation,
+        HealthFundCoverLevel = entity.HealthFundCoverLevel,
+        CountryOfBirth = entity.CountryOfBirth,
+        CulturalBackground = entity.CulturalBackground,
+        PreferredLanguage = entity.PreferredLanguage,
+        Salutation = entity.Salutation,
+        DateOfDeath = entity.DateOfDeath,
+        NextOfKinRelationship = entity.NextOfKinRelationship,
+        EmergencyContactRelationship = entity.EmergencyContactRelationship,
+        ResidentialAddressType = entity.ResidentialAddressType,
+        SendToPostalAddress = entity.SendToPostalAddress,
+        HowDidYouHear = entity.HowDidYouHear,
+        OneInvoicePerPatient = entity.OneInvoicePerPatient,
+        PaysByEft = entity.PaysByEft,
+        StatementHoldUntil = entity.StatementHoldUntil,
+        MinorFileNumber = entity.MinorFileNumber,
+        ExternalId = entity.ExternalId,
+        PatientPortalId = entity.PatientPortalId,
+        ResearchConsent = entity.ResearchConsent,
+        PreferredPharmacyCode1 = entity.PreferredPharmacyCode1,
+        PreferredPharmacyCode2 = entity.PreferredPharmacyCode2,
+        DisableEPrescribing = entity.DisableEPrescribing,
+        ShowEPrescriptionMessage = entity.ShowEPrescriptionMessage,
         IsActive = entity.IsActive,
         CreatedAt = entity.CreatedAt,
         UpdatedAt = entity.UpdatedAt
@@ -206,6 +237,37 @@ public static class EntityMapper
         IhiNumberStatus = dto.IhiNumberStatus,
         IhiUnresolvedDate = dto.IhiUnresolvedDate,
         LifeCardNum = dto.LifeCardNum,
+        DvaCardType = dto.DvaCardType,
+        ConcessionCardType = dto.ConcessionCardType,
+        HealthCareCardDate = dto.HealthCareCardDate,
+        SafetyNetCardType = dto.SafetyNetCardType,
+        SafetyNetExpiryDate = dto.SafetyNetExpiryDate,
+        PbsEntitlementNumber = dto.PbsEntitlementNumber,
+        PbsEntitlementCardType = dto.PbsEntitlementCardType,
+        PbsEntitlementExpiryDate = dto.PbsEntitlementExpiryDate,
+        AtsiAccreditation = dto.AtsiAccreditation,
+        HealthFundCoverLevel = dto.HealthFundCoverLevel,
+        CountryOfBirth = dto.CountryOfBirth,
+        CulturalBackground = dto.CulturalBackground,
+        PreferredLanguage = dto.PreferredLanguage,
+        Salutation = dto.Salutation,
+        DateOfDeath = dto.DateOfDeath,
+        NextOfKinRelationship = dto.NextOfKinRelationship,
+        EmergencyContactRelationship = dto.EmergencyContactRelationship,
+        ResidentialAddressType = dto.ResidentialAddressType,
+        SendToPostalAddress = dto.SendToPostalAddress,
+        HowDidYouHear = dto.HowDidYouHear,
+        OneInvoicePerPatient = dto.OneInvoicePerPatient,
+        PaysByEft = dto.PaysByEft,
+        StatementHoldUntil = dto.StatementHoldUntil,
+        MinorFileNumber = dto.MinorFileNumber,
+        ExternalId = dto.ExternalId,
+        PatientPortalId = dto.PatientPortalId,
+        ResearchConsent = dto.ResearchConsent,
+        PreferredPharmacyCode1 = dto.PreferredPharmacyCode1,
+        PreferredPharmacyCode2 = dto.PreferredPharmacyCode2,
+        DisableEPrescribing = dto.DisableEPrescribing,
+        ShowEPrescriptionMessage = dto.ShowEPrescriptionMessage,
         IsActive = true,
         CreatedAt = DateTime.UtcNow
     };
@@ -287,6 +349,37 @@ public static class EntityMapper
         entity.IhiNumberStatus = dto.IhiNumberStatus;
         entity.IhiUnresolvedDate = dto.IhiUnresolvedDate;
         entity.LifeCardNum = dto.LifeCardNum;
+        entity.DvaCardType = dto.DvaCardType;
+        entity.ConcessionCardType = dto.ConcessionCardType;
+        entity.HealthCareCardDate = dto.HealthCareCardDate;
+        entity.SafetyNetCardType = dto.SafetyNetCardType;
+        entity.SafetyNetExpiryDate = dto.SafetyNetExpiryDate;
+        entity.PbsEntitlementNumber = dto.PbsEntitlementNumber;
+        entity.PbsEntitlementCardType = dto.PbsEntitlementCardType;
+        entity.PbsEntitlementExpiryDate = dto.PbsEntitlementExpiryDate;
+        entity.AtsiAccreditation = dto.AtsiAccreditation;
+        entity.HealthFundCoverLevel = dto.HealthFundCoverLevel;
+        entity.CountryOfBirth = dto.CountryOfBirth;
+        entity.CulturalBackground = dto.CulturalBackground;
+        entity.PreferredLanguage = dto.PreferredLanguage;
+        entity.Salutation = dto.Salutation;
+        entity.DateOfDeath = dto.DateOfDeath;
+        entity.NextOfKinRelationship = dto.NextOfKinRelationship;
+        entity.EmergencyContactRelationship = dto.EmergencyContactRelationship;
+        entity.ResidentialAddressType = dto.ResidentialAddressType;
+        entity.SendToPostalAddress = dto.SendToPostalAddress;
+        entity.HowDidYouHear = dto.HowDidYouHear;
+        entity.OneInvoicePerPatient = dto.OneInvoicePerPatient;
+        entity.PaysByEft = dto.PaysByEft;
+        entity.StatementHoldUntil = dto.StatementHoldUntil;
+        entity.MinorFileNumber = dto.MinorFileNumber;
+        entity.ExternalId = dto.ExternalId;
+        entity.PatientPortalId = dto.PatientPortalId;
+        entity.ResearchConsent = dto.ResearchConsent;
+        entity.PreferredPharmacyCode1 = dto.PreferredPharmacyCode1;
+        entity.PreferredPharmacyCode2 = dto.PreferredPharmacyCode2;
+        entity.DisableEPrescribing = dto.DisableEPrescribing;
+        entity.ShowEPrescriptionMessage = dto.ShowEPrescriptionMessage;
         entity.IsActive = dto.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
     }
@@ -806,7 +899,7 @@ public static class EntityMapper
         ClientAge = entity.Client?.DateOfBirth is DateTime dob ? CalculateAge(dob) : null
     };
 
-    // Duplicated on purpose — ClientDto.CalculateAge (Core/DTOs/ClientDto.cs) and AddClient.razor's own
+    // Duplicated on purpose — ClientDto.CalculateAge (Core/DTOs/ClientDto.cs) and AddClient.tsx's own
     // copy already exist independently; this is a third, consistent with that existing pattern rather
     // than introducing a new shared helper unprompted.
     private static int CalculateAge(DateTime dateOfBirth)
@@ -897,7 +990,7 @@ public static class EntityMapper
         ClientId = entity.ClientId,
         ClientName = entity.Client != null ? $"{entity.Client.FirstName} {entity.Client.LastName}" : string.Empty,
         // Client.PayerName is a plain denormalized column kept in sync alongside PayerClientId
-        // (see AddClient.razor's SelectPayer/ClearPayer) — no extra join needed here.
+        // (see AddClient.tsx's SelectPayer/ClearPayer) — no extra join needed here.
         PayerClientId = entity.Client?.PayerClientId,
         PayerName = entity.Client?.PayerName,
         AppointmentId = entity.AppointmentId,
@@ -1334,18 +1427,30 @@ public static class EntityMapper
         FirstName = entity.FirstName,
         LastName = entity.LastName,
         FullName = ContactDisplayName(entity),
+        PreferredName = entity.PreferredName,
+        Gender = entity.Gender,
         Profession = entity.Profession,
         Speciality = entity.Speciality,
         ProviderNumber = entity.ProviderNumber,
+        Hpii = entity.Hpii,
+        ProviderTypeCode = entity.ProviderTypeCode,
+        Abn = entity.Abn,
+        Acn = entity.Acn,
         Phone = entity.Phone,
         Mobile = entity.Mobile,
         Fax = entity.Fax,
         Email = entity.Email,
         Address = entity.Address,
+        AddressLine2 = entity.AddressLine2,
         Suburb = entity.Suburb,
         Postcode = entity.Postcode,
         State = entity.State,
         ClinicId = entity.ClinicId,
+        Attention = entity.Attention,
+        MessagingId = entity.MessagingId,
+        MessagingNetwork = entity.MessagingNetwork,
+        AcceptsSecureMessaging = entity.AcceptsSecureMessaging,
+        ExternalId = entity.ExternalId,
         ClinicName = entity.Clinic?.Name,
         ClinicType = entity.Clinic?.Type,
         Notes = entity.Notes,
@@ -1357,17 +1462,29 @@ public static class EntityMapper
         entity.Title = dto.Title;
         entity.FirstName = dto.FirstName;
         entity.LastName = dto.LastName;
+        entity.PreferredName = dto.PreferredName;
+        entity.Gender = dto.Gender;
         entity.Profession = dto.Profession;
         entity.Speciality = dto.Speciality;
         entity.ProviderNumber = dto.ProviderNumber;
+        entity.Hpii = dto.Hpii;
+        entity.ProviderTypeCode = dto.ProviderTypeCode;
+        entity.Abn = dto.Abn;
+        entity.Acn = dto.Acn;
         entity.Phone = dto.Phone;
         entity.Mobile = dto.Mobile;
         entity.Fax = dto.Fax;
         entity.Email = dto.Email;
         entity.Address = dto.Address;
+        entity.AddressLine2 = dto.AddressLine2;
         entity.Suburb = dto.Suburb;
         entity.Postcode = dto.Postcode;
         entity.State = dto.State;
+        entity.Attention = dto.Attention;
+        entity.MessagingId = dto.MessagingId;
+        entity.MessagingNetwork = dto.MessagingNetwork;
+        entity.AcceptsSecureMessaging = dto.AcceptsSecureMessaging;
+        entity.ExternalId = dto.ExternalId;
         entity.ClinicId = dto.ClinicId;
         entity.Notes = dto.Notes;
         entity.UpdatedAt = DateTime.UtcNow;

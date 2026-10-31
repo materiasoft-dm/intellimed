@@ -32,7 +32,9 @@ public class AddressBookRepository : Repository<AddressBookContact>, IAddressBoo
             query = query.Where(c =>
                 c.LastName.ToLower().Contains(term) ||
                 (c.FirstName != null && c.FirstName.ToLower().Contains(term)) ||
+                (c.PreferredName != null && c.PreferredName.ToLower().Contains(term)) ||
                 (c.ProviderNumber != null && c.ProviderNumber.ToLower().Contains(term)) ||
+                (c.Hpii != null && c.Hpii.Contains(term)) ||
                 (c.Profession != null && c.Profession.ToLower().Contains(term)) ||
                 (c.Speciality != null && c.Speciality.ToLower().Contains(term)) ||
                 (c.Clinic != null && c.Clinic.Name.ToLower().Contains(term)));

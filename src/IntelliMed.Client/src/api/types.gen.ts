@@ -373,17 +373,29 @@ export interface AddressBookContactDto {
   firstName: string | null;
   lastName: string;
   fullName: string;
+  preferredName: string | null;
+  gender: GenderEnum | null;
   profession: string | null;
   speciality: string | null;
   providerNumber: string | null;
+  hpii: string | null;
+  providerTypeCode: string | null;
+  abn: string | null;
+  acn: string | null;
   phone: string | null;
   mobile: string | null;
   fax: string | null;
   email: string | null;
   address: string | null;
+  addressLine2: string | null;
   suburb: string | null;
   postcode: string | null;
   state: string | null;
+  attention: string | null;
+  messagingId: string | null;
+  messagingNetwork: string | null;
+  acceptsSecureMessaging: boolean;
+  externalId: string | null;
   clinicId: number | null;
   clinicName: string | null;
   clinicType: ClinicType | null;
@@ -653,6 +665,37 @@ export interface ClientDto {
   ihiNumberStatus: string | null;
   ihiUnresolvedDate: string | null;
   lifeCardNum: string | null;
+  dvaCardType: string | null;
+  concessionCardType: string | null;
+  healthCareCardDate: string | null;
+  safetyNetCardType: string | null;
+  safetyNetExpiryDate: string | null;
+  pbsEntitlementNumber: string | null;
+  pbsEntitlementCardType: string | null;
+  pbsEntitlementExpiryDate: string | null;
+  atsiAccreditation: string | null;
+  healthFundCoverLevel: string | null;
+  countryOfBirth: string | null;
+  culturalBackground: string | null;
+  preferredLanguage: string | null;
+  salutation: string | null;
+  dateOfDeath: string | null;
+  nextOfKinRelationship: string | null;
+  emergencyContactRelationship: string | null;
+  residentialAddressType: string | null;
+  sendToPostalAddress: boolean;
+  howDidYouHear: string | null;
+  oneInvoicePerPatient: boolean;
+  paysByEft: boolean;
+  statementHoldUntil: string | null;
+  minorFileNumber: string | null;
+  externalId: string | null;
+  patientPortalId: string | null;
+  researchConsent: boolean;
+  preferredPharmacyCode1: string | null;
+  preferredPharmacyCode2: string | null;
+  disableEPrescribing: boolean;
+  showEPrescriptionMessage: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
@@ -999,6 +1042,37 @@ export interface CreateClientDto {
   ihiNumberStatus: string | null;
   ihiUnresolvedDate: string | null;
   lifeCardNum: string | null;
+  dvaCardType: string | null;
+  concessionCardType: string | null;
+  healthCareCardDate: string | null;
+  safetyNetCardType: string | null;
+  safetyNetExpiryDate: string | null;
+  pbsEntitlementNumber: string | null;
+  pbsEntitlementCardType: string | null;
+  pbsEntitlementExpiryDate: string | null;
+  atsiAccreditation: string | null;
+  healthFundCoverLevel: string | null;
+  countryOfBirth: string | null;
+  culturalBackground: string | null;
+  preferredLanguage: string | null;
+  salutation: string | null;
+  dateOfDeath: string | null;
+  nextOfKinRelationship: string | null;
+  emergencyContactRelationship: string | null;
+  residentialAddressType: string | null;
+  sendToPostalAddress: boolean;
+  howDidYouHear: string | null;
+  oneInvoicePerPatient: boolean;
+  paysByEft: boolean;
+  statementHoldUntil: string | null;
+  minorFileNumber: string | null;
+  externalId: string | null;
+  patientPortalId: string | null;
+  researchConsent: boolean;
+  preferredPharmacyCode1: string | null;
+  preferredPharmacyCode2: string | null;
+  disableEPrescribing: boolean;
+  showEPrescriptionMessage: boolean;
 }
 
 /** DTOs/ClientFamilyRelationshipDto.cs */
@@ -2172,17 +2246,29 @@ export interface SaveAddressBookContactDto {
   title: string | null;
   firstName: string | null;
   lastName: string;
+  preferredName: string | null;
+  gender: GenderEnum | null;
   profession: string | null;
   speciality: string | null;
   providerNumber: string | null;
+  hpii: string | null;
+  providerTypeCode: string | null;
+  abn: string | null;
+  acn: string | null;
   phone: string | null;
   mobile: string | null;
   fax: string | null;
   email: string | null;
   address: string | null;
+  addressLine2: string | null;
   suburb: string | null;
   postcode: string | null;
   state: string | null;
+  attention: string | null;
+  messagingId: string | null;
+  messagingNetwork: string | null;
+  acceptsSecureMessaging: boolean;
+  externalId: string | null;
   clinicId: number | null;
   notes: string | null;
 }
@@ -2451,6 +2537,37 @@ export interface UpdateClientDto {
   ihiNumberStatus: string | null;
   ihiUnresolvedDate: string | null;
   lifeCardNum: string | null;
+  dvaCardType: string | null;
+  concessionCardType: string | null;
+  healthCareCardDate: string | null;
+  safetyNetCardType: string | null;
+  safetyNetExpiryDate: string | null;
+  pbsEntitlementNumber: string | null;
+  pbsEntitlementCardType: string | null;
+  pbsEntitlementExpiryDate: string | null;
+  atsiAccreditation: string | null;
+  healthFundCoverLevel: string | null;
+  countryOfBirth: string | null;
+  culturalBackground: string | null;
+  preferredLanguage: string | null;
+  salutation: string | null;
+  dateOfDeath: string | null;
+  nextOfKinRelationship: string | null;
+  emergencyContactRelationship: string | null;
+  residentialAddressType: string | null;
+  sendToPostalAddress: boolean;
+  howDidYouHear: string | null;
+  oneInvoicePerPatient: boolean;
+  paysByEft: boolean;
+  statementHoldUntil: string | null;
+  minorFileNumber: string | null;
+  externalId: string | null;
+  patientPortalId: string | null;
+  researchConsent: boolean;
+  preferredPharmacyCode1: string | null;
+  preferredPharmacyCode2: string | null;
+  disableEPrescribing: boolean;
+  showEPrescriptionMessage: boolean;
   isActive: boolean;
 }
 
@@ -2843,17 +2960,29 @@ export function defaultAddressBookContactDto(): AddressBookContactDto {
     firstName: null,
     lastName: '',
     fullName: '',
+    preferredName: null,
+    gender: null,
     profession: null,
     speciality: null,
     providerNumber: null,
+    hpii: null,
+    providerTypeCode: null,
+    abn: null,
+    acn: null,
     phone: null,
     mobile: null,
     fax: null,
     email: null,
     address: null,
+    addressLine2: null,
     suburb: null,
     postcode: null,
     state: null,
+    attention: null,
+    messagingId: null,
+    messagingNetwork: null,
+    acceptsSecureMessaging: false,
+    externalId: null,
     clinicId: null,
     clinicName: null,
     clinicType: null,
@@ -3138,6 +3267,37 @@ export function defaultClientDto(): ClientDto {
     ihiNumberStatus: null,
     ihiUnresolvedDate: null,
     lifeCardNum: null,
+    dvaCardType: null,
+    concessionCardType: null,
+    healthCareCardDate: null,
+    safetyNetCardType: null,
+    safetyNetExpiryDate: null,
+    pbsEntitlementNumber: null,
+    pbsEntitlementCardType: null,
+    pbsEntitlementExpiryDate: null,
+    atsiAccreditation: null,
+    healthFundCoverLevel: null,
+    countryOfBirth: null,
+    culturalBackground: null,
+    preferredLanguage: null,
+    salutation: null,
+    dateOfDeath: null,
+    nextOfKinRelationship: null,
+    emergencyContactRelationship: null,
+    residentialAddressType: null,
+    sendToPostalAddress: false,
+    howDidYouHear: null,
+    oneInvoicePerPatient: false,
+    paysByEft: false,
+    statementHoldUntil: null,
+    minorFileNumber: null,
+    externalId: null,
+    patientPortalId: null,
+    researchConsent: false,
+    preferredPharmacyCode1: null,
+    preferredPharmacyCode2: null,
+    disableEPrescribing: false,
+    showEPrescriptionMessage: false,
     isActive: true,
     createdAt: '0001-01-01T00:00:00',
     updatedAt: null,
@@ -3512,6 +3672,37 @@ export function defaultCreateClientDto(): CreateClientDto {
     ihiNumberStatus: null,
     ihiUnresolvedDate: null,
     lifeCardNum: null,
+    dvaCardType: null,
+    concessionCardType: null,
+    healthCareCardDate: null,
+    safetyNetCardType: null,
+    safetyNetExpiryDate: null,
+    pbsEntitlementNumber: null,
+    pbsEntitlementCardType: null,
+    pbsEntitlementExpiryDate: null,
+    atsiAccreditation: null,
+    healthFundCoverLevel: null,
+    countryOfBirth: null,
+    culturalBackground: null,
+    preferredLanguage: null,
+    salutation: null,
+    dateOfDeath: null,
+    nextOfKinRelationship: null,
+    emergencyContactRelationship: null,
+    residentialAddressType: null,
+    sendToPostalAddress: false,
+    howDidYouHear: null,
+    oneInvoicePerPatient: false,
+    paysByEft: false,
+    statementHoldUntil: null,
+    minorFileNumber: null,
+    externalId: null,
+    patientPortalId: null,
+    researchConsent: false,
+    preferredPharmacyCode1: null,
+    preferredPharmacyCode2: null,
+    disableEPrescribing: false,
+    showEPrescriptionMessage: false,
   } as CreateClientDto;
 }
 
@@ -4793,17 +4984,29 @@ export function defaultSaveAddressBookContactDto(): SaveAddressBookContactDto {
     title: null,
     firstName: null,
     lastName: '',
+    preferredName: null,
+    gender: null,
     profession: null,
     speciality: null,
     providerNumber: null,
+    hpii: null,
+    providerTypeCode: null,
+    abn: null,
+    acn: null,
     phone: null,
     mobile: null,
     fax: null,
     email: null,
     address: null,
+    addressLine2: null,
     suburb: null,
     postcode: null,
     state: null,
+    attention: null,
+    messagingId: null,
+    messagingNetwork: null,
+    acceptsSecureMessaging: false,
+    externalId: null,
     clinicId: null,
     notes: null,
   } as SaveAddressBookContactDto;
@@ -5094,6 +5297,37 @@ export function defaultUpdateClientDto(): UpdateClientDto {
     ihiNumberStatus: null,
     ihiUnresolvedDate: null,
     lifeCardNum: null,
+    dvaCardType: null,
+    concessionCardType: null,
+    healthCareCardDate: null,
+    safetyNetCardType: null,
+    safetyNetExpiryDate: null,
+    pbsEntitlementNumber: null,
+    pbsEntitlementCardType: null,
+    pbsEntitlementExpiryDate: null,
+    atsiAccreditation: null,
+    healthFundCoverLevel: null,
+    countryOfBirth: null,
+    culturalBackground: null,
+    preferredLanguage: null,
+    salutation: null,
+    dateOfDeath: null,
+    nextOfKinRelationship: null,
+    emergencyContactRelationship: null,
+    residentialAddressType: null,
+    sendToPostalAddress: false,
+    howDidYouHear: null,
+    oneInvoicePerPatient: false,
+    paysByEft: false,
+    statementHoldUntil: null,
+    minorFileNumber: null,
+    externalId: null,
+    patientPortalId: null,
+    researchConsent: false,
+    preferredPharmacyCode1: null,
+    preferredPharmacyCode2: null,
+    disableEPrescribing: false,
+    showEPrescriptionMessage: false,
     isActive: true,
   } as UpdateClientDto;
 }

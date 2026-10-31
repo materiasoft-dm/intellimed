@@ -10,17 +10,29 @@ public class AddressBookContactDto
     public string? FirstName { get; set; }
     public string LastName { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
+    public string? PreferredName { get; set; }
+    public GenderEnum? Gender { get; set; }
     public string? Profession { get; set; }
     public string? Speciality { get; set; }
     public string? ProviderNumber { get; set; }
+    public string? Hpii { get; set; }
+    public string? ProviderTypeCode { get; set; }
+    public string? Abn { get; set; }
+    public string? Acn { get; set; }
     public string? Phone { get; set; }
     public string? Mobile { get; set; }
     public string? Fax { get; set; }
     public string? Email { get; set; }
     public string? Address { get; set; }
+    public string? AddressLine2 { get; set; }
     public string? Suburb { get; set; }
     public string? Postcode { get; set; }
     public string? State { get; set; }
+    public string? Attention { get; set; }
+    public string? MessagingId { get; set; }
+    public string? MessagingNetwork { get; set; }
+    public bool AcceptsSecureMessaging { get; set; }
+    public string? ExternalId { get; set; }
     public int? ClinicId { get; set; }
     public string? ClinicName { get; set; }
     public ClinicType? ClinicType { get; set; }
@@ -34,17 +46,29 @@ public class SaveAddressBookContactDto
     [MaxLength(20)] public string? Title { get; set; }
     [MaxLength(100)] public string? FirstName { get; set; }
     [Required, MaxLength(200)] public string LastName { get; set; } = string.Empty;
+    [MaxLength(100)] public string? PreferredName { get; set; }
+    public GenderEnum? Gender { get; set; }
     [MaxLength(100)] public string? Profession { get; set; }
     [MaxLength(100)] public string? Speciality { get; set; }
     [MaxLength(20)] public string? ProviderNumber { get; set; }
+    [MaxLength(20)] public string? Hpii { get; set; }
+    [MaxLength(20)] public string? ProviderTypeCode { get; set; }
+    [MaxLength(20)] public string? Abn { get; set; }
+    [MaxLength(20)] public string? Acn { get; set; }
     [MaxLength(50)] public string? Phone { get; set; }
     [MaxLength(50)] public string? Mobile { get; set; }
     [MaxLength(50)] public string? Fax { get; set; }
     [MaxLength(200)] public string? Email { get; set; }
     [MaxLength(200)] public string? Address { get; set; }
+    [MaxLength(200)] public string? AddressLine2 { get; set; }
     [MaxLength(100)] public string? Suburb { get; set; }
     [MaxLength(10)] public string? Postcode { get; set; }
     [MaxLength(10)] public string? State { get; set; }
+    [MaxLength(200)] public string? Attention { get; set; }
+    [MaxLength(100)] public string? MessagingId { get; set; }
+    [MaxLength(100)] public string? MessagingNetwork { get; set; }
+    public bool AcceptsSecureMessaging { get; set; }
+    [MaxLength(100)] public string? ExternalId { get; set; }
     public int? ClinicId { get; set; }
     public string? Notes { get; set; }
 }

@@ -88,7 +88,26 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Abn")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("AcceptsSecureMessaging")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Acn")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Address")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AddressLine2")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Attention")
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
@@ -102,12 +121,23 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Fax")
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FirstName")
                         .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Gender")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Hpii")
+                        .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsArchived")
@@ -119,6 +149,14 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("LegacyGuid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MessagingId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MessagingNetwork")
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Mobile")
@@ -136,11 +174,19 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PreferredName")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Profession")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProviderTypeCode")
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
@@ -570,6 +616,10 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AtsiAccreditation")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("AtsiStatus")
                         .HasColumnType("INTEGER");
 
@@ -580,6 +630,14 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<int>("ClinicId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ConcessionCardType")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CountryOfBirth")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -589,14 +647,28 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<bool>("CtgCoPaymentRelief")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("CulturalBackground")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DateOfDeath")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("Deceased")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("DisableEPrescribing")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("DobAccuracy")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("DvaCardType")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("DvaExpiryDate")
                         .HasColumnType("TEXT");
@@ -620,11 +692,19 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("EmergencyContactRelationship")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("EntitlementStatus")
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Ethnicity")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalId")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
@@ -648,12 +728,19 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                     b.Property<int?>("Gender")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("HealthCareCardDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("HealthFundAliasFamily")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("HealthFundAliasFirst")
                         .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HealthFundCoverLevel")
+                        .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("HealthFundId")
@@ -667,6 +754,10 @@ namespace IntelliMed.Infrastructure.Data.Migrations
 
                     b.Property<string>("HealthFundRef")
                         .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HowDidYouHear")
+                        .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("IhiAssignedDate")
@@ -737,6 +828,10 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("MinorFileNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("MobilePhone")
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
@@ -752,7 +847,18 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("NextOfKinRelationship")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("OneInvoicePerPatient")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PatientPortalId")
+                        .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("PayerClientId")
@@ -760,6 +866,20 @@ namespace IntelliMed.Infrastructure.Data.Migrations
 
                     b.Property<string>("PayerName")
                         .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("PaysByEft")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PbsEntitlementCardType")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PbsEntitlementExpiryDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PbsEntitlementNumber")
+                        .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("PensionExpiryDate")
@@ -781,22 +901,61 @@ namespace IntelliMed.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PreferredLanguage")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PreferredName")
                         .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PreferredPharmacyCode1")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PreferredPharmacyCode2")
+                        .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("ProviderId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("ResearchConsent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ResidentialAddressType")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SafetyNetCardType")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SafetyNetExpiryDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("SafetyNetNumber")
                         .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Salutation")
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("SameAsNextOfKin")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("SendToPostalAddress")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("ShowEPrescriptionMessage")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("State")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("StatementHoldUntil")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Suburb")

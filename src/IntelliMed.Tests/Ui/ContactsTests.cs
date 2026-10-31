@@ -139,7 +139,7 @@ public class ContactsTests : UiTestBase
         await picker.GetByPlaceholder("Search by name, provider number or speciality...").FillAsync(surname);
         var result = picker.Locator(".address-book-result", new() { HasTextString = surname });
         await Assertions.Expect(result).ToContainTextAsync("Cardiology");
-        await Assertions.Expect(result).ToContainTextAsync("Provider# 5550001D");
+        await Assertions.Expect(result).ToContainTextAsync("(5550001D)");
         await result.ClickAsync();
 
         await Assertions.Expect(page.GetByPlaceholder("Choose from the address book")).ToHaveValueAsync($"Dr Sam {surname}");

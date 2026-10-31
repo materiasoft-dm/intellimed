@@ -9,7 +9,7 @@ import {
 } from '@/api/types.gen';
 import { ClientPicker } from '@/components/ClientPicker';
 import { ClientSafetyBanner } from '@/components/ClientSafetyBanner';
-import { DateInput, NumberInput, NumberSelect, TextArea, TextInput } from '@/components/Inputs';
+import { DateInput, NumberInput, NumberSelect, SuggestInput, TextArea, TextInput } from '@/components/Inputs';
 import { Modal } from '@/components/Modal';
 import { LoadingState } from '@/components/States';
 import { addDays, ageFrom, formatDate, startOfDay, toIsoLocal } from '@/lib/dates';
@@ -27,6 +27,20 @@ type Tab = typeof TABS[number];
 
 /** Strings the DTO declares non-nullable: an empty box is "" for these, null for the rest. */
 const REQUIRED_STRINGS = new Set<keyof UpdateClientDto>(['firstName', 'lastName', 'medicareNumber', 'address', 'suburb', 'state', 'postcode', 'email', 'phone']);
+
+const DVA_CARDS = [{ value: 'GOLD', label: 'Gold' }, { value: 'WHITE', label: 'White' }, { value: 'ORANGE', label: 'Orange' }];
+const CONCESSION_CARDS = [
+  { value: 'CPC', label: 'Pensioner Concession Card' },
+  { value: 'HCC', label: 'Health Care Card' },
+  { value: 'CCSH', label: 'Commonwealth Seniors Health Card' },
+];
+const SAFETY_NET_CARDS = [
+  { value: 'MSAFENET', label: 'Medicare safety net' },
+  { value: 'PBSSAFE', label: 'PBS safety net entitlement' },
+  { value: 'PBSCONC', label: 'PBS safety net concession' },
+];
+const CARD_COLOURS = [{ value: 'GOLD', label: 'Gold' }, { value: 'WHITE', label: 'White' }, { value: 'ORANGE', label: 'Orange' }];
+const RELATIONSHIPS = ['Spouse', 'Partner', 'Parent', 'Child', 'Sibling', 'Grandparent', 'Guardian', 'Carer', 'Friend', 'Other'].map((value) => ({ value }));
 
 function toFormModel(dto: ClientDto): UpdateClientDto {
   const model = defaultUpdateClientDto() as unknown as Record<string, unknown>;
@@ -184,6 +198,13 @@ export default function AddClient() {
       <label className="form-check-label small" htmlFor={id}>{label}</label>
     </div>
   );
+  const S = (key: keyof UpdateClientDto, label: string, options: { value: string; label?: string }[], col = 'col-6') => (
+    <div className={col}>
+      <label className="form-label small mb-0" htmlFor={`fld-${key}`}>{label}</label>
+      <SuggestInput id={`fld-${key}`} className="form-control form-control-sm" options={options} placeholder="Select or type..."
+                    value={m[key] as string | null} onChange={(v) => set({ [key]: v } as Partial<UpdateClientDto>)} />
+    </div>
+  );
   const A = (key: keyof UpdateClientDto, label: string, col = 'col-6') => (
     <div className={col}>
       <label className="form-label small mb-0">{label}</label>
@@ -287,6 +308,10 @@ export default function AddClient() {
                       </NumberSelect>
                     </div>
                     {T('ethnicity', 'Ethnicity')}
+                    {T('countryOfBirth', 'Country of Birth')}
+                    {T('culturalBackground', 'Cultural Background')}
+                    {T('preferredLanguage', 'Preferred Language')}
+                    {T('salutation', 'Salutation')}
                   </div>
                 </Card>
 
@@ -297,10 +322,19 @@ export default function AddClient() {
                     {D('medicareExpiryDate', 'EXP')}
                     {T('dvaNumber', 'Veteran#', 'col-9')}
                     {D('dvaExpiryDate', 'EXP')}
+                    {S('dvaCardType', 'Veteran Card', DVA_CARDS)}
                     {T('pensionNumber', 'Pension/HCC', 'col-9')}
                     {D('pensionExpiryDate', 'EXP')}
+                    {S('concessionCardType', 'Concession Card', CONCESSION_CARDS)}
+                    {D('healthCareCardDate', 'HCC Date', 'col-6')}
                     {T('entitlementStatus', 'Status')}
                     {T('safetyNetNumber', 'Safety Net')}
+                    {S('safetyNetCardType', 'Safety Net Card', SAFETY_NET_CARDS)}
+                    {D('safetyNetExpiryDate', 'Safety Net EXP', 'col-6')}
+                    {T('pbsEntitlementNumber', 'PBS Entitlement#')}
+                    {S('pbsEntitlementCardType', 'PBS Card', CARD_COLOURS, 'col-3')}
+                    {D('pbsEntitlementExpiryDate', 'PBS EXP')}
+                    {T('atsiAccreditation', 'ATSI Accreditation')}
                     <div className="col-6">
                       <label className="form-label small mb-0">ATSI</label>
                       <NumberSelect enumType={AtsiStatusEnum} className="form-select form-select-sm" nullable={false} value={m.atsiStatus} onChange={(v) => set({ atsiStatus: (v ?? 0) as AtsiStatusEnum })}>
@@ -335,6 +369,8 @@ export default function AddClient() {
                       {T('suburb', 'Suburb')}
                       {T('postcode', 'Postcode', 'col-3')}
                       {T('state', 'State', 'col-3')}
+                      {T('residentialAddressType', 'Residence Type')}
+                      <div className="col-6 d-flex align-items-end">{C('sendToPostalAddress', 'chkSendPostal', 'Send mail to postal address')}</div>
                     </div>
                   ) : (
                     <div className="row g-1">
@@ -374,10 +410,13 @@ export default function AddClient() {
                     {A('warnings', 'Warnings')}
                     {T('nextOfKinName', 'Next of Kin')}
                     {T('nextOfKinPhone', 'N.O.K Phone')}
+                    {S('nextOfKinRelationship', 'N.O.K Relationship', RELATIONSHIPS, 'col-12')}
                     {T('emergencyContactName', 'Emergency', 'col-6', { disabled: m.sameAsNextOfKin })}
                     {T('emergencyContactPhone', 'Emergency Phone', 'col-6', { disabled: m.sameAsNextOfKin })}
+                    {S('emergencyContactRelationship', 'Emergency Relationship', RELATIONSHIPS, 'col-12')}
                     <div className="col-6 d-flex align-items-end">{C('sameAsNextOfKin', 'chkSameAsNok', 'Same as Next of Kin')}</div>
                     <div className="col-6 d-flex align-items-end">{C('acceptSmsMarketing', 'chkSmsMkt', 'Accept SMS Marketing')}</div>
+                    {T('howDidYouHear', 'Heard About Us', 'col-12')}
                   </div>
                 </Card>
               </div>
@@ -397,6 +436,7 @@ export default function AddClient() {
                     {T('healthFundAliasFamily', 'Alias Family')}
                     {T('healthFundAliasFirst', 'Alias First')}
                     {D('healthFundJoinDate', 'Joined', 'col-6')}
+                    {T('healthFundCoverLevel', 'Cover Level')}
                   </div>
                 </Card>
 
@@ -431,6 +471,11 @@ export default function AddClient() {
                     {T('accountBsb', 'BSB')}
                     {T('accountNumber', 'Acc#')}
                     <div className="col-12">{C('useMedicareRegisteredBankAccount', 'chkBankMedicare', 'Use bank account registered with Medicare')}</div>
+                    <div className="col-12 d-flex flex-wrap gap-3">
+                      {C('oneInvoicePerPatient', 'chkOneInvoice', 'One invoice per patient')}
+                      {C('paysByEft', 'chkEft', 'Pays by EFT')}
+                    </div>
+                    {D('statementHoldUntil', 'Hold Statements Until', 'col-6')}
                   </div>
                 </Card>
 
@@ -440,11 +485,22 @@ export default function AddClient() {
                     {T('urNumber', 'UR No')}
                     <div className="col-6"><label className="form-label small mb-0">Created</label><input className="form-control form-control-sm" value={createdAt ? formatDate(createdAt, 'dd/MM/yyyy') : '-'} disabled /></div>
                     <div className="col-6 d-flex align-items-end">{C('deceased', 'chkDeceased', 'Deceased')}</div>
+                    {m.deceased && D('dateOfDeath', 'Date of Death', 'col-6')}
                     <div className="col-6">
                       <label className="form-label small mb-0">Provider (Practitioner ID)</label>
                       <NumberInput nullable className="form-control form-control-sm" value={m.providerId} onChange={(v) => set({ providerId: v })} />
                     </div>
                     {D('lastSeenDate', 'Last Seen Date', 'col-6')}
+                    {T('minorFileNumber', 'Minor File#')}
+                    {T('externalId', 'External Id')}
+                    {T('patientPortalId', 'Portal Id')}
+                    {T('preferredPharmacyCode1', 'Pharmacy Code 1')}
+                    {T('preferredPharmacyCode2', 'Pharmacy Code 2')}
+                    <div className="col-12 d-flex flex-column">
+                      {C('researchConsent', 'chkResearch', 'Consents to research use')}
+                      {C('disableEPrescribing', 'chkNoErx', 'No electronic prescriptions')}
+                      {C('showEPrescriptionMessage', 'chkErxMsg', 'Show e-prescription message')}
+                    </div>
                   </div>
                 </Card>
               </div>
