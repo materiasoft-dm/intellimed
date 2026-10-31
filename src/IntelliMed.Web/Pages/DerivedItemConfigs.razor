@@ -109,6 +109,10 @@
                         {
                             <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
                                    @bind="_billingItemSearchTerm" @bind:event="oninput" @bind:after="SearchBillingItemsAsync" />
+                            @if (_searchingBillingItems)
+                            {
+                                <LoadingState Text="Searching..." />
+                            }
                             @if (_billingItemSearchResults.Count > 0)
                             {
                                 <ul class="list-group" style="max-height:180px; overflow-y:auto;">
@@ -163,6 +167,10 @@
                                 <label class="form-label">Associated Billing Item</label>
                                 <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
                                        @bind="_associatedSearchTerm" @bind:event="oninput" @bind:after="SearchAssociatedItemsAsync" />
+                                @if (_searchingAssociatedItems)
+                                {
+                                    <LoadingState Text="Searching..." />
+                                }
                                 @if (_associatedSearchResults.Count > 0)
                                 {
                                     <ul class="list-group" style="max-height:150px; overflow-y:auto;">
@@ -282,6 +290,10 @@
                             <label class="form-label">Associated Billing Item (used when Base Fee is blank)</label>
                             <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
                                    @bind="_associatedSearchTerm" @bind:event="oninput" @bind:after="SearchAssociatedItemsAsync" />
+                            @if (_searchingAssociatedItems)
+                            {
+                                <LoadingState Text="Searching..." />
+                            }
                             @if (_associatedSearchResults.Count > 0)
                             {
                                 <ul class="list-group" style="max-height:150px; overflow-y:auto;">
@@ -322,6 +334,10 @@
                             <label class="form-label">Associated Billing Item</label>
                             <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
                                    @bind="_associatedSearchTerm" @bind:event="oninput" @bind:after="SearchAssociatedItemsAsync" />
+                            @if (_searchingAssociatedItems)
+                            {
+                                <LoadingState Text="Searching..." />
+                            }
                             @if (_associatedSearchResults.Count > 0)
                             {
                                 <ul class="list-group" style="max-height:150px; overflow-y:auto;">
@@ -527,11 +543,31 @@
         }
     }
 
+    // The latest search wins: a slow earlier response must not overwrite newer results.
+    private bool _searchingBillingItems;
+    private bool _searchingAssociatedItems;
+    private int _billingSearchSeq;
+    private int _associatedSearchSeq;
+
     private async Task SearchBillingItemsAsync()
     {
-        _billingItemSearchResults = string.IsNullOrWhiteSpace(_billingItemSearchTerm)
-            ? new()
-            : await BillingItemService.SearchAsync(_billingItemSearchTerm);
+        var seq = ++_billingSearchSeq;
+        if (string.IsNullOrWhiteSpace(_billingItemSearchTerm))
+        {
+            _billingItemSearchResults = new();
+            _searchingBillingItems = false;
+            return;
+        }
+        _searchingBillingItems = true;
+        try
+        {
+            var found = await BillingItemService.SearchAsync(_billingItemSearchTerm);
+            if (seq == _billingSearchSeq) _billingItemSearchResults = found;
+        }
+        finally
+        {
+            if (seq == _billingSearchSeq) _searchingBillingItems = false;
+        }
     }
 
     private void SelectBillingItem(BillingItemDto candidate)
@@ -543,9 +579,23 @@
 
     private async Task SearchAssociatedItemsAsync()
     {
-        _associatedSearchResults = string.IsNullOrWhiteSpace(_associatedSearchTerm)
-            ? new()
-            : await BillingItemService.SearchAsync(_associatedSearchTerm);
+        var seq = ++_associatedSearchSeq;
+        if (string.IsNullOrWhiteSpace(_associatedSearchTerm))
+        {
+            _associatedSearchResults = new();
+            _searchingAssociatedItems = false;
+            return;
+        }
+        _searchingAssociatedItems = true;
+        try
+        {
+            var found = await BillingItemService.SearchAsync(_associatedSearchTerm);
+            if (seq == _associatedSearchSeq) _associatedSearchResults = found;
+        }
+        finally
+        {
+            if (seq == _associatedSearchSeq) _searchingAssociatedItems = false;
+        }
     }
 
     private void SelectAssociatedItem(BillingItemDto candidate)

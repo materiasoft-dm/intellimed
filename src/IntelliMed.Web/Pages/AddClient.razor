@@ -875,6 +875,7 @@ else
 
     private List<PrescriptionDto> _prescriptions = new();
     private bool _includeInactivePrescriptions;
+    private bool _loadingPrescriptions;
     private string? _prescriptionActionError;
 
     private List<ProgressNoteDto> _progressNotes = new();
@@ -980,25 +981,44 @@ else
     private async Task LoadTabDataAsync()
     {
         if (!Id.HasValue) return;
-        _referrals = (await ReferralService.GetByClientIdAsync(Id.Value)).ToList();
-        _allergies = (await AllergyService.GetByClientIdAsync(Id.Value)).ToList();
+        var id = Id.Value;
+
+        // The datasets are independent, so ask for them together. They used to be fetched one after another —
+        // twelve round trips in a row behind the "Loading client..." card.
+        var referrals = ReferralService.GetByClientIdAsync(id);
+        var allergies = AllergyService.GetByClientIdAsync(id);
         // Archived pulled too — the tab filters client-side, same as allergies.
-        _healthIssues = await HealthIssueService.GetByClientIdAsync(Id.Value, includeArchived: true);
-        _prescriptions = await PrescriptionService.GetByClientIdAsync(Id.Value, _includeInactivePrescriptions);
-        _progressNotes = (await ProgressNoteService.GetByClientIdAsync(Id.Value)).ToList();
-        _episodes = (await EpisodeService.GetByClientIdAsync(Id.Value, includeArchived: true)).ToList();
-        var completedAppointments = await AppointmentService.SearchAppointmentsAsync(new AppointmentSearchDto
+        var healthIssues = HealthIssueService.GetByClientIdAsync(id, includeArchived: true);
+        var prescriptions = PrescriptionService.GetByClientIdAsync(id, _includeInactivePrescriptions);
+        var progressNotes = ProgressNoteService.GetByClientIdAsync(id);
+        var episodes = EpisodeService.GetByClientIdAsync(id, includeArchived: true);
+        var completedAppointments = AppointmentService.SearchAppointmentsAsync(new AppointmentSearchDto
         {
-            ClientId = Id.Value,
+            ClientId = id,
             Status = AppointmentStatus.Completed,
             PageSize = 100
         });
-        _appointments = completedAppointments.Items.ToList();
-        _claims = (await CompensationClaimService.GetByClientIdAsync(Id.Value)).ToList();
-        _occupations = (await OccupationService.GetByClientIdAsync(Id.Value)).ToList();
-        _familyRelationships = (await FamilyService.GetByClientIdAsync(Id.Value)).ToList();
-        _udfValues = (await UdfValueService.GetByClientIdAsync(Id.Value)).ToList();
-        _udfDefinitions = (await UdfDefinitionService.GetAllActiveAsync()).ToList();
+        var claims = CompensationClaimService.GetByClientIdAsync(id);
+        var occupations = OccupationService.GetByClientIdAsync(id);
+        var family = FamilyService.GetByClientIdAsync(id);
+        var udfValues = UdfValueService.GetByClientIdAsync(id);
+        var udfDefinitions = UdfDefinitionService.GetAllActiveAsync();
+
+        await Task.WhenAll(referrals, allergies, healthIssues, prescriptions, progressNotes, episodes,
+            completedAppointments, claims, occupations, family, udfValues, udfDefinitions);
+
+        _referrals = (await referrals).ToList();
+        _allergies = (await allergies).ToList();
+        _healthIssues = await healthIssues;
+        _prescriptions = await prescriptions;
+        _progressNotes = (await progressNotes).ToList();
+        _episodes = (await episodes).ToList();
+        _appointments = (await completedAppointments).Items.ToList();
+        _claims = (await claims).ToList();
+        _occupations = (await occupations).ToList();
+        _familyRelationships = (await family).ToList();
+        _udfValues = (await udfValues).ToList();
+        _udfDefinitions = (await udfDefinitions).ToList();
     }
 
     private static int? CalculateAge(DateTime? dateOfBirth)
@@ -1537,8 +1557,26 @@ else
     {
         if (!Id.HasValue) return;
         _includeInactivePrescriptions = !_includeInactivePrescriptions;
-        _prescriptions = await PrescriptionService.GetByClientIdAsync(Id.Value, _includeInactivePrescriptions);
+        _loadingPrescriptions = true;
+        StateHasChanged();
+        try
+        {
+            _prescriptions = await PrescriptionService.GetByClientIdAsync(Id.Value, _includeInactivePrescriptions);
+        }
+        finally
+        {
+            _loadingPrescriptions = false;
+        }
     }
+
+    /// <summary>
+    /// The message for an empty tab grid. When the list is only empty because archived rows are hidden, say so
+    /// and how to see them, rather than implying nothing was ever recorded.
+    /// </summary>
+    private static string NoneMessage(string noun, int total, bool includeArchived) =>
+        total > 0 && !includeArchived
+            ? $"No active {noun}. Tick \"Include archived\" to see archived ones."
+            : $"No {noun} recorded.";
 
     private async Task CeasePrescriptionAsync(int id)
     {
@@ -1601,6 +1639,12 @@ else
             </div>
             <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewReferralModal">+ New</button>
         </div>
+        @if (!(_referrals.Where(x => _includeArchivedReferrals || !x.IsArchived)).Any())
+        {
+            <EmptyState Message="@(NoneMessage("referrals", _referrals.Count, _includeArchivedReferrals))" Icon="bi-person-lines-fill" />
+        }
+        else
+        {
         <table class="table table-sm table-hover">
             <thead><tr><th>Provider</th><th>GP</th><th>Issue</th><th>Period</th><th>1st Visit</th><th>Type</th><th>Default</th><th>Note</th><th></th></tr></thead>
             <tbody>
@@ -1626,6 +1670,7 @@ else
                 }
             </tbody>
         </table>
+        }
         @if (_showReferralModal)
         {
             <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
@@ -1914,6 +1959,12 @@ else
             </div>
             <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewAllergyModal">+ New</button>
         </div>
+        @if (!(_allergies.Where(x => _includeArchivedAllergies || !x.IsArchived)).Any())
+        {
+            <EmptyState Message="@(NoneMessage("allergies", _allergies.Count, _includeArchivedAllergies))" Icon="bi-exclamation-triangle" />
+        }
+        else
+        {
         <table class="table table-sm table-hover">
             <thead><tr><th>Substance</th><th>Type</th><th>Reaction</th><th>Severity</th><th>Onset</th><th>Note</th><th></th></tr></thead>
             <tbody>
@@ -1948,6 +1999,7 @@ else
                 }
             </tbody>
         </table>
+        }
         @if (_showAllergyModal)
         {
             <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
@@ -2018,6 +2070,16 @@ else
         {
             <div class="small text-danger mb-1">@_prescriptionActionError</div>
         }
+        @if (_loadingPrescriptions)
+        {
+            <LoadingState Text="Loading prescriptions..." />
+        }
+        else if (!(_prescriptions).Any())
+        {
+            <EmptyState Message="@(_includeInactivePrescriptions ? "No prescriptions recorded." : "No active prescriptions. Tick \"Include ceased/cancelled\" to include past ones.")" Icon="bi-capsule" />
+        }
+        else
+        {
         <table class="table table-sm table-hover">
             <thead><tr><th>Medicine</th><th>Dose</th><th>Repeats</th><th>Script No</th><th>Status</th><th></th></tr></thead>
             <tbody>
@@ -2047,6 +2109,7 @@ else
                 }
             </tbody>
         </table>
+        }
     </div>;
 
     // ===================== Progress Notes =====================
@@ -2095,6 +2158,12 @@ else
                 }
             </div>
         }
+        @if (!(_progressNotes).Any())
+        {
+            <EmptyState Message="@("No progress notes recorded.")" Icon="bi-journal-text" />
+        }
+        else
+        {
         <table class="table table-sm table-hover">
             <thead><tr><th>Date</th><th>Reason</th><th>Practitioner</th><th>Episode</th><th>Status</th></tr></thead>
             <tbody>
@@ -2110,6 +2179,7 @@ else
                 }
             </tbody>
         </table>
+        }
     </div>;
 
     private async Task CreateEpisodeInTabAsync()
@@ -2305,6 +2375,12 @@ else
             </div>
             <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewClaimModal">+ New</button>
         </div>
+        @if (!(_claims.Where(x => _includeArchivedClaims || !x.IsArchived)).Any())
+        {
+            <EmptyState Message="@(NoneMessage("WC/TAC claims", _claims.Count, _includeArchivedClaims))" Icon="bi-briefcase" />
+        }
+        else
+        {
         <table class="table table-sm table-hover">
             <thead><tr><th>Claim#</th><th>Date of Injury</th><th>Employer</th><th>Case Manager</th><th>Payer</th><th>Default</th><th></th></tr></thead>
             <tbody>
@@ -2327,6 +2403,7 @@ else
                 }
             </tbody>
         </table>
+        }
         @if (_showClaimModal)
         {
             <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
@@ -2406,6 +2483,12 @@ else
         <div class="d-flex justify-content-end mb-1">
             <button type="button" class="btn btn-sm btn-outline-primary" @onclick="StartNewFamily">+ New</button>
         </div>
+        @if (!(_familyRelationships).Any())
+        {
+            <EmptyState Message="@("No family members linked. Use \"+ New\" above to add one.")" Icon="bi-people" />
+        }
+        else
+        {
         <table class="table table-sm table-hover">
             <thead><tr><th>Name</th><th>Address</th><th>Relationship</th><th></th></tr></thead>
             <tbody>
@@ -2423,9 +2506,6 @@ else
                 }
             </tbody>
         </table>
-        @if (!_familyRelationships.Any())
-        {
-            <div class="text-muted small">No family members linked. Use "+ New" above to add one.</div>
         }
     </div>;
 
@@ -2505,6 +2585,12 @@ else
             </div>
             <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenNewOccupationModal">+ New</button>
         </div>
+        @if (!(_occupations.Where(x => _includeArchivedOccupations || !x.IsArchived)).Any())
+        {
+            <EmptyState Message="@(NoneMessage("occupations", _occupations.Count, _includeArchivedOccupations))" Icon="bi-building" />
+        }
+        else
+        {
         <table class="table table-sm table-hover">
             <thead><tr><th>Occupation</th><th>Employer</th><th>Started</th><th>Ended</th><th>Hazards</th><th>Comment</th><th></th></tr></thead>
             <tbody>
@@ -2527,6 +2613,7 @@ else
                 }
             </tbody>
         </table>
+        }
         @if (_showOccupationModal)
         {
             <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">
@@ -2699,6 +2786,15 @@ else
         {
             <div class="text-muted small">No user-defined fields configured yet.</div>
         }
+        @if (!(_udfValues).Any())
+        {
+            @if (_udfDefinitions.Any())
+            {
+                <EmptyState Message="@("No user-defined field values recorded.")" Icon="bi-sliders" />
+            }
+        }
+        else
+        {
         <table class="table table-sm table-hover">
             <thead><tr><th>Field Name</th><th>Value</th><th>Note</th><th></th></tr></thead>
             <tbody>
@@ -2715,6 +2811,7 @@ else
                 }
             </tbody>
         </table>
+        }
         @if (_showUdfModal)
         {
             <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.4);">

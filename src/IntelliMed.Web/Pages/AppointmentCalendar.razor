@@ -75,6 +75,18 @@
     }
 
     /* Appointment chips: rounded, gently shadowed, lift a bit on hover to feel clickable. */
+    /* Floats over the scheduler while a day/week/month of appointments is being fetched, so the grid does not jump. */
+    .imed-calendar-loading {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.75rem;
+        z-index: 5;
+        background: #fff;
+        border-radius: 999px;
+        box-shadow: 0 1px 6px rgba(15, 23, 42, 0.18);
+        padding: 0 0.75rem;
+    }
+
     .imed-calendar-card .rz-event {
         border: none !important;
         border-radius: 8px !important;
@@ -145,7 +157,11 @@
 </div>
 
 <div class="card imed-calendar-card">
-    <div class="card-body p-0" @ref="_calendarContainerRef">
+    <div class="card-body p-0 position-relative" @ref="_calendarContainerRef">
+        @if (_loadingAppointments)
+        {
+            <div class="imed-calendar-loading"><LoadingState Text="Loading appointments..." /></div>
+        }
         <RadzenScheduler @key="_schedulerKey" @ref="_scheduler" TItem="SchedulerAppointmentVm" Data="@_events"
                           Style="height: calc(100vh - 280px); width: 100%;"
                           StartProperty="Start" EndProperty="End" TextProperty="Text"
@@ -179,6 +195,7 @@
 
     private List<AppointmentDto> _allAppointments = new();
     private List<SchedulerAppointmentVm> _events = new();
+    private bool _loadingAppointments;
     private DateTime _lastLoadStart = DateTime.Today;
     private DateTime _lastLoadEnd = DateTime.Today;
 
@@ -233,14 +250,23 @@
         _lastLoadStart = args.Start;
         _lastLoadEnd = args.End;
 
-        var result = await AppointmentService.SearchAppointmentsAsync(new AppointmentSearchDto
+        _loadingAppointments = true;
+        StateHasChanged();
+        try
         {
-            FromDate = args.Start,
-            ToDate = args.End,
-            PageSize = 500
-        });
+            var result = await AppointmentService.SearchAppointmentsAsync(new AppointmentSearchDto
+            {
+                FromDate = args.Start,
+                ToDate = args.End,
+                PageSize = 500
+            });
 
-        _allAppointments = result.Items.ToList();
+            _allAppointments = result.Items.ToList();
+        }
+        finally
+        {
+            _loadingAppointments = false;
+        }
         RebuildEvents();
     }
 

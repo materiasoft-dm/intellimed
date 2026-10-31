@@ -1,0 +1,17 @@
+@namespace IntelliMed.Web.Components
+
+@* The one "data is on its way" indicator for grids, lists and search results. Show it INSTEAD of the
+   grid while a request is in flight, so the page never flashes a false "no data" message (or a bare empty
+   table) before the real rows arrive. Pair it with EmptyState for the finished-but-empty case. *@
+<div class="imed-loading @(Compact ? "imed-loading--compact" : "")" role="status" aria-live="polite">
+    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+    <span class="imed-loading-text">@Text</span>
+</div>
+
+@code {
+    /// <summary>What is being loaded, e.g. "Loading prescriptions..." or "Searching...".</summary>
+    [Parameter] public string Text { get; set; } = "Loading...";
+
+    /// <summary>Tighter padding for inside a card, tab or modal. Use false for a whole-page wait.</summary>
+    [Parameter] public bool Compact { get; set; } = true;
+}

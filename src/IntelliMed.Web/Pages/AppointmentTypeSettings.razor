@@ -15,9 +15,13 @@
         <button class="btn btn-sm btn-primary" @onclick="OpenNew"><i class="bi bi-plus-lg"></i> New Type</button>
     </div>
     <div class="card-body py-2">
-        @if (_types.Count == 0)
+        @if (_loading)
         {
-            <div class="text-muted small">No appointment types configured yet.</div>
+            <LoadingState Text="Loading appointment types..." />
+        }
+        else if (_types.Count == 0)
+        {
+            <EmptyState Message="No appointment types configured yet." Icon="bi-calendar-event" />
         }
         else
         {
@@ -89,6 +93,7 @@
 
 @code {
     private List<AppointmentTypeSettingDto> _types = new();
+    private bool _loading = true;
     private bool _showModal;
     private int? _editingId;
     private UpdateAppointmentTypeSettingDto _form = new();
@@ -100,7 +105,14 @@
 
     private async Task LoadAsync()
     {
-        _types = await TypeSettingService.GetAllActiveAsync();
+        try
+        {
+            _types = await TypeSettingService.GetAllActiveAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private void OpenNew()

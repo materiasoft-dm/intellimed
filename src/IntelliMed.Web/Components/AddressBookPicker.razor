@@ -19,7 +19,11 @@
                         <input class="form-control form-control-sm mb-2" placeholder="Search by name, provider number or speciality..."
                                @bind="_query" @bind:event="oninput" @bind:after="SearchAsync" />
                         <div style="max-height: 320px; overflow-y: auto;">
-                            @if (_results.Count == 0)
+                            @if (_searching)
+                            {
+                                <LoadingState Text="Searching..." />
+                            }
+                            else if (_results.Count == 0)
                             {
                                 <div class="text-muted small">@(string.IsNullOrWhiteSpace(_query) ? "Type to search the address book." : "No matching contacts.")</div>
                             }
@@ -119,15 +123,30 @@
         _wasVisible = Visible;
     }
 
+    // The latest search wins: a slow earlier response must not overwrite newer results, and the list shows
+    // "Searching..." instead of a misleading "No matches." while a request is still in flight.
+    private bool _searching;
+    private int _searchSeq;
+
     private async Task SearchAsync()
     {
+        var seq = ++_searchSeq;
         if (string.IsNullOrWhiteSpace(_query))
         {
             _results = new();
+            _searching = false;
             return;
         }
-        var result = await AddressBookService.SearchAsync(new AddressBookSearchDto { Query = _query, PageSize = 15 });
-        _results = result.Items.ToList();
+        _searching = true;
+        try
+        {
+            var found = (await AddressBookService.SearchAsync(new AddressBookSearchDto { Query = _query, PageSize = 15 })).Items.ToList();
+            if (seq == _searchSeq) _results = found;
+        }
+        finally
+        {
+            if (seq == _searchSeq) _searching = false;
+        }
     }
 
     private void StartAdding()

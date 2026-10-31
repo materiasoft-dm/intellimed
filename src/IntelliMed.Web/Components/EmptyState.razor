@@ -1,0 +1,24 @@
+@namespace IntelliMed.Web.Components
+
+@* The one "nothing here" message for a grid or list that has finished loading and has no rows. Show it
+   INSTEAD of an empty table, so a blank grid never leaves the user wondering whether it is broken. Say what
+   is missing and, where it helps, how to get some (ChildContent), e.g. a hint about the archived filter. *@
+<div class="imed-empty-state @(Compact ? "imed-empty-state--compact" : "")" role="status">
+    <i class="bi @Icon" aria-hidden="true"></i>
+    <span class="imed-empty-text">@Message</span>
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>What is missing, as a sentence: "No prescriptions recorded."</summary>
+    [Parameter, EditorRequired] public string Message { get; set; } = string.Empty;
+
+    /// <summary>A Bootstrap icon class, e.g. "bi-capsule".</summary>
+    [Parameter] public string Icon { get; set; } = "bi-inbox";
+
+    /// <summary>Inline and left-aligned for inside a card, tab or modal. Use false for a whole empty page.</summary>
+    [Parameter] public bool Compact { get; set; } = true;
+
+    /// <summary>Optional extra text or an action link after the message.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

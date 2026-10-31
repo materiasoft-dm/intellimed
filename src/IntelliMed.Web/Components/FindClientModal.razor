@@ -57,7 +57,11 @@
                         <button type="button" class="btn btn-sm btn-primary" @onclick="SearchAsync">Search</button>
                     </div>
                     <div style="max-height: 300px; overflow-y: auto;">
-                        @if (!_hasSearched)
+                        @if (_searching)
+                        {
+                            <LoadingState Text="Searching..." />
+                        }
+                        else if (!_hasSearched)
                         {
                             <div class="text-muted small">Enter search criteria and click Search (or press Enter).</div>
                         }
@@ -150,9 +154,16 @@
         if (e.Key == "Enter") await SearchAsync();
     }
 
+    // The latest search wins: a slow earlier response must not overwrite newer results, and the list shows
+    // "Searching..." instead of a misleading "No matches." while a request is still in flight.
+    private bool _searching;
+    private int _searchSeq;
+
     private async Task SearchAsync()
     {
+        var seq = ++_searchSeq;
         _hasSearched = true;
+        _searching = true;
         var search = new ClientSearchDto
         {
             PageSize = 20,
@@ -166,8 +177,15 @@
             FileNumber = NullIfEmpty(_fileNumber),
             MobilePhone = NullIfEmpty(_mobilePhone)
         };
-        var result = await ClientService.SearchClientsAsync(search);
-        _results = result.Items.ToList();
+        try
+        {
+            var result = await ClientService.SearchClientsAsync(search);
+            if (seq == _searchSeq) _results = result.Items.ToList();
+        }
+        finally
+        {
+            if (seq == _searchSeq) _searching = false;
+        }
     }
 
     private async Task ClearAsync()

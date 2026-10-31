@@ -18,7 +18,11 @@
                     <input class="form-control form-control-sm mb-2" placeholder="Search organisations by name..."
                            @bind="_query" @bind:event="oninput" @bind:after="SearchAsync" />
                     <div style="max-height: 300px; overflow-y: auto;">
-                        @if (_results.Count == 0)
+                        @if (_searching)
+                        {
+                            <LoadingState Text="Searching..." />
+                        }
+                        else if (_results.Count == 0)
                         {
                             <div class="text-muted small">@(string.IsNullOrWhiteSpace(_query) ? "Type to search organisations." : "No matching organisations.")</div>
                         }
@@ -79,20 +83,30 @@
         _wasVisible = Visible;
     }
 
+    // The latest search wins: a slow earlier response must not overwrite newer results, and the list shows
+    // "Searching..." instead of a misleading "No matches." while a request is still in flight.
+    private bool _searching;
+    private int _searchSeq;
+
     private async Task SearchAsync()
     {
+        var seq = ++_searchSeq;
         if (string.IsNullOrWhiteSpace(_query))
         {
             _results = new();
+            _searching = false;
             return;
         }
-        var result = await ClientService.SearchClientsAsync(new ClientSearchDto
+        _searching = true;
+        try
         {
-            Query = _query,
-            ClientType = ClientTypeEnum.Organisation,
-            PageSize = 15
-        });
-        _results = result.Items.ToList();
+            var found = (await ClientService.SearchClientsAsync(new ClientSearchDto { Query = _query, ClientType = ClientTypeEnum.Organisation, PageSize = 15 })).Items.ToList();
+            if (seq == _searchSeq) _results = found;
+        }
+        finally
+        {
+            if (seq == _searchSeq) _searching = false;
+        }
     }
 
     private async Task AddAndSelectAsync()

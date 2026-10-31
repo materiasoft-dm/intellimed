@@ -41,6 +41,10 @@
                         {
                             <div class="text-muted small">Start typing a medicine name to search the catalog.</div>
                         }
+                        else if (_searching)
+                        {
+                            <LoadingState Text="Searching..." />
+                        }
                         else if (_drugSearchResults.Count == 0)
                         {
                             <div class="text-muted small">No matches.</div>
@@ -682,11 +686,30 @@ else
         _ => "bg-secondary"
     };
 
+    // The latest search wins: a slow earlier response must not overwrite newer results, and the list shows
+    // "Searching..." instead of a misleading "No matches." while a request is still in flight.
+    private bool _searching;
+    private int _searchSeq;
+
     private async Task SearchDrugCandidatesAsync()
     {
-        _drugSearchResults = string.IsNullOrWhiteSpace(_drugSearchTerm)
-            ? new()
-            : await MedicineService.SearchAsync(_drugSearchTerm);
+        var seq = ++_searchSeq;
+        if (string.IsNullOrWhiteSpace(_drugSearchTerm))
+        {
+            _drugSearchResults = new();
+            _searching = false;
+            return;
+        }
+        _searching = true;
+        try
+        {
+            var found = await MedicineService.SearchAsync(_drugSearchTerm);
+            if (seq == _searchSeq) _drugSearchResults = found;
+        }
+        finally
+        {
+            if (seq == _searchSeq) _searching = false;
+        }
     }
 
     private async Task SelectMedicineAsync(MedicineDto candidate)

@@ -162,6 +162,24 @@ To switch from SQLite to SQL Server:
 3. Run `dotnet ef migrations add MigrationName` to generate new migration
 4. No code changes needed in repositories or services
 
+## Web UI conventions
+
+### Grid and list states
+Every grid or list shows one of three things, in this order — never a bare table:
+
+1. **Loading** — `<LoadingState Text="Loading prescriptions..." />` (`Web/Components/LoadingState.razor`)
+   while a request is in flight. Search pickers use `Text="Searching..."`.
+2. **Empty** — `<EmptyState Message="No prescriptions recorded." Icon="bi-capsule" />`
+   (`Web/Components/EmptyState.razor`) once loading has finished with no rows. When rows are only
+   hidden by an "include archived" filter, say so (`AddClient.NoneMessage`).
+3. **The grid itself.**
+
+Radzen grids use their own `IsLoading` + `EmptyText` instead. Keep the loading flag *true by default* on
+pages that fetch in `OnInitializedAsync`, otherwise the empty message flashes before the data arrives.
+Search handlers follow the `_searching` + `_searchSeq` pattern (see `AddressBookPicker`): the latest
+request wins, so a slow earlier response cannot overwrite newer results. `EmptyAndLoadingStateTests`
+holds API responses back with a Playwright route to prove each state.
+
 ## IntelliMed.Maui Project Structure (Standard Template)
 ```
 IntelliMed.Maui/

@@ -130,7 +130,11 @@
                     <input class="form-control form-control-sm mb-2" placeholder="Search by name..."
                            @bind="_clientSearchTerm" @bind:event="oninput" @bind:after="SearchClientCandidatesAsync" />
                     <div style="max-height: 300px; overflow-y: auto;">
-                        @if (_clientSearchResults.Count == 0)
+                        @if (_searching)
+                        {
+                            <LoadingState Text="Searching..." />
+                        }
+                        else if (_clientSearchResults.Count == 0)
                         {
                             <div class="text-muted small">No matches.</div>
                         }
@@ -245,15 +249,30 @@
         _showClientPickerModal = true;
     }
 
+    // The latest search wins: a slow earlier response must not overwrite newer results, and the list shows
+    // "Searching..." instead of a misleading "No matches." while a request is still in flight.
+    private bool _searching;
+    private int _searchSeq;
+
     private async Task SearchClientCandidatesAsync()
     {
+        var seq = ++_searchSeq;
         if (string.IsNullOrWhiteSpace(_clientSearchTerm))
         {
             _clientSearchResults = new();
+            _searching = false;
             return;
         }
-        var result = await ClientService.SearchClientsAsync(new ClientSearchDto { Query = _clientSearchTerm, PageSize = 10 });
-        _clientSearchResults = result.Items.ToList();
+        _searching = true;
+        try
+        {
+            var found = (await ClientService.SearchClientsAsync(new ClientSearchDto { Query = _clientSearchTerm, PageSize = 10 })).Items.ToList();
+            if (seq == _searchSeq) _clientSearchResults = found;
+        }
+        finally
+        {
+            if (seq == _searchSeq) _searching = false;
+        }
     }
 
     private void SelectClient(ClientDto candidate)

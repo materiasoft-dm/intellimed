@@ -34,9 +34,13 @@
         <p class="text-muted">@(_practitioners.FirstOrDefault(p => p.Id == _practitionerId)?.FullName)</p>
     }
 
-    @if (_appointments.Count == 0)
+    @if (_loading)
     {
-        <p class="text-muted">No appointments scheduled.</p>
+        <LoadingState Text="Loading appointments..." />
+    }
+    else if (_appointments.Count == 0)
+    {
+        <EmptyState Message="No appointments scheduled." Icon="bi-calendar-x" />
     }
     else
     {
@@ -76,6 +80,7 @@
     private int? _practitionerId;
     private List<PractitionerDto> _practitioners = new();
     private List<AppointmentDto> _appointments = new();
+    private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -88,14 +93,22 @@
 
     private async Task LoadAsync()
     {
-        var result = await AppointmentService.SearchAppointmentsAsync(new AppointmentSearchDto
+        _loading = true;
+        try
         {
-            FromDate = _date,
-            ToDate = _date,
-            PractitionerId = _practitionerId,
-            PageSize = 500
-        });
-        _appointments = result.Items.ToList();
+            var result = await AppointmentService.SearchAppointmentsAsync(new AppointmentSearchDto
+            {
+                FromDate = _date,
+                ToDate = _date,
+                PractitionerId = _practitionerId,
+                PageSize = 500
+            });
+            _appointments = result.Items.ToList();
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private async Task Print()

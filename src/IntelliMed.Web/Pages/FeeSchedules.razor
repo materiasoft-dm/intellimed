@@ -422,7 +422,11 @@
                     <input class="form-control form-control-sm mb-2" placeholder="Search by item number or description..."
                            @bind="_billingItemSearchTerm" @bind:event="oninput" @bind:after="SearchBillingItemCandidatesAsync" />
                     <div style="max-height: 300px; overflow-y: auto;">
-                        @if (_billingItemSearchResults.Count == 0)
+                        @if (_searching)
+                        {
+                            <LoadingState Text="Searching..." />
+                        }
+                        else if (_billingItemSearchResults.Count == 0)
                         {
                             <div class="text-muted small">No matches.</div>
                         }
@@ -905,11 +909,30 @@
         _showBillingItemPickerModal = true;
     }
 
+    // The latest search wins: a slow earlier response must not overwrite newer results, and the list shows
+    // "Searching..." instead of a misleading "No matches." while a request is still in flight.
+    private bool _searching;
+    private int _searchSeq;
+
     private async Task SearchBillingItemCandidatesAsync()
     {
-        _billingItemSearchResults = string.IsNullOrWhiteSpace(_billingItemSearchTerm)
-            ? new()
-            : await BillingItemService.SearchAsync(_billingItemSearchTerm);
+        var seq = ++_searchSeq;
+        if (string.IsNullOrWhiteSpace(_billingItemSearchTerm))
+        {
+            _billingItemSearchResults = new();
+            _searching = false;
+            return;
+        }
+        _searching = true;
+        try
+        {
+            var found = await BillingItemService.SearchAsync(_billingItemSearchTerm);
+            if (seq == _searchSeq) _billingItemSearchResults = found;
+        }
+        finally
+        {
+            if (seq == _searchSeq) _searching = false;
+        }
     }
 
     private async Task AddItemAsync(BillingItemDto candidate)
